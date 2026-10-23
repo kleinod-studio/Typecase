@@ -131,6 +131,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self.content_title = Adw.WindowTitle(title="Typecase", subtitle="")
         header = Adw.HeaderBar(title_widget=self.content_title)
+        self.sidebar_button = Gtk.ToggleButton(
+            icon_name="sidebar-show-symbolic",
+            action_name="win.toggle-sidebar",
+            tooltip_text=_("Show Sidebar"),
+        )
+        header.pack_start(self.sidebar_button)
 
         view_section = Gio.Menu()
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
@@ -429,7 +435,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             (
                 _("Window"),
                 [
-                    (_("Show Sidebar"), "F9"),
+                    (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Fullscreen"), "F11"),
                     (_("Keyboard Shortcuts"), "<Primary>question"),
                     (_("Quit"), "<Primary>q"),

@@ -221,6 +221,10 @@ def steps(win, app):
     check(win.split.get_show_sidebar() != shown, "F9-Aktion blendet die Seitenleiste um")
     win.lookup_action("toggle-sidebar").activate(None)
     check(win.split.get_show_sidebar() == shown, "F9-Aktion blendet sie wieder ein")
+    win.sidebar_button.emit("clicked")  # wie ein Klick
+    check(not win.split.get_show_sidebar() and not win.sidebar_button.get_active(), "Knopf blendet die Seitenleiste aus")
+    win.sidebar_button.emit("clicked")
+    check(win.split.get_show_sidebar() and win.sidebar_button.get_active(), "Knopf blendet sie wieder ein")
     win.lookup_action("fullscreen").activate(None)
     yield 1.5  # der Fenstermanager braucht einen Moment
     check(win.is_fullscreen(), "F11-Aktion schaltet Vollbild ein")
@@ -234,7 +238,7 @@ def steps(win, app):
     check(win.get_visible_dialog() is not None, "Über-Dialog öffnet sich")
     win.get_visible_dialog().force_close()
     accels = {name: app.get_accels_for_action(name) for name in ["win.fullscreen", "win.toggle-sidebar", "app.quit"]}
-    check(accels == {"win.fullscreen": ["F11"], "win.toggle-sidebar": ["F9"], "app.quit": ["<Control>q"]}, "Tastenkürzel sind registriert")
+    check(accels == {"win.fullscreen": ["F11"], "win.toggle-sidebar": ["F9", "<Shift><Control>l"], "app.quit": ["<Control>q"]}, "Tastenkürzel sind registriert")
 
     # Beenden (Strg+Q) sichert ebenfalls
     ed.buffer.insert_at_cursor("W")
