@@ -27,7 +27,7 @@ Einmalig: `flatpak-builder`, `meson` und die GNOME-Laufzeit installieren.
 flatpak install flathub org.gnome.Platform//51 org.gnome.Sdk//51
 ```
 
-Bauen und für den eigenen Benutzer installieren:
+Bauen und für den eigenen Benutzer installieren. Derselbe Befehl aktualisiert eine schon installierte Version auf den aktuellen Stand des Projektordners; eine laufende Typecase danach neu starten:
 
 ```bash
 flatpak-builder --user --install --force-clean build-dir studio.kleinod.Typecase.yml
