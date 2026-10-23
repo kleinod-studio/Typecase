@@ -5,7 +5,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
-from . import frontmatter
+from . import formatting, frontmatter
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
 from .markdown_lists import change_indent, on_enter, renumber
@@ -207,6 +207,67 @@ class SheetEditor(Gtk.Stack):
     def text(self) -> str:
         """Der ganze Dateiinhalt, wie er gespeichert würde (mit Dateikopf)."""
         return self._file_text()
+
+    # --- Formatieren (Leiste und Tastenkürzel) --------------------------------
+
+    INLINE_FORMATS = {
+        "bold": formatting.BOLD,
+        "italic": formatting.ITALIC,
+        "underline": formatting.UNDERLINE,
+        "strike": formatting.STRIKE,
+        "code": formatting.CODE,
+    }
+    LINE_FORMATS = ("h1", "h2", "h3", "paragraph", "bullet", "numbered", "quote")
+
+    def apply_format(self, kind: str) -> bool:
+        """Schaltet eine Formatierung für Markierung, Wort oder Zeilen um; ein Schritt für Rückgängig."""
+        if self.path is None:
+            return False
+        buffer = self.buffer
+        bounds = buffer.get_selection_bounds()
+        cursor = buffer.get_iter_at_mark(buffer.get_insert())
+        start, end = (bounds[0], bounds[1]) if bounds else (cursor, cursor.copy())
+
+        if kind in self.LINE_FORMATS:
+            first, last = start.get_line(), end.get_line()
+            if bounds and end.starts_line() and last > first:
+                last -= 1
+            old = self._lines()
+            buffer.begin_user_action()
+            self._apply_lines(old, formatting.toggle_lines(old, first, last, kind))
+            buffer.end_user_action()
+        else:
+            text = self._buffer_text()
+            a, b = start.get_offset(), end.get_offset()
+            if kind in self.INLINE_FORMATS:
+                new, a, b = formatting.toggle_inline(text, a, b, self.INLINE_FORMATS[kind])
+            elif kind == "link":
+                new, a, b = formatting.insert_link(text, a, b, _("Text"), "https://")
+            elif kind == "codeblock":
+                new, a, b = formatting.insert_code_block(text, a, b)
+            else:
+                return False
+            buffer.begin_user_action()
+            self._replace_changed_part(text, new)
+            buffer.end_user_action()
+            buffer.select_range(buffer.get_iter_at_offset(b), buffer.get_iter_at_offset(a))
+        self.view.scroll_mark_onscreen(buffer.get_insert())
+        self.focus_editor()
+        return True
+
+    def _replace_changed_part(self, old: str, new: str) -> None:
+        """Ersetzt nur den Teil, der sich unterscheidet (Marken und Cursor bleiben sonst stehen)."""
+        prefix = 0
+        limit = min(len(old), len(new))
+        while prefix < limit and old[prefix] == new[prefix]:
+            prefix += 1
+        suffix = 0
+        while suffix < limit - prefix and old[len(old) - 1 - suffix] == new[len(new) - 1 - suffix]:
+            suffix += 1
+        start = self.buffer.get_iter_at_offset(prefix)
+        end = self.buffer.get_iter_at_offset(len(old) - suffix)
+        self.buffer.delete(start, end)
+        self.buffer.insert(self.buffer.get_iter_at_offset(prefix), new[prefix : len(new) - suffix])
 
     # --- Meta-Informationen (Dateikopf) ---------------------------------------
 

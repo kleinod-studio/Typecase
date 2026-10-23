@@ -81,7 +81,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
     # --- Aufbau -----------------------------------------------------------
 
     def _build_ui(self):
-        self.split = Adw.OverlaySplitView(min_sidebar_width=220, max_sidebar_width=320)
+        self.split = Adw.OverlaySplitView(min_sidebar_width=260, max_sidebar_width=340)
         self.split.set_sidebar(self._build_sidebar())
         self.split.set_content(self._build_content())
         self.set_content(self.split)
@@ -246,6 +246,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view.add_top_bar(header)
         view.add_top_bar(self.find_bar)
         view.set_content(self.editor)
+        view.add_bottom_bar(self._build_format_bar())
         self.content_view = view
 
         # Seitenfenster rechts für die Meta-Informationen (GNOME-Muster: zweite Seitenleiste am Ende).
@@ -270,6 +271,53 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self.toasts = Adw.ToastOverlay(child=self.inspector_split)
         return Adw.NavigationPage(title="Typecase", child=self.toasts)
+
+    def _build_format_bar(self) -> Gtk.Widget:
+        """Leiste unten im Editor: Markdown-Formatierungen per Klick, ohne die Syntax kennen zu müssen."""
+        bar = Gtk.Box(spacing=2, halign=Gtk.Align.CENTER, margin_top=4, margin_bottom=4)
+
+        def button(kind, tooltip, icon=None, label=None):
+            widget = Gtk.Button(
+                tooltip_text=tooltip,
+                action_name="win.format",
+                action_target=GLib.Variant.new_string(kind),
+                css_classes=["flat"],
+            )
+            if icon:
+                widget.set_icon_name(icon)
+            else:
+                widget.set_label(label)
+            widget.update_property([Gtk.AccessibleProperty.LABEL], [tooltip])
+            bar.append(widget)
+
+        def separator():
+            bar.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL, margin_start=6, margin_end=6))
+
+        button("bold", _("Bold"), icon="format-text-bold-symbolic")
+        button("italic", _("Italic"), icon="format-text-italic-symbolic")
+        button("underline", _("Underline"), icon="format-text-underline-symbolic")
+        button("strike", _("Strikethrough"), icon="format-text-strikethrough-symbolic")
+        button("code", _("Code"), label="</>")
+        button("link", _("Link"), icon="insert-link-symbolic")
+        separator()
+        headings = Gio.Menu()
+        for level in (1, 2, 3):
+            headings.append(_("Heading %d") % level, f"win.format::h{level}")
+        headings.append(_("Normal Text"), "win.format::paragraph")
+        bar.append(Gtk.MenuButton(label="H", tooltip_text=_("Heading"), menu_model=headings, css_classes=["flat"]))
+        button("bullet", _("Bulleted List"), icon="view-list-bullet-symbolic")
+        button("numbered", _("Numbered List"), icon="view-list-ordered-symbolic")
+        button("quote", _("Quote"), label="“ ”")
+        button("codeblock", _("Code Block"), label="{ }")
+        self.format_bar = bar
+        # Bei schmalem Fenster seitlich scrollbar, statt den Editor breiter zu machen.
+        return Gtk.ScrolledWindow(
+            child=bar,
+            hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
+            vscrollbar_policy=Gtk.PolicyType.NEVER,
+            propagate_natural_width=True,
+            propagate_natural_height=True,
+        )
 
     # --- Bibliothek -------------------------------------------------------
 
@@ -694,6 +742,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
             action.connect("activate", lambda _a, _p, r=replace: self._find_in_sheet(r))
             self.add_action(action)
 
+        format_action = Gio.SimpleAction.new("format", GLib.VariantType.new("s"))
+        format_action.connect("activate", lambda _a, kind: self.editor.apply_format(kind.get_string()))
+        self.add_action(format_action)
+
         search = Gio.SimpleAction.new("search", None)
         search.connect("activate", lambda _a, _p: self._start_search())
         self.add_action(search)
@@ -822,20 +874,32 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.apply_settings()  # der Fokus-Modus kann eigene Schrift, Größe und Stil haben
         if on:
             self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen(), self.inspector_split.get_show_sidebar())
+            # Festhalten: sonst blendet libadwaita Seitenleisten wieder ein, wenn das Vollbild das Fenster verbreitert.
+            for split in (self.split, self.inspector_split):
+                split.set_pin_sidebar(True)
             self.split.set_show_sidebar(False)
             self.inspector_split.set_show_sidebar(False)
             self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
+            self.content_view.set_extend_content_to_bottom_edge(True)
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
             self.editor.focus_editor()
         else:
             sidebar, was_fullscreen, inspector = self._before_focus
             self.inspector_split.set_show_sidebar(inspector)
+            for split in (self.split, self.inspector_split):
+                split.set_pin_sidebar(False)
             self.content_view.set_reveal_top_bars(True)
             self.content_view.set_extend_content_to_top_edge(False)
+            self.content_view.set_extend_content_to_bottom_edge(False)
             self.split.set_show_sidebar(sidebar)
             if not was_fullscreen:
                 self.unfullscreen()
+
+    def _format_bar_wanted(self) -> bool:
+        """Formatierungsleiste dauerhaft zeigen? Editor und Fokus-Modus haben je eine eigene Einstellung."""
+        data = config.load()
+        return data.get("focus_format_bar" if self.focus_mode else "format_bar") is not False
 
     def _on_content_motion(self, _controller, _x, y):
         if not self.focus_mode:
@@ -844,6 +908,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.content_view.set_reveal_top_bars(True)
         elif y > 120 and not self.find_bar.get_search_mode():
             self.content_view.set_reveal_top_bars(False)
+        # Verborgene Formatierungsleiste erscheint am unteren Rand, wie die Kopfzeile oben.
+        if not self._format_bar_wanted():
+            height = self.content_view.get_height()
+            if y > height - 8:
+                self.content_view.set_reveal_bottom_bars(True)
+            elif y < height - 120:
+                self.content_view.set_reveal_bottom_bars(False)
 
     def _on_window_key(self, _controller, keyval, _keycode, _state):
         if keyval == Gdk.KEY_Escape and self.focus_mode and self.get_visible_dialog() is None:
@@ -869,6 +940,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Undo"), "<Primary>z"),
                     (_("Redo"), "<Primary><Shift>z"),
                     (_("New Line Without List Marker"), "<Shift>Return"),
+                    (_("Bold"), "<Primary>b"),
+                    (_("Italic"), "<Primary>i"),
+                    (_("Underline"), "<Primary>u"),
+                    (_("Link"), "<Primary>k"),
+                    (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),
+                    (_("Normal Text"), "<Primary>0"),
                     (_("Indent List Item"), "Tab"),
                     (_("Outdent List Item"), "<Shift>Tab"),
                     (_("Find"), "<Primary>f"),
@@ -1166,6 +1243,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 "dark": Adw.ColorScheme.FORCE_DARK,
             }[current["color_scheme"]]
         )
+        self.content_view.set_reveal_bottom_bars(self._format_bar_wanted())
         self.inspector.refresh()  # Voreinstellungen für Autor und Sprache können sich geändert haben
 
     def _apply_style_scheme(self):

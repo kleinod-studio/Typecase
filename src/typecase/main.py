@@ -54,6 +54,17 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("app.quit", ["<Primary>q"])
         self.set_accels_for_action("win.preferences", ["<Primary>comma"])
         self.set_accels_for_action("win.inspector", ["<Alt>Return"])
+        for kind, keys in [
+            ("bold", ["<Primary>b"]),
+            ("italic", ["<Primary>i"]),
+            ("underline", ["<Primary>u"]),
+            ("link", ["<Primary>k"]),
+            ("h1", ["<Primary>1"]),
+            ("h2", ["<Primary>2"]),
+            ("h3", ["<Primary>3"]),
+            ("paragraph", ["<Primary>0"]),
+        ]:
+            self.set_accels_for_action(f"win.format::{kind}", keys)
 
         for name, handler in [("quit", self._on_quit), ("about", self._on_about)]:
             action = Gio.SimpleAction.new(name, None)

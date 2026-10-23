@@ -8,6 +8,7 @@ install_data(
     'typecase/config.py',
     'typecase/fileio.py',
     'typecase/find_bar.py',
+    'typecase/formatting.py',
     'typecase/frontmatter.py',
     'typecase/inspector.py',
     'typecase/keywords.py',

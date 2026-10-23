@@ -58,6 +58,12 @@ class InlineTest(unittest.TestCase):
         self.assertEqual(s["link"], ["die Seite"])
         self.assertEqual(s["syntax"], ["[", "](https://example.org)"])
 
+    def test_underline(self):
+        s = styled("ein <u>wichtiges **fettes**</u> Wort")
+        self.assertEqual(s["underline"], ["wichtiges **fettes**"])
+        self.assertEqual(s["bold"], ["fettes"])
+        self.assertEqual(s["syntax"][:2], ["<u>", "</u>"])
+
     def test_strike(self):
         self.assertEqual(styled("~~weg~~")["strike"], ["weg"])
 

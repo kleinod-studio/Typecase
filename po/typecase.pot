@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 23:23+0200\n"
+"POT-Creation-Date: 2026-10-23 23:47+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -220,10 +220,28 @@ msgstr ""
 msgid "Focus Mode"
 msgstr ""
 
+msgid "Tools"
+msgstr ""
+
+msgid "Formatting Bar"
+msgstr ""
+
+msgid "Buttons below the text for bold, lists, headings and more"
+msgstr ""
+
+msgid "Show Formatting Bar"
+msgstr ""
+
+msgid "When off, it appears when you move the pointer to the bottom edge"
+msgstr ""
+
 msgid "No Sheet Open"
 msgstr ""
 
 msgid "Select a sheet in the library to start writing."
+msgstr ""
+
+msgid "Text"
 msgstr ""
 
 #, python-format
@@ -299,6 +317,46 @@ msgid "%(count)s replacement"
 msgid_plural "%(count)s replacements"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "Bold"
+msgstr ""
+
+msgid "Italic"
+msgstr ""
+
+msgid "Underline"
+msgstr ""
+
+msgid "Strikethrough"
+msgstr ""
+
+msgid "Code"
+msgstr ""
+
+msgid "Link"
+msgstr ""
+
+#, python-format
+msgid "Heading %d"
+msgstr ""
+
+msgid "Normal Text"
+msgstr ""
+
+msgid "Heading"
+msgstr ""
+
+msgid "Bulleted List"
+msgstr ""
+
+msgid "Numbered List"
+msgstr ""
+
+msgid "Quote"
+msgstr ""
+
+msgid "Code Block"
+msgstr ""
 
 msgid "Choose Library Folder"
 msgstr ""
@@ -395,6 +453,9 @@ msgid "Redo"
 msgstr ""
 
 msgid "New Line Without List Marker"
+msgstr ""
+
+msgid "Heading 1 / 2 / 3"
 msgstr ""
 
 msgid "Indent List Item"

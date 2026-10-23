@@ -195,6 +195,35 @@ class PreferencesDialog(Adw.PreferencesDialog):
             )
         self.focus_same.connect("notify::active", self._on_focus_same_changed)
 
+        tools = Adw.PreferencesGroup(title=_("Tools"))
+        self.format_bar = Adw.SwitchRow(
+            title=_("Formatting Bar"),
+            subtitle=_("Buttons below the text for bold, lists, headings and more"),
+            active=config.load().get("format_bar") is not False,
+        )
+        self.format_bar.connect("notify::active", self._on_format_bar_changed)
+        tools.add(self.format_bar)
+        self.editor_page.add(tools)
+
+        # Eigene Werkzeug-Einstellung im Fokus-Modus (unabhängig von "Einstellungen des Editors übernehmen").
+        focus_tools = Adw.PreferencesGroup(title=_("Tools"))
+        self.focus_format_bar = Adw.SwitchRow(
+            title=_("Show Formatting Bar"),
+            subtitle=_("When off, it appears when you move the pointer to the bottom edge"),
+            active=config.load().get("focus_format_bar") is not False,
+        )
+        self.focus_format_bar.connect("notify::active", self._on_focus_format_bar_changed)
+        focus_tools.add(self.focus_format_bar)
+        self.focus_page.add(focus_tools)
+
+    def _on_focus_format_bar_changed(self, *_args):
+        config.update(focus_format_bar=self.focus_format_bar.get_active())
+        self._apply()
+
+    def _on_format_bar_changed(self, *_args):
+        config.update(format_bar=self.format_bar.get_active())
+        self._apply()
+
     def _on_focus_same_changed(self, *_args):
         config.update(focus_same_as_editor=self.focus_same.get_active())
         self._apply()

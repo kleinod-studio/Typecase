@@ -20,6 +20,7 @@ _STRONG_EMPHASIS = re.compile(r"(\*\*\*|___)(?=\S)(.+?)(?<=\S)\1")
 _STRONG = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
 _EMPHASIS = re.compile(r"(?<![\w*])(\*|_)(?=[^\s*_])(.+?)(?<=[^\s*_])\1(?![\w*])")
 _STRIKE = re.compile(r"(~~)(?=\S)(.+?)(?<=\S)~~")
+_UNDERLINE = re.compile(r"(<u>)(.+?)(</u>)", re.IGNORECASE)  # Markdown kennt kein Unterstreichen; HTML-Behelf
 
 _MASK = "\x00"  # verdeckt schon vergebene Zeichen vor den folgenden Mustern
 
@@ -94,6 +95,15 @@ def _inline(line: str, start: int) -> list[Span]:
         spans += [
             (match.start(1), match.end(1), "syntax"),
             (match.start(2), match.end(2), "link"),
+            (match.start(3), match.end(3), "syntax"),
+        ]
+        hide(match.start(1), match.end(1))
+        hide(match.start(3), match.end(3))
+
+    for match in _UNDERLINE.finditer(masked()):
+        spans += [
+            (match.start(1), match.end(1), "syntax"),
+            (match.start(2), match.end(2), "underline"),
             (match.start(3), match.end(3), "syntax"),
         ]
         hide(match.start(1), match.end(1))

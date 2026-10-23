@@ -63,6 +63,7 @@ class MarkdownStyler:
         tag("bold", weight=Pango.Weight.BOLD)
         tag("italic", style=Pango.Style.ITALIC)
         tag("strike", strikethrough=True)
+        tag("underline", underline=Pango.Underline.SINGLE)
         tag("quote", style=Pango.Style.ITALIC)
         tag("code", family="monospace")
         tag("codeblock", family="monospace")

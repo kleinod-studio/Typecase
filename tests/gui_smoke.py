@@ -249,6 +249,49 @@ def steps(win, app):
     yield 0.2
     colored = [t for t in ed.buffer.get_iter_at_offset(17).get_tags() if t.props.foreground_set and not (t.props.name or "").startswith("md-")]
     check(not colored, "Farben verschwinden bei unbekannter Sprache")
+
+    # Formatieren: Leiste und Tastenkürzel
+    def fmt(kind):
+        win.lookup_action("format").activate(GLib.Variant.new_string(kind))
+
+    def select_text(a, b):
+        ed.buffer.select_range(ed.buffer.get_iter_at_offset(a), ed.buffer.get_iter_at_offset(b))
+
+    ed.buffer.set_text("Ein Wort hier")
+    select_text(4, 8)
+    fmt("bold")
+    check(text(ed) == "Ein **Wort** hier", "Fett umschließt die Markierung")
+    fmt("bold")
+    check(text(ed) == "Ein Wort hier", "Zweites Fett nimmt es wieder weg")
+    fmt("underline")
+    check(text(ed) == "Ein <u>Wort</u> hier", "Unterstreichen setzt <u>…</u>")
+    ed.buffer.undo()
+    check(text(ed) == "Ein Wort hier", "Rückgängig nimmt eine Formatierung in einem Schritt zurück")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_offset(6))
+    fmt("italic")
+    check(text(ed) == "Ein *Wort* hier", "Ohne Markierung wird das Wort unter dem Cursor formatiert")
+    ed.buffer.set_text("Titel\nEins\nZwei")
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    fmt("h2")
+    check(text(ed) == "## Titel\nEins\nZwei", "Überschrift setzt ## vor die Zeile")
+    select_text(9, 17)
+    fmt("numbered")
+    check(text(ed) == "## Titel\n1. Eins\n2. Zwei", "Nummerierte Liste für alle markierten Zeilen")
+    accels = {kind: app.get_accels_for_action(f"win.format::{kind}") for kind in ("bold", "italic", "underline", "link", "h1", "paragraph")}
+    check(accels == {"bold": ["<Control>b"], "italic": ["<Control>i"], "underline": ["<Control>u"], "link": ["<Control>k"], "h1": ["<Control>1"], "paragraph": ["<Control>0"]}, "Tastenkürzel für Formatierungen sind registriert")
+    bold_button = win.format_bar.get_first_child()
+    ed.buffer.set_text("klick")
+    select_text(0, 5)
+    bold_button.emit("clicked")
+    check(text(ed) == "**klick**", "Knopf in der Leiste formatiert")
+    check(win.content_view.get_reveal_bottom_bars(), "Formatierungsleiste ist anfangs sichtbar")
+    from typecase import config as cfg2
+
+    cfg2.update(format_bar=False)
+    win.apply_settings()
+    check(not win.content_view.get_reveal_bottom_bars(), "Formatierungsleiste lässt sich abschalten")
+    cfg2.update(format_bar=True)
+    win.apply_settings()
     ed.flush()
     select(LIB / "a.md")
 
@@ -578,9 +621,23 @@ def steps(win, app):
     check(not win.inspector_split.get_show_sidebar(), "Fokus-Modus blendet die Eigenschaften aus")
     check(win.focus_mode and not win.split.get_show_sidebar(), "Fokus-Modus blendet die Seitenleiste aus")
     check(not win.content_view.get_reveal_top_bars(), "Fokus-Modus blendet die Kopfzeile aus")
+    check(win.content_view.get_reveal_bottom_bars(), "Formatierungsleiste ist auch im Fokus-Modus da")
+    from typecase import config as cfg3
+
+    cfg3.update(focus_format_bar=False)
+    win.apply_settings()
+    check(not win.content_view.get_reveal_bottom_bars(), "Im Fokus-Modus lässt sich die Leiste verbergen")
+    bottom = win.content_view.get_height()
+    win._on_content_motion(None, 200, bottom - 2)
+    check(win.content_view.get_reveal_bottom_bars(), "Maus am unteren Rand zeigt die verborgene Leiste")
+    win._on_content_motion(None, 200, bottom - 400)
+    check(not win.content_view.get_reveal_bottom_bars(), "Maus weg vom Rand verbirgt sie wieder")
+    cfg3.update(focus_format_bar=True)
+    win.apply_settings()
     check(text(ed) == text_before, "Kein Zeilenumbruch durch das Kürzel")
     yield 1.5
     check(win.is_fullscreen(), "Fokus-Modus schaltet auf Vollbild")
+    check(not win.inspector_split.get_show_sidebar() and not win.split.get_show_sidebar(), "Seitenleisten bleiben im Vollbild ausgeblendet")
     check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F3 im Fokus-Modus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     margin = ed.view.get_left_margin()
     check(margin > 100 and margin == ed.view.get_right_margin(), "Textblock steht mittig mit begrenzter Breite")
@@ -595,6 +652,7 @@ def steps(win, app):
     check(window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape wird abgefangen")
     check(not win.focus_mode and win.split.get_show_sidebar() and win.content_view.get_reveal_top_bars(), "Escape beendet den Fokus-Modus und stellt alles wieder her")
     check(win.inspector_split.get_show_sidebar(), "Eigenschaften kommen nach dem Fokus-Modus zurück")
+    check(win.content_view.get_reveal_bottom_bars(), "Formatierungsleiste kommt nach dem Fokus-Modus zurück")
     win.inspector_split.set_show_sidebar(False)
     check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F4 nach Escape: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     yield 1.5
