@@ -582,6 +582,49 @@ def steps(win, app):
     check(inspector.title_row.get_text() == "Fridolin" and not ed.in_conflict, "Änderung am Dateikopf von außen wird übernommen")
     check(text(ed) == "Es war einmal.\nEnde.", "Text bleibt dabei unverändert")
 
+    # Schreibziel
+    check(not inspector.goal_row.get_enable_expansion() and not inspector.goal_view.get_visible(), "Ohne Schreibziel kein Ring")
+    inspector.goal_row.set_enable_expansion(True)
+    ed.flush()
+    check(parse(split(meta.read_text())[0]).get("goal") == "1000", "Eingeschaltetes Schreibziel landet im Dateikopf (Vorschlag 1000)")
+    inspector.goal_spin.set_value(8)
+    ed.flush()
+    check(parse(split(meta.read_text())[0]).get("goal") == "8", "Geändertes Wortziel wird gespeichert")
+    check(win.content_title.get_subtitle().startswith("4 of 8 words"), "Kopfzeile nennt das Ziel")
+    meta_rings = [r for r in win._row_rings if r.path == meta]
+    yield from wait_until(lambda: meta_rings and abs(meta_rings[0].value - 0.5) < 0.01)  # der Ring gleitet hin
+    check(meta_rings and meta_rings[0].get_visible() and abs(meta_rings[0].value - 0.5) < 0.01, "Bibliothek zeigt neben dem Blatt einen Ring mit dem Fortschritt")
+    check(not any(r.get_visible() for r in win._row_rings if r.path is not None and r.path != meta), "Blätter ohne Ziel haben keinen Ring")
+    check(inspector.goal_view.get_visible() and "50%" in inspector.goal_view.status_label.get_label(), "Ring zeigt den Fortschritt")
+    check(not win.goal_revealer.get_reveal_child(), "Ziel-Karte fehlt, solange die Eigenschaften offen sind")
+    win.inspector_split.set_show_sidebar(False)
+    check(win.goal_revealer.get_reveal_child() and win.goal_badge.label.get_label() == "4 / 8", "Ziel-Karte unten rechts bei geschlossenen Eigenschaften")
+    yield from wait_until(lambda: win.goal_revealer.get_child_revealed())
+    area = win.goal_revealer.get_parent()
+    bounds = win.goal_revealer.compute_bounds(area)[1]
+    check(
+        bounds.get_x() + bounds.get_width() > area.get_width() - 40 and bounds.get_y() + bounds.get_height() > area.get_height() - 200,
+        "Ziel-Karte sitzt in der Ecke unten rechts",
+    )
+    format_bounds = win.format_revealer.compute_bounds(area)[1]
+    check(not bounds.intersection(format_bounds)[0], "Ziel-Karte überdeckt die Formatierungsleiste nicht")
+    win.goal_badge.emit("clicked")
+    check(win.inspector_split.get_show_sidebar(), "Klick auf die Ziel-Karte öffnet die Eigenschaften")
+    ed.buffer.insert(ed.buffer.get_end_iter(), " Und dann kam der Drache.")
+    ed.flush()
+    yield from wait_until(lambda: inspector.goal_view.ring.has_css_class("success"))
+    check(inspector.goal_view.ring.has_css_class("success") and inspector.goal_view.status_label.get_label() == "Goal reached", "Erreichtes Ziel wird grün")
+    inspector.goal_row.set_enable_expansion(False)
+    ed.flush()
+    check("goal" not in parse(split(meta.read_text())[0]) and not inspector.goal_view.get_visible(), "Ausgeschaltetes Ziel verschwindet aus dem Dateikopf")
+    win.inspector_split.set_show_sidebar(False)
+    check(not win.goal_revealer.get_reveal_child() and not win.goal_revealer.get_can_target(), "Ohne Ziel keine Ziel-Karte (und keine unsichtbare Klickfläche)")
+    check(not any(r.get_visible() for r in win._row_rings if r.path == meta), "Ohne Ziel verschwindet der Ring in der Bibliothek")
+    win.inspector_split.set_show_sidebar(True)
+    check(not win.content_title.get_subtitle().startswith("9 of"), "Kopfzeile ohne Ziel")
+    ed.buffer.set_text("Es war einmal.\nEnde.")
+    ed.flush()
+
     from typecase import config as cfg
 
     cfg.update(default_author="Sascha")

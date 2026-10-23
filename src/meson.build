@@ -10,6 +10,8 @@ install_data(
     'typecase/find_bar.py',
     'typecase/formatting.py',
     'typecase/frontmatter.py',
+    'typecase/goal.py',
+    'typecase/goal_ring.py',
     'typecase/inspector.py',
     'typecase/keywords.py',
     'typecase/library.py',

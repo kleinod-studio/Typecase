@@ -9,6 +9,8 @@ from . import config
 from . import frontmatter
 from .find_bar import FindBar
 from .fileio import atomic_write_text
+from .goal import GoalIndex, fraction, parse_goal
+from .goal_ring import GoalBadge, ProgressRing
 from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
 from .preferences import PreferencesDialog
@@ -32,7 +34,7 @@ _CSS_INSTALLED = False
 
 
 def _install_css():
-    """Aussehen der schwebenden Formatierungsleiste; Farben aus dem libadwaita-Schema (hell/dunkel)."""
+    """Aussehen der schwebenden Formatierungsleiste und Ziel-Karte; Farben aus dem libadwaita-Schema (hell/dunkel)."""
     global _CSS_INSTALLED
     if _CSS_INSTALLED:
         return
@@ -47,6 +49,16 @@ def _install_css():
             margin: 6px;
         }
         .format-bar > viewport > box { padding: 4px 6px; }
+        .goal-badge {
+            background-color: var(--popover-bg-color);
+            color: var(--popover-fg-color);
+            border-radius: 14px;
+            box-shadow: 0 0 0 1px alpha(currentColor, 0.1), 0 3px 10px alpha(black, 0.2);
+            margin: 6px;
+            padding: 8px 12px;
+        }
+        .goal-badge:hover { background-image: image(alpha(currentColor, 0.05)); }
+        .goal-badge:active { background-image: image(alpha(currentColor, 0.1)); }
         """
     )
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -85,6 +97,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._tree_signature: tuple = ()
         self._search = LibrarySearch()
         self._keywords = KeywordIndex()
+        self._goals = GoalIndex()
+        self._row_rings: list[ProgressRing] = []  # Schreibziel-Ringe der Bibliothekszeilen (werden wiederverwendet)
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
 
@@ -279,8 +293,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
             margin_start=12,
             margin_end=12,
         )
+        # Schreibziel als kleine Karte unten rechts, solange die Eigenschaften zu sind.
+        self.goal_badge = GoalBadge()
+        self.goal_revealer = Gtk.Revealer(child=self.goal_badge, transition_type=Gtk.RevealerTransitionType.CROSSFADE)
         editor_area = Gtk.Overlay(child=self.editor)
         editor_area.add_overlay(self.format_revealer)
+        editor_area.add_overlay(self.goal_revealer)
+        editor_area.connect("get-child-position", self._place_goal_badge)
         view.set_content(editor_area)
         self.editor.connect("metadata-changed", lambda _e: self._update_format_bar())  # Blatt geöffnet/geschlossen
         self.content_view = view
@@ -708,6 +727,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._ignore_selection = False
 
     def _on_counts_changed(self, _editor, words, characters):
+        self._words = words
+        self._update_goal_badge()
+        for ring in self._row_rings:
+            if ring.path is not None:
+                self._update_row_ring(ring)
         if self.editor.path is None:
             self.content_title.set_subtitle("")
             return
@@ -715,11 +739,43 @@ class TypecaseWindow(Adw.ApplicationWindow):
         def number(n):
             return locale.format_string("%d", n, grouping=True)  # 1.234 statt 1234
 
+        goal = parse_goal(self.editor.metadata().get("goal"))
+        if goal:
+            word_text = ngettext("%(count)s of %(goal)s word", "%(count)s of %(goal)s words", goal) % {
+                "count": number(words),
+                "goal": number(goal),
+            }
+        else:
+            word_text = ngettext("%(count)s word", "%(count)s words", words) % {"count": number(words)}
         self.content_title.set_subtitle(
-            ngettext("%(count)s word", "%(count)s words", words) % {"count": number(words)}
+            word_text
             + " · "
             + ngettext("%(count)s character", "%(count)s characters", characters) % {"count": number(characters)}
         )
+
+    def _update_goal_badge(self, animate: bool = True):
+        """Ziel-Karte unten rechts: nur mit Schreibziel und solange die Eigenschaften (mit dem großen Ring) zu sind."""
+        goal = parse_goal(self.editor.metadata().get("goal")) if self.editor.path is not None else None
+        show = goal is not None and not self.inspector_split.get_show_sidebar()
+        if goal is not None:
+            self.goal_badge.update(getattr(self, "_words", 0), goal, animate=animate and self.goal_revealer.get_child_revealed())
+        self.goal_revealer.set_reveal_child(show)
+        self.goal_revealer.set_can_target(show)  # ausgeblendet keine unsichtbare Klickfläche über dem Text
+
+    def _place_goal_badge(self, overlay, widget, rect):
+        """Unten rechts in die Ecke; wird es neben der Formatierungsleiste zu eng, weicht die Karte darüber aus."""
+        if widget is not self.goal_revealer:
+            return False
+        width, height = overlay.get_width(), overlay.get_height()
+        size = widget.get_preferred_size()[1]
+        rect.width, rect.height = size.width, size.height
+        rect.x = width - size.width - 12
+        rect.y = height - size.height - 12
+        if self.format_revealer.get_reveal_child():
+            bar = self.format_revealer.get_preferred_size()[1]
+            if rect.x < (width + min(bar.width, width)) / 2:
+                rect.y -= bar.height
+        return True
 
     def _on_save_failed(self, _editor, message):
         self.toasts.add_toast(Adw.Toast(title=_("Could not save: %s") % message, priority=Adw.ToastPriority.HIGH))
@@ -875,6 +931,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _on_inspector_toggled(self, split, _pspec):
         """Springt der Cursor beim Einblenden in ein Feld, nichts markieren: Weitertippen soll nichts überschreiben."""
+        self._update_goal_badge()
         if not split.get_show_sidebar():
             return
 
@@ -1134,9 +1191,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _on_item_setup(self, _factory, list_item):
         icon = Gtk.Image()
         label = Gtk.Label(xalign=0, hexpand=True, ellipsize=3)  # 3 = Pango.EllipsizeMode.END
+        ring = ProgressRing(16, 3, visible=False, margin_end=6)  # Schreibziel des Blatts
+        ring.path = None
+        self._row_rings.append(ring)
         box = Gtk.Box(spacing=8)
         box.append(icon)
         box.append(label)
+        box.append(ring)
         expander = Gtk.TreeExpander(child=box)
         drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
         drag.connect("prepare", self._on_drag_prepare, list_item)
@@ -1259,9 +1320,31 @@ class TypecaseWindow(Adw.ApplicationWindow):
         expander = list_item.get_child()
         expander.set_list_row(row)
         box = expander.get_child()
-        icon, label = box.get_first_child(), box.get_last_child()
+        icon = box.get_first_child()
+        label = icon.get_next_sibling()
         icon.set_from_icon_name("folder-symbolic" if node.is_group else "text-x-generic-symbolic")
         label.set_text(node.name)
+        ring = label.get_next_sibling()
+        ring.path = None if node.is_group else node.path
+        self._update_row_ring(ring, animate=False)
+
+    def _update_row_ring(self, ring: ProgressRing, animate: bool = True):
+        """Ring neben einem Blatt mit Schreibziel. Das offene Blatt zählt live (auch Ungesichertes)."""
+        progress = None
+        if ring.path is not None:
+            if ring.path == self.editor.path:
+                goal = parse_goal(self.editor.metadata().get("goal"))
+                progress = (getattr(self, "_words", 0), goal) if goal else None
+            else:
+                progress = self._goals.progress_of(ring.path)
+        ring.set_visible(progress is not None)
+        if progress is not None:
+            words, goal = progress
+            ring.set_tooltip_text(
+                ngettext("%(count)s of %(goal)s word", "%(count)s of %(goal)s words", goal)
+                % {"count": locale.format_string("%d", words, grouping=True), "goal": locale.format_string("%d", goal, grouping=True)}
+            )
+            ring.show_progress(fraction(words, goal), words >= goal, animate)
 
     # --- Darstellung ------------------------------------------------------
 

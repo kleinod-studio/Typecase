@@ -414,6 +414,8 @@ class SheetEditor(Gtk.Stack):
             return
         self._header = header
         self._mark_dirty()
+        if "goal" in changes:
+            self._emit_counts()  # die Wortanzeige nennt das Ziel mit
 
     def show_match(self, offset: int, length: int) -> None:
         """Markiert eine Fundstelle und scrollt sie in die Mitte."""

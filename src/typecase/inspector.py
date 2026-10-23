@@ -5,6 +5,8 @@ from gettext import gettext as _
 from gi.repository import Adw, GLib, Gtk
 
 from . import config
+from .goal import DEFAULT_GOAL, MAX_GOAL, parse_goal
+from .goal_ring import GoalView
 
 STATUSES = ("draft", "revision", "final")
 
@@ -55,8 +57,25 @@ class Inspector(Adw.Bin):
         self._loading = False
         editor.connect("metadata-changed", lambda _e: self.refresh())
         editor.connect("saved", lambda _e: self._refresh_modified())
+        editor.connect("counts-changed", self._on_counts_changed)
+        self._words = 0
 
         page = Adw.PreferencesPage()
+
+        # Schreibziel: eigener Bereich mit Ring, der den Fortschritt zeigt (Feld "goal" im Dateikopf).
+        goal_group = Adw.PreferencesGroup(title=_("Writing Goal"))
+        self.goal_row = Adw.ExpanderRow(title=_("Word Goal"), show_enable_switch=True)
+        self.goal_row.connect("notify::enable-expansion", lambda *_a: self._on_goal_changed())
+        self.goal_spin = Adw.SpinRow(
+            title=_("Words"),
+            adjustment=Gtk.Adjustment(lower=1, upper=MAX_GOAL, step_increment=100, page_increment=1000, value=DEFAULT_GOAL),
+        )
+        self.goal_spin.connect("notify::value", lambda *_a: self._on_goal_changed())
+        self.goal_row.add_row(self.goal_spin)
+        goal_group.add(self.goal_row)
+        self.goal_view = GoalView()
+        goal_group.add(self.goal_view)
+        page.add(goal_group)
 
         text_group = Adw.PreferencesGroup()
         self.title_row = self._entry(text_group, _("Title"), "title")
@@ -134,6 +153,11 @@ class Inspector(Adw.Bin):
         self._fill_choice(self.status_row, "status", list(STATUSES), [_status_name(s) for s in STATUSES], text("status"))
         self._fill_choice(self.lang_row, "lang", list(config.LANGUAGES), [language_name(c) for c in config.LANGUAGES], text("lang"))
         self._created = text("created")
+        goal = parse_goal(data.get("goal"))
+        self.goal_row.set_enable_expansion(goal is not None)
+        self.goal_row.set_expanded(goal is not None)
+        self.goal_spin.set_value(goal or DEFAULT_GOAL)  # Vorschlag fürs Einschalten
+        self._update_goal_view(animate=False)
         self._update_defaults_visibility()
         self._refresh_modified()
         self.set_sensitive(self.editor.path is not None)
@@ -169,6 +193,22 @@ class Inspector(Adw.Bin):
         self._update_defaults_visibility()
         if not self._loading:
             self.editor.set_metadata({key: value})
+
+    def _on_goal_changed(self):
+        self._update_goal_view()
+        if not self._loading:
+            enabled = self.goal_row.get_enable_expansion()
+            self.editor.set_metadata({"goal": int(self.goal_spin.get_value()) if enabled else None})
+
+    def _on_counts_changed(self, _editor, words, _characters):
+        self._words = words
+        self._update_goal_view()
+
+    def _update_goal_view(self, animate: bool = True):
+        enabled = self.goal_row.get_enable_expansion()
+        self.goal_view.set_visible(enabled)
+        if enabled:
+            self.goal_view.update(self._words, int(self.goal_spin.get_value()), animate=animate)
 
     def _on_choice(self, row: Adw.ComboRow, key: str):
         choices = self._choices.get(key)

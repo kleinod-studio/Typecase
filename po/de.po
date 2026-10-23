@@ -4,190 +4,289 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-24 00:15+0200\n"
+"POT-Creation-Date: 2026-10-24 01:05+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: src/typecase/find_bar.py:21 src/typecase/window.py:1046
 msgid "Find"
 msgstr "Suchen"
 
+#: src/typecase/find_bar.py:32
 msgid "Previous Match"
 msgstr "Vorheriger Treffer"
 
+#: src/typecase/find_bar.py:34
 msgid "Next Match"
 msgstr "Nächster Treffer"
 
+#: src/typecase/find_bar.py:36 src/typecase/find_bar.py:40
 msgid "Replace"
 msgstr "Ersetzen"
 
+#: src/typecase/find_bar.py:38
 msgid "Replace with"
 msgstr "Ersetzen durch"
 
+#: src/typecase/find_bar.py:42
 msgid "Replace All"
 msgstr "Alle ersetzen"
 
+#: src/typecase/find_bar.py:160
 msgid "No matches"
 msgstr "Keine Treffer"
 
+#: src/typecase/find_bar.py:167
 #, python-format
 msgid "%(current)s of %(total)s"
 msgstr "%(current)s von %(total)s"
 
+#: src/typecase/find_bar.py:169 src/typecase/window.py:899
 #, python-format
 msgid "%(count)s match"
 msgid_plural "%(count)s matches"
 msgstr[0] "%(count)s Treffer"
 msgstr[1] "%(count)s Treffer"
 
+#: src/typecase/goal_ring.py:93
+#, python-format
+msgid "of %(goal)s word"
+msgid_plural "of %(goal)s words"
+msgstr[0] "von %(goal)s Wort"
+msgstr[1] "von %(goal)s Wörtern"
+
+#: src/typecase/goal_ring.py:95
+msgid "Goal reached"
+msgstr "Ziel erreicht"
+
+#: src/typecase/goal_ring.py:99
+#, python-format
+msgid "%(percent)d%%"
+msgstr "%(percent)d %%"
+
+#: src/typecase/goal_ring.py:101
+#, python-format
+msgid "%(count)s word to go"
+msgid_plural "%(count)s words to go"
+msgstr[0] "noch %(count)s Wort"
+msgstr[1] "noch %(count)s Wörter"
+
+#: src/typecase/goal_ring.py:112 src/typecase/inspector.py:66
+msgid "Writing Goal"
+msgstr "Schreibziel"
+
+#: src/typecase/goal_ring.py:121
+#, python-format
+msgid "%(count)s / %(goal)s"
+msgstr "%(count)s / %(goal)s"
+
+#: src/typecase/inspector.py:16
 msgid "German"
 msgstr "Deutsch"
 
+#: src/typecase/inspector.py:17
 msgid "German (Austria)"
 msgstr "Deutsch (Österreich)"
 
+#: src/typecase/inspector.py:18
 msgid "German (Switzerland)"
 msgstr "Deutsch (Schweiz)"
 
+#: src/typecase/inspector.py:19
 msgid "English (US)"
 msgstr "Englisch (USA)"
 
+#: src/typecase/inspector.py:20
 msgid "English (UK)"
 msgstr "Englisch (Großbritannien)"
 
+#: src/typecase/inspector.py:21
 msgid "French"
 msgstr "Französisch"
 
+#: src/typecase/inspector.py:22
 msgid "Spanish"
 msgstr "Spanisch"
 
+#: src/typecase/inspector.py:23
 msgid "Italian"
 msgstr "Italienisch"
 
+#: src/typecase/inspector.py:24
 msgid "Dutch"
 msgstr "Niederländisch"
 
+#: src/typecase/inspector.py:30
 msgid "Draft"
 msgstr "Entwurf"
 
+#: src/typecase/inspector.py:30
 msgid "Revision"
 msgstr "Überarbeitung"
 
+#: src/typecase/inspector.py:30
 msgid "Final"
 msgstr "Fertig"
 
+#: src/typecase/inspector.py:67
+msgid "Word Goal"
+msgstr "Wortziel"
+
+#: src/typecase/inspector.py:70
+msgid "Words"
+msgstr "Wörter"
+
+#: src/typecase/inspector.py:81
 msgid "Title"
 msgstr "Titel"
 
+#: src/typecase/inspector.py:82
 msgid "Subtitle"
 msgstr "Untertitel"
 
+#: src/typecase/inspector.py:83 src/typecase/preferences.py:147
 msgid "Author"
 msgstr "Autor"
 
+#: src/typecase/inspector.py:88
 msgid "Organize"
 msgstr "Einordnung"
 
+#: src/typecase/inspector.py:89
 msgid "Keywords, separated by commas"
 msgstr "Schlagwörter, durch Kommas getrennt"
 
+#: src/typecase/inspector.py:92
 msgid "Status"
 msgstr "Status"
 
+#: src/typecase/inspector.py:95 src/typecase/preferences.py:153
 msgid "Language"
 msgstr "Sprache"
 
+#: src/typecase/inspector.py:101
 msgid "Dates"
 msgstr "Daten"
 
+#: src/typecase/inspector.py:102
 msgid "Created"
 msgstr "Erstellt"
 
+#: src/typecase/inspector.py:104
 msgid "Last Modified"
 msgstr "Zuletzt geändert"
 
+#: src/typecase/inspector.py:108 src/typecase/window.py:263
+#: src/typecase/window.py:321 src/typecase/window.py:1057
 msgid "Properties"
 msgstr "Eigenschaften"
 
+#: src/typecase/inspector.py:133
 #, python-format
 msgid "Default (%s)"
 msgstr "Voreinstellung (%s)"
 
+#: src/typecase/inspector.py:134
 msgid "None"
 msgstr "Keiner"
 
+#: src/typecase/inspector.py:182
 #, python-format
 msgid "%s (according to the file system)"
 msgstr "%s (laut Dateisystem)"
 
+#: src/typecase/main.py:85
 msgid "Calm Markdown writing"
 msgstr "Ruhiges Schreiben in Markdown"
 
+#: src/typecase/preferences.py:27 src/typecase/preferences.py:43
 msgid "Font"
 msgstr "Schrift"
 
+#: src/typecase/preferences.py:29
 msgid "Use System Font"
 msgstr "Systemschrift verwenden"
 
+#: src/typecase/preferences.py:30
 msgid "The same font as the rest of the desktop"
 msgstr "Dieselbe Schrift wie der übrige Desktop"
 
+#: src/typecase/preferences.py:36
 msgid "Choose Font"
 msgstr "Schrift wählen"
 
+#: src/typecase/preferences.py:53
 msgid "Font Size"
 msgstr "Schriftgröße"
 
+#: src/typecase/preferences.py:54
 msgid "In points"
 msgstr "In Punkt"
 
+#: src/typecase/preferences.py:59
 msgid "Text Block"
 msgstr "Textblock"
 
+#: src/typecase/preferences.py:62
 msgid "Line Width"
 msgstr "Zeilenbreite"
 
+#: src/typecase/preferences.py:63
 msgid "Maximum characters per line; the text stays centered"
 msgstr "Höchstens so viele Zeichen pro Zeile; der Text bleibt mittig"
 
+#: src/typecase/preferences.py:68
 msgid "Line Spacing"
 msgstr "Zeilenabstand"
 
+#: src/typecase/preferences.py:69
 msgid "Compact"
 msgstr "Eng"
 
+#: src/typecase/preferences.py:69
 msgid "Normal"
 msgstr "Normal"
 
+#: src/typecase/preferences.py:69
 msgid "Relaxed"
 msgstr "Weit"
 
+#: src/typecase/preferences.py:75
 msgid "Appearance"
 msgstr "Darstellung"
 
+#: src/typecase/preferences.py:77
 msgid "Style"
 msgstr "Stil"
 
+#: src/typecase/preferences.py:78
 msgid "Follow System"
 msgstr "System folgen"
 
+#: src/typecase/preferences.py:78
 msgid "Light"
 msgstr "Hell"
 
+#: src/typecase/preferences.py:78
 msgid "Dark"
 msgstr "Dunkel"
 
+#: src/typecase/preferences.py:84
 msgid "Restore Defaults"
 msgstr "Voreinstellungen wiederherstellen"
 
+#: src/typecase/preferences.py:139
 msgid "Sheets"
 msgstr "Blätter"
 
+#: src/typecase/preferences.py:143
 msgid "Defaults"
 msgstr "Voreinstellungen"
 
+#: src/typecase/preferences.py:144
 msgid ""
 "Used for every sheet that does not set its own value, for example when "
 "exporting. They are not written into your files."
@@ -195,9 +294,12 @@ msgstr ""
 "Gelten für jedes Blatt, das keinen eigenen Wert angibt, zum Beispiel beim "
 "Export. Sie werden nicht in deine Dateien geschrieben."
 
+#: src/typecase/preferences.py:172 src/typecase/window.py:266
+#: src/typecase/window.py:1059
 msgid "Preferences"
 msgstr "Einstellungen"
 
+#: src/typecase/preferences.py:176
 msgid ""
 "Focus mode hides the sidebar and toolbars and shows only your text, full "
 "screen."
@@ -205,212 +307,281 @@ msgstr ""
 "Der Fokus-Modus blendet Seitenleiste und Leisten aus und zeigt nur deinen "
 "Text im Vollbild."
 
+#: src/typecase/preferences.py:179
 msgid "Use Editor Settings"
 msgstr "Einstellungen des Editors übernehmen"
 
+#: src/typecase/preferences.py:180
 msgid "Switch off to give focus mode its own font, size and style"
 msgstr ""
 "Ausschalten, um dem Fokus-Modus eigene Schrift, Größe und Stil zu geben"
 
+#: src/typecase/preferences.py:185 src/typecase/window.py:1033
 msgid "Editor"
 msgstr "Editor"
 
+#: src/typecase/preferences.py:186 src/typecase/window.py:261
+#: src/typecase/window.py:1054
 msgid "Focus Mode"
 msgstr "Fokus-Modus"
 
+#: src/typecase/preferences.py:198 src/typecase/preferences.py:218
 msgid "Tools"
 msgstr "Werkzeuge"
 
+#: src/typecase/preferences.py:200
 msgid "Formatting Bar"
 msgstr "Formatierungsleiste"
 
+#: src/typecase/preferences.py:201
 msgid "Buttons below the text for bold, lists, headings and more"
 msgstr "Knöpfe unter dem Text für Fett, Listen, Überschriften und mehr"
 
+#: src/typecase/preferences.py:207
 msgid "Underline Cursor"
 msgstr "Unterstrich als Schreibmarke"
 
+#: src/typecase/preferences.py:208
 msgid ""
 "Show the text cursor as a line below the character instead of a vertical bar"
 msgstr ""
 "Die Schreibmarke als Strich unter dem Zeichen statt als senkrechten Strich "
 "zeigen"
 
+#: src/typecase/preferences.py:220
 msgid "Show Formatting Bar"
 msgstr "Formatierungsleiste anzeigen"
 
+#: src/typecase/preferences.py:221
 msgid "When off, it appears when you move the pointer to the bottom edge"
 msgstr ""
 "Wenn aus, erscheint sie, sobald der Mauszeiger an den unteren Rand kommt"
 
+#: src/typecase/preferences.py:227
 msgid "Typewriter Scrolling"
 msgstr "Schreibmaschinen-Modus"
 
+#: src/typecase/preferences.py:227
 msgid "Keep the line you are writing in the middle of the screen"
 msgstr "Die Zeile, in der du schreibst, bleibt in der Bildschirmmitte"
 
+#: src/typecase/preferences.py:228
 msgid "Dim Surroundings"
 msgstr "Umgebung abblenden"
 
+#: src/typecase/preferences.py:228
 msgid "Fade everything except the paragraph you are writing"
 msgstr "Alles außer dem Absatz, in dem du schreibst, wird blasser"
 
+#: src/typecase/sheet_editor.py:242
 msgid "No Sheet Open"
 msgstr "Kein Blatt geöffnet"
 
+#: src/typecase/sheet_editor.py:243
 msgid "Select a sheet in the library to start writing."
 msgstr "Wähle ein Blatt in der Bibliothek, um zu schreiben."
 
+#: src/typecase/sheet_editor.py:376
 msgid "Text"
 msgstr "Text"
 
+#: src/typecase/sheet_editor.py:499
 #, python-format
 msgid "%(name)s (conflict %(date)s)"
 msgstr "%(name)s (Konflikt %(date)s)"
 
+#: src/typecase/sheet_editor.py:509
 msgid "could not save"
 msgstr "Speichern fehlgeschlagen"
 
+#: src/typecase/window.py:135 src/typecase/window.py:246
+#: src/typecase/window.py:1024
 msgid "Library"
 msgstr "Bibliothek"
 
+#: src/typecase/window.py:140 src/typecase/window.py:197
 msgid "Choose Library Folder…"
 msgstr "Bibliotheksordner wählen …"
 
+#: src/typecase/window.py:146 src/typecase/window.py:181
+#: src/typecase/window.py:1026
 msgid "New Sheet"
 msgstr "Neues Blatt"
 
+#: src/typecase/window.py:147 src/typecase/window.py:182
+#: src/typecase/window.py:1027 src/typecase/window.py:1115
 msgid "New Group"
 msgstr "Neue Gruppe"
 
+#: src/typecase/window.py:149
 msgid "New…"
 msgstr "Neu …"
 
+#: src/typecase/window.py:151 src/typecase/window.py:168
+#: src/typecase/window.py:1029
 msgid "Search Library"
 msgstr "Bibliothek durchsuchen"
 
+#: src/typecase/window.py:161
 msgid "Filter by Keyword"
 msgstr "Nach Schlagwort filtern"
 
+#: src/typecase/window.py:165
 msgid "Show All"
 msgstr "Alle zeigen"
 
+#: src/typecase/window.py:185
 msgid "Rename…"
 msgstr "Umbenennen …"
 
+#: src/typecase/window.py:186
 msgid "Move to…"
 msgstr "Verschieben nach …"
 
+#: src/typecase/window.py:187
 msgid "Move to Trash…"
 msgstr "In den Papierkorb …"
 
+#: src/typecase/window.py:193
 msgid "No Library Yet"
 msgstr "Noch keine Bibliothek"
 
+#: src/typecase/window.py:194
 msgid ""
 "Choose a folder. Its subfolders become groups, its .md files become sheets."
 msgstr ""
 "Wähle einen Ordner. Seine Unterordner werden zu Gruppen, seine .md-Dateien "
 "zu Blättern."
 
+#: src/typecase/window.py:230
 msgid "No Results"
 msgstr "Keine Treffer"
 
+#: src/typecase/window.py:231
 msgid "Try a different search term."
 msgstr "Versuche einen anderen Suchbegriff."
 
+#: src/typecase/window.py:256 src/typecase/window.py:262
+#: src/typecase/window.py:1056
 msgid "Show Sidebar"
 msgstr "Seitenleiste anzeigen"
 
+#: src/typecase/window.py:264 src/typecase/window.py:1058
 msgid "Fullscreen"
 msgstr "Vollbild"
 
+#: src/typecase/window.py:267 src/typecase/window.py:1060
 msgid "Keyboard Shortcuts"
 msgstr "Tastenkürzel"
 
+#: src/typecase/window.py:268
 msgid "About Typecase"
 msgstr "Über Typecase"
 
+#: src/typecase/window.py:273
 msgid "Main Menu"
 msgstr "Hauptmenü"
 
+#: src/typecase/window.py:279
 #, python-format
 msgid "%(count)s replacement"
 msgid_plural "%(count)s replacements"
 msgstr[0] "%(count)s Ersetzung"
 msgstr[1] "%(count)s Ersetzungen"
 
+#: src/typecase/window.py:354 src/typecase/window.py:1038
 msgid "Bold"
 msgstr "Fett"
 
+#: src/typecase/window.py:355 src/typecase/window.py:1039
 msgid "Italic"
 msgstr "Kursiv"
 
+#: src/typecase/window.py:356 src/typecase/window.py:1040
 msgid "Underline"
 msgstr "Unterstrichen"
 
+#: src/typecase/window.py:357
 msgid "Strikethrough"
 msgstr "Durchgestrichen"
 
+#: src/typecase/window.py:358
 msgid "Code"
 msgstr "Code"
 
+#: src/typecase/window.py:359 src/typecase/window.py:1041
 msgid "Link"
 msgstr "Link"
 
+#: src/typecase/window.py:363
 #, python-format
 msgid "Heading %d"
 msgstr "Überschrift %d"
 
+#: src/typecase/window.py:364 src/typecase/window.py:1043
 msgid "Normal Text"
 msgstr "Normaler Text"
 
+#: src/typecase/window.py:365
 msgid "Heading"
 msgstr "Überschrift"
 
+#: src/typecase/window.py:366
 msgid "Bulleted List"
 msgstr "Aufzählung"
 
+#: src/typecase/window.py:367
 msgid "Numbered List"
 msgstr "Nummerierte Liste"
 
+#: src/typecase/window.py:368
 msgid "Quote"
 msgstr "Zitat"
 
+#: src/typecase/window.py:369
 msgid "Code Block"
 msgstr "Codeblock"
 
+#: src/typecase/window.py:385
 msgid "Choose Library Folder"
 msgstr "Bibliotheksordner wählen"
 
+#: src/typecase/window.py:560
 #, python-format
 msgid "Filtered by “%s”"
 msgstr "Gefiltert nach „%s“"
 
+#: src/typecase/window.py:574
 msgid "No keywords yet. Add them in the properties of a sheet."
 msgstr ""
 "Noch keine Schlagwörter. Du vergibst sie in den Eigenschaften eines Blatts."
 
+#: src/typecase/window.py:582
 msgid "All Sheets"
 msgstr "Alle Blätter"
 
+#: src/typecase/window.py:600
 #, python-format
 msgid "“%s” was changed outside Typecase and reloaded."
 msgstr "„%s“ wurde außerhalb von Typecase geändert und neu geladen."
 
+#: src/typecase/window.py:604
 #, python-format
 msgid "“%s” was deleted outside Typecase."
 msgstr "„%s“ wurde außerhalb von Typecase gelöscht."
 
+#: src/typecase/window.py:606
 #, python-format
 msgid "“%s” was deleted outside Typecase. Your version was saved again."
 msgstr ""
 "„%s“ wurde außerhalb von Typecase gelöscht. Deine Fassung wurde neu "
 "gespeichert."
 
+#: src/typecase/window.py:613
 msgid "Sheet Changed Elsewhere"
 msgstr "Blatt wurde anderswo geändert"
 
+#: src/typecase/window.py:615
 #, python-format
 msgid ""
 "“%s” was changed outside Typecase while you were writing. Which version "
@@ -420,48 +591,66 @@ msgstr ""
 "Welche Fassung soll im Blatt bleiben? Die andere wird als Kopie daneben "
 "aufbewahrt."
 
+#: src/typecase/window.py:620
 msgid "Load Other Version"
 msgstr "Andere Fassung laden"
 
+#: src/typecase/window.py:621
 msgid "Keep My Version"
 msgstr "Meine Fassung behalten"
 
+#: src/typecase/window.py:637
 msgid ""
 "The other version is not a UTF-8 text file. Your version was saved as a copy."
 msgstr ""
 "Die andere Fassung ist keine UTF-8-Textdatei. Deine Fassung wurde als Kopie "
 "gesichert."
 
+#: src/typecase/window.py:641 src/typecase/window.py:781
 #, python-format
 msgid "Could not save: %s"
 msgstr "Speichern fehlgeschlagen: %s"
 
+#: src/typecase/window.py:646
 #, python-format
 msgid "The other version was kept as “%s”."
 msgstr "Die andere Fassung liegt jetzt in „%s“."
 
+#: src/typecase/window.py:693
 msgid "not a UTF-8 text file"
 msgstr "keine UTF-8-Textdatei"
 
+#: src/typecase/window.py:695
 #, python-format
 msgid "Could not open “%(name)s”: %(reason)s"
 msgstr "„%(name)s“ konnte nicht geöffnet werden: %(reason)s"
 
+#: src/typecase/window.py:744 src/typecase/window.py:1344
+#, python-format
+msgid "%(count)s of %(goal)s word"
+msgid_plural "%(count)s of %(goal)s words"
+msgstr[0] "%(count)s von %(goal)s Wort"
+msgstr[1] "%(count)s von %(goal)s Wörtern"
+
+#: src/typecase/window.py:749
 #, python-format
 msgid "%(count)s word"
 msgid_plural "%(count)s words"
 msgstr[0] "%(count)s Wort"
 msgstr[1] "%(count)s Wörter"
 
+#: src/typecase/window.py:753
 #, python-format
 msgid "%(count)s character"
 msgid_plural "%(count)s characters"
 msgstr[0] "%(count)s Zeichen"
 msgstr[1] "%(count)s Zeichen"
 
+#: src/typecase/window.py:788
 msgid "Could Not Save"
 msgstr "Speichern fehlgeschlagen"
 
+#: src/typecase/window.py:789
 msgid ""
 "The latest changes to this sheet could not be saved. Closing now would lose "
 "them."
@@ -469,116 +658,152 @@ msgstr ""
 "Die letzten Änderungen an diesem Blatt konnten nicht gesichert werden. Beim "
 "Schließen gingen sie verloren."
 
+#: src/typecase/window.py:791
 msgid "Keep Editing"
 msgstr "Weiterschreiben"
 
+#: src/typecase/window.py:792
 msgid "Close Without Saving"
 msgstr "Ohne Sichern schließen"
 
+#: src/typecase/window.py:1028 src/typecase/window.py:1130
 msgid "Rename"
 msgstr "Umbenennen"
 
+#: src/typecase/window.py:1035
 msgid "Undo"
 msgstr "Rückgängig"
 
+#: src/typecase/window.py:1036
 msgid "Redo"
 msgstr "Wiederholen"
 
+#: src/typecase/window.py:1037
 msgid "New Line Without List Marker"
 msgstr "Neue Zeile ohne Listenzeichen"
 
+#: src/typecase/window.py:1042
 msgid "Heading 1 / 2 / 3"
 msgstr "Überschrift 1 / 2 / 3"
 
+#: src/typecase/window.py:1044
 msgid "Indent List Item"
 msgstr "Listenpunkt einrücken"
 
+#: src/typecase/window.py:1045
 msgid "Outdent List Item"
 msgstr "Listenpunkt ausrücken"
 
+#: src/typecase/window.py:1047
 msgid "Find and Replace"
 msgstr "Suchen und Ersetzen"
 
+#: src/typecase/window.py:1048
 msgid "Next / Previous Match"
 msgstr "Nächster / vorheriger Treffer"
 
+#: src/typecase/window.py:1052
 msgid "Window"
 msgstr "Fenster"
 
+#: src/typecase/window.py:1055
 msgid "Leave Focus Mode"
 msgstr "Fokus-Modus verlassen"
 
+#: src/typecase/window.py:1061
 msgid "Quit"
 msgstr "Beenden"
 
+#: src/typecase/window.py:1102
 msgid "Untitled"
 msgstr "Unbenannt"
 
+#: src/typecase/window.py:1106
 #, python-format
 msgid "Could not create the sheet: %s"
 msgstr "Das Blatt konnte nicht angelegt werden: %s"
 
+#: src/typecase/window.py:1117
 #, python-format
 msgid "Could not create the group: %s"
 msgstr "Die Gruppe konnte nicht angelegt werden: %s"
 
+#: src/typecase/window.py:1127
 msgid "Rename Group"
 msgstr "Gruppe umbenennen"
 
+#: src/typecase/window.py:1127
 msgid "Rename Sheet"
 msgstr "Blatt umbenennen"
 
+#: src/typecase/window.py:1129 src/typecase/window.py:1168
+#: src/typecase/window.py:1285
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#: src/typecase/window.py:1145
 msgid "This name is not allowed."
 msgstr "Dieser Name ist nicht erlaubt."
 
+#: src/typecase/window.py:1148
 #, python-format
 msgid "“%s” already exists."
 msgstr "„%s“ gibt es schon."
 
+#: src/typecase/window.py:1151
 #, python-format
 msgid "Could not rename: %s"
 msgstr "Umbenennen fehlgeschlagen: %s"
 
+#: src/typecase/window.py:1163
 #, python-format
 msgid "Move “%s” to the Trash?"
 msgstr "„%s“ in den Papierkorb legen?"
 
+#: src/typecase/window.py:1164
 msgid "The group and everything in it will be moved to the trash."
 msgstr "Die Gruppe und alles darin wird in den Papierkorb gelegt."
 
+#: src/typecase/window.py:1166
 msgid "The sheet will be moved to the trash."
 msgstr "Das Blatt wird in den Papierkorb gelegt."
 
+#: src/typecase/window.py:1169
 msgid "Move to Trash"
 msgstr "In den Papierkorb"
 
+#: src/typecase/window.py:1182
 #, python-format
 msgid "Could not move to the trash: %s"
 msgstr "Verschieben in den Papierkorb fehlgeschlagen: %s"
 
+#: src/typecase/window.py:1249
 msgid "A group cannot be moved into itself."
 msgstr "Eine Gruppe kann nicht in sich selbst verschoben werden."
 
+#: src/typecase/window.py:1252
 #, python-format
 msgid "“%s” already exists there."
 msgstr "„%s“ gibt es dort schon."
 
+#: src/typecase/window.py:1255
 #, python-format
 msgid "Could not move: %s"
 msgstr "Verschieben fehlgeschlagen: %s"
 
+#: src/typecase/window.py:1276
 msgid "There is no other group to move to."
 msgstr "Es gibt keine andere Gruppe zum Verschieben."
 
+#: src/typecase/window.py:1279
 msgid "Library (top level)"
 msgstr "Bibliothek (oberste Ebene)"
 
+#: src/typecase/window.py:1283
 #, python-format
 msgid "Move “%s” to…"
 msgstr "„%s“ verschieben nach …"
 
+#: src/typecase/window.py:1286
 msgid "Move"
 msgstr "Verschieben"
