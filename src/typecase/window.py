@@ -1,10 +1,11 @@
 from gettext import gettext as _
 from pathlib import Path
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
-from .library import Node, scan
+from .library import Node, create_group, create_sheet, rename, scan
+from .sheet_editor import SheetEditor
 
 
 class LibraryItem(GObject.Object):
@@ -25,8 +26,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
         super().__init__(title="Typecase", default_width=1000, default_height=700, **kwargs)
 
         self.library_path: Path | None = None
+        self._open_row = None  # Zeile des Blatts, das gerade im Editor offen ist
+        self._ignore_selection = False
 
         self._build_ui()
+        self._setup_actions()
+        self.editor.connect("save-failed", self._on_save_failed)
+        self.connect("close-request", self._on_close_request)
 
         style = Adw.StyleManager.get_default()
         style.connect("notify::dark", lambda *_args: self._apply_style_scheme())
@@ -53,6 +59,24 @@ class TypecaseWindow(Adw.ApplicationWindow):
         choose_button.connect("clicked", lambda _b: self._choose_library_folder())
         header.pack_start(choose_button)
 
+        new_menu = Gio.Menu()
+        new_menu.append(_("New Sheet"), "win.new-sheet")
+        new_menu.append(_("New Group"), "win.new-group")
+        header.pack_end(
+            Gtk.MenuButton(icon_name="list-add-symbolic", menu_model=new_menu, tooltip_text=_("New…"))
+        )
+
+        row_menu = Gio.Menu()
+        creation = Gio.Menu()
+        creation.append(_("New Sheet"), "win.new-sheet")
+        creation.append(_("New Group"), "win.new-group")
+        row_menu.append_section(None, creation)
+        changes = Gio.Menu()
+        changes.append(_("Rename…"), "win.rename")
+        changes.append(_("Move to Trash…"), "win.delete")
+        row_menu.append_section(None, changes)
+        self.row_menu = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False, halign=Gtk.Align.START)
+
         empty = Adw.StatusPage(
             icon_name="folder-symbolic",
             title=_("No Library Yet"),
@@ -71,8 +95,18 @@ class TypecaseWindow(Adw.ApplicationWindow):
         factory = Gtk.SignalListItemFactory()
         factory.connect("setup", self._on_item_setup)
         factory.connect("bind", self._on_item_bind)
-        self.list_view = Gtk.ListView(model=self.selection, factory=factory, css_classes=["navigation-sidebar"])
+        self.selection.connect("notify::selected-item", self._on_selection_changed)
+        self.list_view = Gtk.ListView(
+            model=self.selection,
+            factory=factory,
+            single_click_activate=True,
+            css_classes=["navigation-sidebar"],
+        )
+        self.list_view.connect("activate", self._on_row_activated)
         tree_scroller = Gtk.ScrolledWindow(child=self.list_view, vexpand=True)
+        # Dauerhaft an die Liste gehängt, damit "win.…"-Aktionen beim Klick auf einen Menüpunkt gefunden werden.
+        self.row_menu.set_parent(self.list_view)
+        self.connect("destroy", lambda _w: self.row_menu.unparent())
 
         self.sidebar_stack = Gtk.Stack()
         self.sidebar_stack.add_named(empty, "empty")
@@ -84,27 +118,17 @@ class TypecaseWindow(Adw.ApplicationWindow):
         return Adw.NavigationPage(title=_("Library"), child=view)
 
     def _build_content(self):
-        self.buffer = GtkSource.Buffer()
-        self.buffer.set_language(GtkSource.LanguageManager.get_default().get_language("markdown"))
+        self.editor = SheetEditor()
 
-        editor = GtkSource.View(
-            buffer=self.buffer,
-            wrap_mode=Gtk.WrapMode.WORD_CHAR,
-            top_margin=24,
-            bottom_margin=24,
-            left_margin=32,
-            right_margin=32,
-            monospace=False,
-        )
-
-        scrolled = Gtk.ScrolledWindow(child=editor, hexpand=True, vexpand=True)
-
-        header = Adw.HeaderBar(title_widget=Adw.WindowTitle(title="Typecase", subtitle=""))
+        self.content_title = Adw.WindowTitle(title="Typecase", subtitle="")
+        header = Adw.HeaderBar(title_widget=self.content_title)
 
         view = Adw.ToolbarView()
         view.add_top_bar(header)
-        view.set_content(scrolled)
-        return Adw.NavigationPage(title="Typecase", child=view)
+        view.set_content(self.editor)
+
+        self.toasts = Adw.ToastOverlay(child=view)
+        return Adw.NavigationPage(title="Typecase", child=self.toasts)
 
     # --- Bibliothek -------------------------------------------------------
 
@@ -122,25 +146,290 @@ class TypecaseWindow(Adw.ApplicationWindow):
         path = folder.get_path()
         if path is None:
             return
+        if not self.editor.flush():
+            return  # Fehlermeldung kam schon über "save-failed"; das offene Blatt bleibt.
         config.set_library_path(Path(path))
         self._open_library(Path(path))
 
     def _open_library(self, path: Path | None):
         self.library_path = path
+        self._show_sheet(None)
+        self._ignore_selection = True
+        self.selection.set_model(None)
+        self._ignore_selection = False
+        self.tree_model = None
         if path is None:
             self.sidebar_title.set_subtitle("")
             self.sidebar_stack.set_visible_child_name("empty")
-            return
+        else:
+            self.sidebar_title.set_subtitle(path.name or str(path))
+            self._reload()
+            self.sidebar_stack.set_visible_child_name("library")
+        self._update_actions()
 
-        self.sidebar_title.set_subtitle(path.name or str(path))
-        root = _make_store(scan(path))
+    def _reload(self, select_path: Path | None = None, renamed: tuple[Path, Path] | None = None):
+        """Liest die Bibliothek neu ein und behält aufgeklappte Gruppen, das offene Blatt und die Auswahl.
+        renamed=(alt, neu) überträgt den Zustand von einem umbenannten Pfad auf den neuen."""
+        expanded = self._expanded_paths()
+        if renamed is not None:
+            old, new = renamed
+            expanded = {new / p.relative_to(old) if p == old or old in p.parents else p for p in expanded}
+        if select_path is None:
+            node = self._selected_node()
+            select_path = node.path if node else self.editor.path
+        if select_path is not None:
+            expanded.update(p for p in select_path.parents if p != self.library_path)
+
+        self._ignore_selection = True
+        root = _make_store(scan(self.library_path))
         self.tree_model = Gtk.TreeListModel.new(root, False, False, self._create_children)
         self.selection.set_model(self.tree_model)
-        self.sidebar_stack.set_visible_child_name("library")
+        i = 0
+        while i < self.tree_model.get_n_items():  # Klappt auf; Kinder rutschen hinter ihre Gruppe nach.
+            row = self.tree_model.get_item(i)
+            node = row.get_item().node
+            if node.is_group and node.path in expanded:
+                row.set_expanded(True)
+            i += 1
+
+        open_index = self._index_of(self.editor.path)
+        self._open_row = self.tree_model.get_item(open_index) if open_index is not None else None
+        if self.editor.path is not None:
+            self.content_title.set_title(self.editor.path.stem)
+        select_index = self._index_of(select_path)
+        self.selection.set_selected(Gtk.INVALID_LIST_POSITION if select_index is None else select_index)
+        self._ignore_selection = False
+        if select_index is not None:
+            self.list_view.scroll_to(select_index, Gtk.ListScrollFlags.NONE, None)
+        self._update_actions()
+
+    def _expanded_paths(self) -> set[Path]:
+        paths: set[Path] = set()
+        if self.tree_model is not None:
+            for i in range(self.tree_model.get_n_items()):
+                row = self.tree_model.get_item(i)
+                if row.get_expanded():
+                    paths.add(row.get_item().node.path)
+        return paths
+
+    def _index_of(self, path: Path | None) -> int | None:
+        if path is None or self.tree_model is None:
+            return None
+        for i in range(self.tree_model.get_n_items()):
+            if self.tree_model.get_item(i).get_item().node.path == path:
+                return i
+        return None
 
     @staticmethod
     def _create_children(item: LibraryItem):
         return _make_store(item.node.children) if item.node.is_group else None
+
+    # --- Blätter öffnen ---------------------------------------------------
+
+    def _on_selection_changed(self, _selection, _pspec):
+        self._update_actions()
+        if not self._ignore_selection:
+            self._open_selected()
+
+    def _open_selected(self):
+        row = self.selection.get_selected_item()
+        if row is None or row is self._open_row:
+            return
+        node = row.get_item().node
+        if node.is_group:
+            return
+        if node.path == self.editor.path:
+            self._open_row = row
+            return
+
+        if not self.editor.flush():
+            self._reselect(self._open_row)  # Wechsel verweigert, bisheriges Blatt bleibt offen.
+            return
+        try:
+            self.editor.open(node.path)
+        except (OSError, UnicodeDecodeError) as error:
+            reason = error.strerror if isinstance(error, OSError) else _("not a UTF-8 text file")
+            self.toasts.add_toast(Adw.Toast(title=_("Could not open “%s”: %s") % (node.name, reason)))
+            self._reselect(self._open_row)
+            return
+        self._show_sheet(row)
+
+    def _on_row_activated(self, _list_view, position):
+        row = self.tree_model.get_item(position)
+        node = row.get_item().node
+        if not node.is_group and self.editor.path == node.path:
+            self.editor.focus_editor()
+
+    def _show_sheet(self, row):
+        """Übernimmt den Zustand nach dem Öffnen (row) oder Schließen (None) eines Blatts."""
+        if row is None:
+            self.editor.close_sheet()
+            self.content_title.set_title("Typecase")
+        else:
+            self.content_title.set_title(row.get_item().node.name)
+        self._open_row = row
+
+    def _reselect(self, row):
+        self._ignore_selection = True
+        position = Gtk.INVALID_LIST_POSITION
+        if row is not None:
+            for i in range(self.tree_model.get_n_items()):
+                if self.tree_model.get_item(i) is row:
+                    position = i
+                    break
+        self.selection.set_selected(position)
+        self._ignore_selection = False
+
+    def _on_save_failed(self, _editor, message):
+        self.toasts.add_toast(Adw.Toast(title=_("Could not save: %s") % message, priority=Adw.ToastPriority.HIGH))
+
+    def _on_close_request(self, _window):
+        if self.editor.flush():
+            return False
+        dialog = Adw.AlertDialog(
+            heading=_("Could Not Save"),
+            body=_("The latest changes to this sheet could not be saved. Closing now would lose them."),
+        )
+        dialog.add_response("cancel", _("Keep Editing"))
+        dialog.add_response("discard", _("Close Without Saving"))
+        dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", self._on_close_dialog_response)
+        dialog.present(self)
+        return True
+
+    def _on_close_dialog_response(self, _dialog, response):
+        if response == "discard":
+            self.editor.close_sheet()
+            self.close()
+
+    # --- Neu, Umbenennen, Löschen -----------------------------------------
+
+    def _setup_actions(self):
+        handlers = {
+            "new-sheet": self._on_new_sheet,
+            "new-group": self._on_new_group,
+            "rename": self._on_rename,
+            "delete": self._on_delete,
+        }
+        for name, handler in handlers.items():
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", lambda _a, _p, h=handler: h())
+            self.add_action(action)
+
+    def _update_actions(self):
+        has_library = self.library_path is not None
+        has_selection = has_library and self._selected_node() is not None
+        for name, enabled in [
+            ("new-sheet", has_library),
+            ("new-group", has_library),
+            ("rename", has_selection),
+            ("delete", has_selection),
+        ]:
+            self.lookup_action(name).set_enabled(enabled)
+
+    def _selected_node(self) -> Node | None:
+        row = self.selection.get_selected_item()
+        return row.get_item().node if row is not None else None
+
+    def _target_folder(self) -> Path:
+        """Ausgewählte Gruppe, bei einem Blatt dessen Gruppe, sonst der Stammordner."""
+        node = self._selected_node()
+        if node is None:
+            return self.library_path
+        return node.path if node.is_group else node.path.parent
+
+    def _toast(self, text: str):
+        self.toasts.add_toast(Adw.Toast(title=text))
+
+    def _on_new_sheet(self):
+        if not self.editor.flush():
+            return
+        try:
+            path = create_sheet(self._target_folder(), _("Untitled"))
+        except OSError as error:
+            self._toast(_("Could not create the sheet: %s") % (error.strerror or error))
+            return
+        self._reload(select_path=path)
+        self._open_selected()
+        self.editor.focus_editor()
+
+    def _on_new_group(self):
+        try:
+            path = create_group(self._target_folder(), _("New Group"))
+        except OSError as error:
+            self._toast(_("Could not create the group: %s") % (error.strerror or error))
+            return
+        self._reload(select_path=path)
+        self._on_rename()  # Gleich nach einem Namen fragen.
+
+    def _on_rename(self):
+        node = self._selected_node()
+        if node is None:
+            return
+        entry = Gtk.Entry(text=node.name, activates_default=True)
+        dialog = Adw.AlertDialog(heading=_("Rename Group") if node.is_group else _("Rename Sheet"))
+        dialog.set_extra_child(entry)
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("rename", _("Rename"))
+        dialog.set_response_appearance("rename", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("rename")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", lambda _d, response: response == "rename" and self._do_rename(node, entry.get_text()))
+        dialog.present(self)
+        entry.grab_focus()
+        entry.select_region(0, -1)
+
+    def _do_rename(self, node: Node, new_name: str):
+        if not self.editor.flush():
+            return
+        try:
+            new_path = rename(node.path, new_name)
+        except ValueError:
+            self._toast(_("This name is not allowed."))
+            return
+        except FileExistsError:
+            self._toast(_("“%s” already exists.") % new_name.strip())
+            return
+        except OSError as error:
+            self._toast(_("Could not rename: %s") % (error.strerror or error))
+            return
+        open_path = self.editor.path
+        if open_path is not None and (open_path == node.path or node.path in open_path.parents):
+            self.editor.path = new_path / open_path.relative_to(node.path)
+        self._reload(select_path=new_path, renamed=(node.path, new_path))
+
+    def _on_delete(self):
+        node = self._selected_node()
+        if node is None:
+            return
+        dialog = Adw.AlertDialog(
+            heading=_("Move “%s” to the Trash?") % node.name,
+            body=_("The group and everything in it will be moved to the trash.")
+            if node.is_group
+            else _("The sheet will be moved to the trash."),
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("delete", _("Move to Trash"))
+        dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+        dialog.set_close_response("cancel")
+        dialog.connect("response", lambda _d, response: response == "delete" and self._do_delete(node))
+        dialog.present(self)
+
+    def _do_delete(self, node: Node):
+        if not self.editor.flush():
+            return
+        try:
+            Gio.File.new_for_path(str(node.path)).trash(None)
+        except GLib.Error as error:
+            self._toast(_("Could not move to the trash: %s") % error.message)
+            return
+        open_path = self.editor.path
+        if open_path is not None and (open_path == node.path or node.path in open_path.parents):
+            self._show_sheet(None)
+        self._reload()
 
     # --- Seitenleisten-Zeilen ---------------------------------------------
 
@@ -151,7 +440,26 @@ class TypecaseWindow(Adw.ApplicationWindow):
         box.append(icon)
         box.append(label)
         expander = Gtk.TreeExpander(child=box)
+        right_click = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        right_click.connect("pressed", self._on_row_right_click, list_item)
+        expander.add_controller(right_click)
         list_item.set_child(expander)
+
+    def _on_row_right_click(self, gesture, _n_press, x, y, list_item):
+        position = list_item.get_position()
+        if position == Gtk.INVALID_LIST_POSITION:
+            return
+        self.selection.set_selected(position)
+        if self.selection.get_selected() != position:
+            return  # Auswahl wurde verweigert (Speicherfehler), kein Menü für das falsche Blatt.
+        point = gesture.get_widget().translate_coordinates(self.list_view, x, y)
+        if point is None:
+            return
+        list_x, list_y = point
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = int(list_x), int(list_y), 1, 1
+        self.row_menu.set_pointing_to(rect)
+        self.row_menu.popup()
 
     def _on_item_bind(self, _factory, list_item):
         row = list_item.get_item()
@@ -170,4 +478,4 @@ class TypecaseWindow(Adw.ApplicationWindow):
         manager = GtkSource.StyleSchemeManager.get_default()
         scheme = manager.get_scheme("Adwaita-dark" if dark else "Adwaita")
         if scheme is not None:
-            self.buffer.set_style_scheme(scheme)
+            self.editor.buffer.set_style_scheme(scheme)

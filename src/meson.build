@@ -8,6 +8,7 @@ python.install_sources(
     'typecase/config.py',
     'typecase/fileio.py',
     'typecase/library.py',
+    'typecase/sheet_editor.py',
     'typecase/window.py',
   ],
   subdir: 'typecase',

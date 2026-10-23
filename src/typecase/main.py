@@ -18,6 +18,9 @@ class TypecaseApplication(Adw.Application):
     def do_startup(self):
         Adw.Application.do_startup(self)
         GtkSource.init()
+        self.set_accels_for_action("win.new-sheet", ["<Primary>n"])
+        self.set_accels_for_action("win.new-group", ["<Primary><Shift>n"])
+        self.set_accels_for_action("win.rename", ["F2"])
 
     def do_activate(self):
         win = self.props.active_window or TypecaseWindow(application=self)
