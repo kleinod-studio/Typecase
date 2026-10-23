@@ -432,6 +432,50 @@ def steps(win, app):
     check(not bar.get_search_mode() and not bar.context.get_highlight(), "Escape schließt die Leiste und entfernt die Hervorhebung")
     select(LIB / "a.md")
 
+    # Verschieben: Ziehen und Ablegen, "Verschieben nach …"
+    def row_widget(path):
+        child = win.list_view.get_first_child()
+        while child is not None:
+            expander = child.get_first_child()
+            row = expander.get_list_row() if isinstance(expander, Gtk.TreeExpander) else None
+            if row is not None and row.get_item().node.path == path:
+                return expander
+            child = child.get_next_sibling()
+        return None
+
+    def controller(widget, kind):
+        return next(c for c in widget.observe_controllers() if isinstance(c, kind))
+
+    select(LIB / "a.md")
+    content = read("a.md")
+    group_row = row_widget(LIB / "ExternGruppe")
+    check(isinstance(controller(row_widget(LIB / "a.md"), Gtk.DragSource), Gtk.DragSource), "Einträge lassen sich ziehen")
+    dropped = controller(group_row, Gtk.DropTarget).emit("drop", str(LIB / "a.md"), 0.0, 0.0)
+    moved = LIB / "ExternGruppe" / "a.md"
+    check(dropped and moved.exists() and not (LIB / "a.md").exists(), "Ablegen auf einer Gruppe verschiebt hinein")
+    check(ed.path == moved and moved.read_text() == content, "Offenes Blatt zieht mit, Inhalt unverändert")
+    check(win._index_of(moved) is not None and win.selection.get_selected() == win._index_of(moved), "Verschobenes Blatt ist sichtbar und ausgewählt")
+    dropped = controller(row_widget(LIB / "Extern.md"), Gtk.DropTarget).emit("drop", str(moved), 0.0, 0.0)
+    check(dropped and (LIB / "a.md").exists() and ed.path == LIB / "a.md", "Ablegen auf einem Blatt verschiebt in dessen Gruppe")
+    check(not win._move(LIB / "ExternGruppe", LIB / "ExternGruppe"), "Gruppe lässt sich nicht in sich selbst verschieben")
+    (LIB / "Merken" / "a.md").write_text("anderes")
+    check(not win._move(LIB / "a.md", LIB / "Merken") and read("a.md") == content, "Gleichnamiges am Ziel wird nie überschrieben")
+    (LIB / "Merken" / "a.md").unlink()
+    root_drop = controller(win.sidebar_stack.get_child_by_name("library"), Gtk.DropTarget)
+    check(not root_drop.emit("drop", "Ein Stück Text aus dem Editor", 0.0, 0.0), "Fremder gezogener Text wird ignoriert")
+
+    select(LIB / "Extern.md")
+    win.lookup_action("move").activate(None)
+    dialog = win.get_visible_dialog()
+    choice = dialog.get_extra_child()
+    labels = [choice.get_model().get_string(i) for i in range(choice.get_model().get_n_items())]
+    check("ExternGruppe" in labels and "Library (top level)" not in labels, "Verschieben nach … bietet passende Ziele an")
+    choice.set_selected(labels.index("ExternGruppe"))
+    dialog.emit("response", "move")
+    dialog.force_close()
+    check((LIB / "ExternGruppe" / "Extern.md").exists() and ed.path == LIB / "ExternGruppe" / "Extern.md", "Verschieben nach … verschiebt per Tastatur")
+    select(LIB / "a.md")
+
     # Fokus-Modus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
     from gi.repository import Gdk
 

@@ -8,7 +8,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 from . import config
 from .find_bar import FindBar
 from .preferences import PreferencesDialog
-from .library import Node, create_group, create_sheet, rename, scan
+from .library import Node, all_groups, create_group, create_sheet, move, rename, scan
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
 
@@ -109,6 +109,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         row_menu.append_section(None, creation)
         changes = Gio.Menu()
         changes.append(_("Rename…"), "win.rename")
+        changes.append(_("Move to…"), "win.move")
         changes.append(_("Move to Trash…"), "win.delete")
         row_menu.append_section(None, changes)
         self.row_menu = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False, halign=Gtk.Align.START)
@@ -140,6 +141,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         self.list_view.connect("activate", self._on_row_activated)
         tree_scroller = Gtk.ScrolledWindow(child=self.list_view, vexpand=True)
+        # Ablegen im leeren Bereich unter den Einträgen: in den Stammordner.
+        root_drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+        root_drop.connect("drop", lambda _t, value, _x, _y: self._move(Path(value), self.library_path))
+        tree_scroller.add_controller(root_drop)
         # Dauerhaft an die Liste gehängt, damit "win.…"-Aktionen beim Klick auf einen Menüpunkt gefunden werden.
         self.row_menu.set_parent(self.list_view)
         self.connect("destroy", lambda _w: self.row_menu.unparent())
@@ -550,6 +555,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "new-sheet": self._on_new_sheet,
             "new-group": self._on_new_group,
             "rename": self._on_rename,
+            "move": self._on_move_to,
             "delete": self._on_delete,
         }
         for name, handler in handlers.items():
@@ -764,6 +770,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             ("new-sheet", has_library),
             ("new-group", has_library),
             ("rename", has_selection),
+            ("move", has_selection),
             ("delete", has_selection),
         ]:
             self.lookup_action(name).set_enabled(enabled)
@@ -879,6 +886,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         box.append(icon)
         box.append(label)
         expander = Gtk.TreeExpander(child=box)
+        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
+        drag.connect("prepare", self._on_drag_prepare, list_item)
+        drag.connect("drag-begin", lambda source, _drag: source.set_icon(Gtk.WidgetPaintable(widget=box), 0, 0))
+        expander.add_controller(drag)
+        drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+        drop.connect("drop", self._on_row_drop, list_item)
+        expander.add_controller(drop)
+
         left_click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
         left_click.connect("released", self._on_row_clicked, list_item)
         expander.add_controller(left_click)
@@ -886,6 +901,83 @@ class TypecaseWindow(Adw.ApplicationWindow):
         right_click.connect("pressed", self._on_row_right_click, list_item)
         expander.add_controller(right_click)
         list_item.set_child(expander)
+
+    # --- Verschieben (Ziehen und Ablegen, "Verschieben nach …") ---------------
+
+    def _on_drag_prepare(self, _source, _x, _y, list_item):
+        row = list_item.get_item()
+        if row is None:
+            return None
+        return Gdk.ContentProvider.new_for_value(str(row.get_item().node.path))
+
+    def _on_row_drop(self, _target, value, _x, _y, list_item):
+        row = list_item.get_item()
+        if row is None:
+            return False
+        node = row.get_item().node
+        # Auf eine Gruppe: hinein. Auf ein Blatt: in dessen Gruppe.
+        return self._move(Path(value), node.path if node.is_group else node.path.parent)
+
+    def _inside_library(self, path: Path) -> bool:
+        return self.library_path is not None and (path == self.library_path or self.library_path in path.parents)
+
+    def _move(self, source: Path, folder: Path) -> bool:
+        """Verschiebt ein Blatt oder eine Gruppe innerhalb der Bibliothek. Fremde Ziehdaten
+        (z. B. Text aus dem Editor) werden ignoriert, weil sie kein Pfad in der Bibliothek sind."""
+        if not (self._inside_library(source) and source != self.library_path and self._inside_library(folder)):
+            return False
+        if not source.exists() or source.parent == folder:
+            return False
+        if not self.editor.flush():
+            return False
+        try:
+            target = move(source, folder)
+        except ValueError:
+            self._toast(_("A group cannot be moved into itself."))
+            return False
+        except FileExistsError:
+            self._toast(_("“%s” already exists there.") % source.name)
+            return False
+        except OSError as error:
+            self._toast(_("Could not move: %s") % (error.strerror or error))
+            return False
+        open_path = self.editor.path
+        if open_path is not None and (open_path == source or source in open_path.parents):
+            self.editor.set_path(target / open_path.relative_to(source))
+        self._reload(select_path=target, renamed=(source, target))
+        return True
+
+    def _on_move_to(self):
+        node = self._selected_node()
+        if node is None:
+            return
+        # Ziele: Stammordner und alle Gruppen außer der eigenen (und, bei Gruppen, ihren Untergruppen).
+        targets = [self.library_path] + [
+            group
+            for group in all_groups(scan(self.library_path))
+            if group != node.path.parent and not (node.is_group and (group == node.path or node.path in group.parents))
+        ]
+        if node.path.parent == self.library_path:
+            targets.remove(self.library_path)
+        if not targets:
+            self._toast(_("There is no other group to move to."))
+            return
+        labels = [
+            _("Library (top level)") if target == self.library_path else str(target.relative_to(self.library_path))
+            for target in targets
+        ]
+        choice = Gtk.DropDown(model=Gtk.StringList.new(labels))
+        dialog = Adw.AlertDialog(heading=_("Move “%s” to…") % node.name)
+        dialog.set_extra_child(choice)
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("move", _("Move"))
+        dialog.set_response_appearance("move", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("move")
+        dialog.set_close_response("cancel")
+        dialog.connect(
+            "response", lambda _d, response: response == "move" and self._move(node.path, targets[choice.get_selected()])
+        )
+        dialog.present(self)
 
     def _on_row_clicked(self, _gesture, _n_press, _x, _y, list_item):
         """Nach einem Klick auf ein Blatt gleich weiterschreiben können (Pfeiltasten bleiben in der Liste)."""

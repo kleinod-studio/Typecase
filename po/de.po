@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 22:39+0200\n"
+"POT-Creation-Date: 2026-10-23 22:48+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -158,6 +158,9 @@ msgstr "Bibliothek durchsuchen"
 
 msgid "Rename…"
 msgstr "Umbenennen …"
+
+msgid "Move to…"
+msgstr "Verschieben nach …"
 
 msgid "Move to Trash…"
 msgstr "In den Papierkorb …"
@@ -362,3 +365,27 @@ msgstr "In den Papierkorb"
 #, python-format
 msgid "Could not move to the trash: %s"
 msgstr "Verschieben in den Papierkorb fehlgeschlagen: %s"
+
+msgid "A group cannot be moved into itself."
+msgstr "Eine Gruppe kann nicht in sich selbst verschoben werden."
+
+#, python-format
+msgid "“%s” already exists there."
+msgstr "„%s“ gibt es dort schon."
+
+#, python-format
+msgid "Could not move: %s"
+msgstr "Verschieben fehlgeschlagen: %s"
+
+msgid "There is no other group to move to."
+msgstr "Es gibt keine andere Gruppe zum Verschieben."
+
+msgid "Library (top level)"
+msgstr "Bibliothek (oberste Ebene)"
+
+#, python-format
+msgid "Move “%s” to…"
+msgstr "„%s“ verschieben nach …"
+
+msgid "Move"
+msgstr "Verschieben"

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 22:39+0200\n"
+"POT-Creation-Date: 2026-10-23 22:48+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -161,6 +161,9 @@ msgid "Search Library"
 msgstr ""
 
 msgid "Rename…"
+msgstr ""
+
+msgid "Move to…"
 msgstr ""
 
 msgid "Move to Trash…"
@@ -354,4 +357,28 @@ msgstr ""
 
 #, python-format
 msgid "Could not move to the trash: %s"
+msgstr ""
+
+msgid "A group cannot be moved into itself."
+msgstr ""
+
+#, python-format
+msgid "“%s” already exists there."
+msgstr ""
+
+#, python-format
+msgid "Could not move: %s"
+msgstr ""
+
+msgid "There is no other group to move to."
+msgstr ""
+
+msgid "Library (top level)"
+msgstr ""
+
+#, python-format
+msgid "Move “%s” to…"
+msgstr ""
+
+msgid "Move"
 msgstr ""

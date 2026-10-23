@@ -11,7 +11,7 @@ import stat
 from typecase.fileio import atomic_write_text, read_text
 from typecase.markdown_lists import change_indent, on_enter, renumber
 from typecase.textstats import count_characters, count_words
-from typecase.library import create_group, create_sheet, rename, scan, sheet_filename, validate_name
+from typecase.library import all_groups, create_group, create_sheet, move, rename, scan, sheet_filename, validate_name
 
 
 class ScanTest(unittest.TestCase):
@@ -137,6 +137,49 @@ class ListContinuationTest(unittest.TestCase):
 
     def test_split_in_the_middle_continues(self):
         self.assertEqual(on_enter("- Anfang Ende", 8), ("continue", "- "))
+
+
+class MoveTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        (self.root / "A" / "Unter").mkdir(parents=True)
+        (self.root / "B").mkdir()
+        (self.root / "blatt.md").write_text("Text")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_move_sheet_into_group(self):
+        moved = move(self.root / "blatt.md", self.root / "A")
+        self.assertEqual(moved, self.root / "A" / "blatt.md")
+        self.assertEqual(moved.read_text(), "Text")
+        self.assertFalse((self.root / "blatt.md").exists())
+
+    def test_move_group_with_contents(self):
+        (self.root / "A" / "Unter" / "x.md").write_text("x")
+        moved = move(self.root / "A", self.root / "B")
+        self.assertEqual((moved / "Unter" / "x.md").read_text(), "x")
+
+    def test_same_folder_is_a_no_op(self):
+        self.assertEqual(move(self.root / "blatt.md", self.root), self.root / "blatt.md")
+
+    def test_group_cannot_go_into_itself(self):
+        with self.assertRaises(ValueError):
+            move(self.root / "A", self.root / "A")
+        with self.assertRaises(ValueError):
+            move(self.root / "A", self.root / "A" / "Unter")
+
+    def test_never_overwrites(self):
+        (self.root / "B" / "blatt.md").write_text("Anderes")
+        with self.assertRaises(FileExistsError):
+            move(self.root / "blatt.md", self.root / "B")
+        self.assertEqual((self.root / "B" / "blatt.md").read_text(), "Anderes")
+        self.assertEqual((self.root / "blatt.md").read_text(), "Text")
+
+    def test_all_groups(self):
+        groups = all_groups(scan(self.root))
+        self.assertEqual(groups, [self.root / "A", self.root / "A" / "Unter", self.root / "B"])
 
 
 class RenumberTest(unittest.TestCase):

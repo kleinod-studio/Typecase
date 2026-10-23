@@ -95,3 +95,28 @@ def _same_file(a: Path, b: Path) -> bool:
         return a.samefile(b)
     except OSError:
         return False
+
+
+def move(path: Path, folder: Path) -> Path:
+    """Verschiebt ein Blatt oder eine Gruppe in einen anderen Ordner. Wirft ValueError, wenn eine
+    Gruppe in sich selbst verschoben werden soll, und FileExistsError, wenn am Ziel schon etwas
+    gleichen Namens liegt. Ein bestehendes Ziel wird nie überschrieben."""
+    target = folder / path.name
+    if target == path:
+        return path
+    if path.is_dir() and (folder == path or path in folder.parents):
+        raise ValueError(str(folder))
+    if target.exists():
+        raise FileExistsError(str(target))
+    path.rename(target)
+    return target
+
+
+def all_groups(nodes: list[Node]) -> list[Path]:
+    """Alle Gruppen (Ordner) der Bibliothek, in der Reihenfolge der Seitenleiste."""
+    groups: list[Path] = []
+    for node in nodes:
+        if node.is_group:
+            groups.append(node.path)
+            groups.extend(all_groups(node.children))
+    return groups
