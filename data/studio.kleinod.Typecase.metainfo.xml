@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>studio.kleinod.Typecase</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Typecase</name>
+  <summary>Calm Markdown writing</summary>
+  <description>
+    <p>Typecase is a quiet writing app for Markdown. Your texts live in a library of groups and sheets, stored as plain .md files in a folder of your choice.</p>
+  </description>
+  <launchable type="desktop-id">studio.kleinod.Typecase.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-10-23"/>
+  </releases>
+</component>

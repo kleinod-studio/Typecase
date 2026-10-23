@@ -1,0 +1,20 @@
+app-id: studio.kleinod.Typecase
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: typecase
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Die Bibliothek ist ein frei wählbarer Ordner (auch Nextcloud/Syncthing). Bewusst kein --share=network.
+  - --filesystem=home
+
+modules:
+  - name: typecase
+    buildsystem: meson
+    sources:
+      - type: dir
+        path: .

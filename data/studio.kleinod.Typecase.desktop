@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Typecase
+Comment=Calm Markdown writing
+Exec=typecase
+Icon=studio.kleinod.Typecase
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Utility;TextEditor;
+Keywords=markdown;writing;text;editor;
+StartupNotify=true
