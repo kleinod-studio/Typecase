@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 23:15+0200\n"
+"POT-Creation-Date: 2026-10-23 23:23+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -249,6 +249,12 @@ msgstr "Neu …"
 msgid "Search Library"
 msgstr "Bibliothek durchsuchen"
 
+msgid "Filter by Keyword"
+msgstr "Nach Schlagwort filtern"
+
+msgid "Show All"
+msgstr "Alle zeigen"
+
 msgid "Rename…"
 msgstr "Umbenennen …"
 
@@ -296,6 +302,17 @@ msgstr[1] "%(count)s Ersetzungen"
 
 msgid "Choose Library Folder"
 msgstr "Bibliotheksordner wählen"
+
+#, python-format
+msgid "Filtered by “%s”"
+msgstr "Gefiltert nach „%s“"
+
+msgid "No keywords yet. Add them in the properties of a sheet."
+msgstr ""
+"Noch keine Schlagwörter. Du vergibst sie in den Eigenschaften eines Blatts."
+
+msgid "All Sheets"
+msgstr "Alle Blätter"
 
 #, python-format
 msgid "“%s” was changed outside Typecase and reloaded."

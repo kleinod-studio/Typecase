@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 23:15+0200\n"
+"POT-Creation-Date: 2026-10-23 23:23+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -251,6 +251,12 @@ msgstr ""
 msgid "Search Library"
 msgstr ""
 
+msgid "Filter by Keyword"
+msgstr ""
+
+msgid "Show All"
+msgstr ""
+
 msgid "Rename…"
 msgstr ""
 
@@ -295,6 +301,16 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "Choose Library Folder"
+msgstr ""
+
+#, python-format
+msgid "Filtered by “%s”"
+msgstr ""
+
+msgid "No keywords yet. Add them in the properties of a sheet."
+msgstr ""
+
+msgid "All Sheets"
 msgstr ""
 
 #, python-format

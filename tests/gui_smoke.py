@@ -531,7 +531,31 @@ def steps(win, app):
     check(editor_keys.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType.ALT_MASK) and not win.inspector_split.get_show_sidebar(), "Alt+Enter blendet die Eigenschaften um")
     check(text(ed) == before, "Alt+Enter fügt keinen Zeilenumbruch ein")
 
+    # Schlagwort-Filter
+    lyrik = LIB / "Merken" / "Lyrik.md"
+    lyrik.write_text("---\nkeywords: [Gedicht]\n---\nVerse.\n", encoding="utf-8")
+    yield from wait_until(lambda: str(lyrik) in repr(win._tree_signature))
+    win._fill_keyword_list()
+    offered = []
+    row = win.keyword_list.get_row_at_index(0)
+    while row is not None:
+        offered.append(row.keyword)
+        row = win.keyword_list.get_row_at_index(len(offered))
+    check(offered == [None, "Entwurf", "Gedicht", "Roman"], "Filter bietet alle Schlagwörter an (plus Alle Blätter)")
+    win.set_keyword_filter("roman")
+    check(win._index_of(meta) is not None and win._index_of(LIB / "a.md") is None, "Filter zeigt nur passende Blätter (ohne Groß/klein)")
+    check(win.filter_banner.get_revealed(), "Hinweisleiste zeigt den aktiven Filter")
+    win.set_keyword_filter("Gedicht")
+    check(win._index_of(lyrik) is not None and win._index_of(meta) is None, "Treffer in Gruppen werden aufgeklappt gezeigt")
+    meta.write_text(meta.read_text().replace("keywords: [Roman, Entwurf]", "keywords: [Roman, Entwurf, Gedicht]"), encoding="utf-8")
+    yield from wait_until(lambda: win._index_of(meta) is not None)
+    check(win._index_of(meta) is not None, "Neues Schlagwort von außen erscheint im gefilterten Baum")
+    win.filter_banner.emit("button-clicked")
+    check(not win.filter_banner.get_revealed() and win._index_of(LIB / "a.md") is not None, "Aufheben zeigt wieder alle Blätter")
+    win.set_keyword_filter("Gedicht")
+
     win.lookup_action("new-sheet").activate(None)
+    check(not win.filter_banner.get_revealed() and win._index_of(ed.path) is not None, "Neues Blatt hebt den Filter auf und ist sichtbar")
     created = parse(split(ed.path.read_text())[0]).get("created", "")
     now = GLib.DateTime.new_now_local()
     check(created.startswith(now.format("%Y-%m-%dT")) and len(created) == 16 and text(ed) == "", "Neues Blatt bekommt Erstelldatum mit Uhrzeit im Dateikopf")

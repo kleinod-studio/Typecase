@@ -10,6 +10,7 @@ install_data(
     'typecase/find_bar.py',
     'typecase/frontmatter.py',
     'typecase/inspector.py',
+    'typecase/keywords.py',
     'typecase/library.py',
     'typecase/markdown_lists.py',
     'typecase/markdown_style.py',

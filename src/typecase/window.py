@@ -10,6 +10,7 @@ from . import frontmatter
 from .find_bar import FindBar
 from .fileio import atomic_write_text
 from .inspector import Inspector
+from .keywords import KeywordIndex, filter_nodes
 from .preferences import PreferencesDialog
 from .library import Node, all_groups, create_group, create_sheet, move, rename, scan
 from .search import Hit, LibrarySearch
@@ -25,6 +26,13 @@ class LibraryItem(GObject.Object):
 def _signature(nodes: list[Node]) -> tuple:
     """Struktur der Bibliothek zum Vergleichen: Pfade und ob Gruppe."""
     return tuple((node.path, node.is_group, _signature(node.children) if node.is_group else ()) for node in nodes)
+
+
+def _group_paths(nodes: list[Node]):
+    for node in nodes:
+        if node.is_group:
+            yield node.path
+            yield from _group_paths(node.children)
 
 
 def _make_store(nodes: list[Node]) -> Gio.ListStore:
@@ -51,6 +59,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._tree_check_timer = 0
         self._tree_signature: tuple = ()
         self._search = LibrarySearch()
+        self._keywords = KeywordIndex()
+        self._keyword_filter: str | None = None
+        self._expanded_before_filter: set[Path] = set()
 
         self._build_ui()
         self._setup_actions()
@@ -101,6 +112,20 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         self.search_button = Gtk.ToggleButton(icon_name="system-search-symbolic", tooltip_text=_("Search Library"))
         header.pack_end(self.search_button)
+
+        self.keyword_list = Gtk.ListBox(css_classes=["navigation-sidebar"], activate_on_single_click=True)
+        self.keyword_list.connect("row-activated", self._on_keyword_chosen)
+        keyword_popover = Gtk.Popover(child=Gtk.ScrolledWindow(
+            child=self.keyword_list, propagate_natural_height=True, max_content_height=420, propagate_natural_width=True
+        ))
+        keyword_popover.connect("show", lambda _p: self._fill_keyword_list())
+        self.keyword_button = Gtk.MenuButton(
+            icon_name="tag-symbolic", tooltip_text=_("Filter by Keyword"), popover=keyword_popover
+        )
+        header.pack_end(self.keyword_button)
+
+        self.filter_banner = Adw.Banner(button_label=_("Show All"))
+        self.filter_banner.connect("button-clicked", lambda _b: self.set_keyword_filter(None))
 
         self.search_entry = Gtk.SearchEntry(placeholder_text=_("Search Library"), hexpand=True)
         self.search_entry.connect("search-changed", self._on_search_changed)
@@ -178,6 +203,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view = Adw.ToolbarView()
         view.add_top_bar(header)
         view.add_top_bar(self.search_bar)
+        view.add_top_bar(self.filter_banner)
         view.set_content(self.sidebar_stack)
         return Adw.NavigationPage(title=_("Library"), child=view)
 
@@ -268,6 +294,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _open_library(self, path: Path | None, restore: bool = False):
         self.search_bar.set_search_mode(False)
+        self._keyword_filter = None
+        self.filter_banner.set_revealed(False)
         self.library_path = path
         self._show_sheet(None)
         self._ignore_selection = True
@@ -339,8 +367,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self._ignore_selection = True
         nodes = scan(self.library_path)
+        self._watch_library(nodes)  # alle Ordner beobachten, auch die gerade ausgefilterten
+        nodes = self._displayed(nodes)
+        if self._keyword_filter:
+            expanded |= set(_group_paths(nodes))  # gefiltert: alles aufklappen, damit man die Treffer sieht
         self._tree_signature = _signature(nodes)
-        self._watch_library(nodes)
         root = _make_store(nodes)
         self.tree_model = Gtk.TreeListModel.new(root, False, False, self._create_children)
         self.selection.set_model(self.tree_model)
@@ -401,9 +432,61 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _check_tree(self):
         self._tree_check_timer = 0
-        if self.library_path is not None and _signature(scan(self.library_path)) != self._tree_signature:
+        if self.library_path is not None and _signature(self._displayed(scan(self.library_path))) != self._tree_signature:
             self._reload()  # nur wenn sich Gruppen oder Blätter wirklich geändert haben
         return GLib.SOURCE_REMOVE
+
+    # --- Schlagwort-Filter ----------------------------------------------------
+
+    def _displayed(self, nodes: list[Node]) -> list[Node]:
+        """Was die Seitenleiste zeigt: alles, oder bei aktivem Filter nur passende Blätter samt ihren Gruppen."""
+        if not self._keyword_filter:
+            return nodes
+        return filter_nodes(nodes, lambda node: self._keywords.has(node.path, self._keyword_filter))
+
+    def set_keyword_filter(self, keyword: str | None):
+        if keyword == self._keyword_filter or self.library_path is None:
+            return
+        if keyword and not self._keyword_filter:
+            self._expanded_before_filter = self._expanded_paths()
+        self._keyword_filter = keyword
+        if keyword:
+            self.filter_banner.set_title(_("Filtered by “%s”") % keyword)
+            self.filter_banner.set_revealed(True)
+        else:
+            self.filter_banner.set_revealed(False)
+            self.tree_model = None  # aufgeklappte Gruppen wie vor dem Filtern
+            self._reload(expand=self._expanded_before_filter)
+            return
+        self._reload()
+
+    def _fill_keyword_list(self):
+        self.keyword_list.remove_all()
+        summary = self._keywords.summary(scan(self.library_path)) if self.library_path else []
+        if not summary:
+            hint = Gtk.Label(
+                label=_("No keywords yet. Add them in the properties of a sheet."),
+                wrap=True, max_width_chars=28, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12,
+                css_classes=["dim-label"],
+            )
+            row = Gtk.ListBoxRow(child=hint, activatable=False, selectable=False)
+            row.keyword = None
+            self.keyword_list.append(row)
+            return
+        entries = [(None, _("All Sheets"), None)] + [(word, word, count) for word, count in summary]
+        for keyword, label, count in entries:
+            box = Gtk.Box(spacing=12, margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
+            box.append(Gtk.Image(icon_name="object-select-symbolic", opacity=1 if keyword == self._keyword_filter else 0))
+            box.append(Gtk.Label(label=label, xalign=0, hexpand=True))
+            if count is not None:
+                box.append(Gtk.Label(label=str(count), css_classes=["dim-label", "numeric"]))
+            row = Gtk.ListBoxRow(child=box)
+            row.keyword = keyword
+            self.keyword_list.append(row)
+
+    def _on_keyword_chosen(self, _list, row):
+        self.keyword_button.popdown()
+        self.set_keyword_filter(row.keyword)
 
     def _on_external_change(self, _editor, kind):
         name = self.editor.path.stem if self.editor.path else ""
@@ -842,6 +925,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _on_new_sheet(self):
         if not self.editor.flush():
             return
+        self.set_keyword_filter(None)  # sonst wäre das neue Blatt (ohne Schlagwort) unsichtbar
         try:
             path = create_sheet(self._target_folder(), _("Untitled"))
             # Erstelldatum einmalig in den Dateikopf; so übersteht es Sync und Kopieren.
@@ -854,6 +938,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.editor.focus_editor()
 
     def _on_new_group(self):
+        self.set_keyword_filter(None)
         try:
             path = create_group(self._target_folder(), _("New Group"))
         except OSError as error:
