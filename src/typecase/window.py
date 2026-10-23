@@ -7,6 +7,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
 from .find_bar import FindBar
+from .preferences import PreferencesDialog
 from .library import Node, create_group, create_sheet, rename, scan
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
@@ -57,6 +58,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         style = Adw.StyleManager.get_default()
         style.connect("notify::dark", lambda *_args: self._apply_style_scheme())
+        self.apply_settings()
         self._apply_style_scheme()
 
         self._open_library(config.get_library_path(), restore=True)
@@ -180,6 +182,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
         view_section.append(_("Fullscreen"), "win.fullscreen")
         help_section = Gio.Menu()
+        help_section.append(_("Preferences"), "win.preferences")
         help_section.append(_("Keyboard Shortcuts"), "win.show-shortcuts")
         help_section.append(_("About Typecase"), "app.about")
         main_menu = Gio.Menu()
@@ -576,6 +579,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         search.connect("activate", lambda _a, _p: self._start_search())
         self.add_action(search)
 
+        preferences = Gio.SimpleAction.new("preferences", None)
+        preferences.connect("activate", lambda _a, _p: PreferencesDialog(self.apply_settings).present(self))
+        self.add_action(preferences)
+
         shortcuts = Gio.SimpleAction.new("show-shortcuts", None)
         shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
         self.add_action(shortcuts)
@@ -737,6 +744,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Leave Writing Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Fullscreen"), "F11"),
+                    (_("Preferences"), "<Primary>comma"),
                     (_("Keyboard Shortcuts"), "<Primary>question"),
                     (_("Quit"), "<Primary>q"),
                 ],
@@ -902,6 +910,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
         label.set_text(node.name)
 
     # --- Darstellung ------------------------------------------------------
+
+    def apply_settings(self):
+        """Wendet die gespeicherten Einstellungen an (beim Start und bei jeder Änderung im Dialog)."""
+        current = config.settings()
+        self.editor.set_appearance(
+            font_family=current["editor_font"],
+            font_size_pt=current["editor_font_size"],
+            line_width_chars=current["line_width"],
+            line_spacing=current["line_spacing"],
+        )
+        Adw.StyleManager.get_default().set_color_scheme(
+            {
+                "system": Adw.ColorScheme.DEFAULT,
+                "light": Adw.ColorScheme.FORCE_LIGHT,
+                "dark": Adw.ColorScheme.FORCE_DARK,
+            }[current["color_scheme"]]
+        )
 
     def _apply_style_scheme(self):
         dark = Adw.StyleManager.get_default().get_dark()

@@ -45,6 +45,15 @@ def text(ed):
     return ed.buffer.get_text(*ed.buffer.get_bounds(), True)
 
 
+def wait_until(condition, timeout=3.0):
+    """Wartet (im Schritt-Generator mit 'yield from'), bis condition() wahr ist – höchstens timeout Sekunden.
+    Robuster als feste Pausen, wenn Dateibenachrichtigungen auf einem beschäftigten Rechner länger brauchen."""
+    waited = 0.0
+    while not condition() and waited < timeout:
+        yield 0.1
+        waited += 0.1
+
+
 def read(name):
     return (LIB / name).read_text(encoding="utf-8")
 
@@ -290,11 +299,11 @@ def steps(win, app):
     sheet_b = LIB / "b.md"
     select(sheet_b)
     sheet_b.write_text("Von außen", encoding="utf-8")
-    yield 1.0
+    yield from wait_until(lambda: text(ed) == "Von außen")
     check(text(ed) == "Von außen" and win.get_visible_dialog() is None, "Fremde Änderung wird ohne Rückfrage neu geladen")
 
     ed.buffer.insert_at_cursor("Ich ")
-    yield 1.6
+    yield from wait_until(lambda: read("b.md") == text(ed))
     check(read("b.md") == text(ed) and not ed.in_conflict, "Eigenes Speichern gilt nicht als fremde Änderung")
 
     ed.buffer.insert_at_cursor("tippe")
@@ -313,7 +322,7 @@ def steps(win, app):
     ed.buffer.insert_at_cursor("!")
     mine = text(ed)
     sheet_b.write_text("Fremd 2", encoding="utf-8")  # bevor das Autosave greift
-    yield 0.6
+    yield from wait_until(lambda: ed.in_conflict)
     check(ed.in_conflict and win.get_visible_dialog() is not None, "Konflikt wird auch ohne Speichern erkannt")
     check(read("b.md") == "Fremd 2", "Autosave überschreibt die fremde Änderung nicht")
     answer_dialog("theirs")
@@ -321,24 +330,24 @@ def steps(win, app):
     check(any(p.read_text() == mine for p in conflict_copies()), "Andere Fassung laden: meine liegt als Kopie daneben")
 
     sheet_b.unlink()
-    yield 1.0
+    yield from wait_until(lambda: ed.path is None and win._index_of(sheet_b) is None)
     check(ed.path is None and win._index_of(sheet_b) is None, "Außen gelöschtes Blatt schließt und verschwindet")
 
     select(LIB / "a.md")
     ed.buffer.insert_at_cursor("Rettung")
     mine = text(ed)
     (LIB / "a.md").unlink()
-    yield 1.0
+    yield from wait_until(lambda: (LIB / "a.md").exists())
     check(read("a.md") == mine and ed.path == LIB / "a.md", "Außen gelöscht mit Eingabe: Fassung wird neu gespeichert")
 
     (LIB / "Extern.md").write_text("x")
     (LIB / "ExternGruppe").mkdir()
     (LIB / "ExternGruppe" / "Innen.md").write_text("y")
-    yield 1.2
+    yield from wait_until(lambda: win._index_of(LIB / "Extern.md") is not None and win._index_of(LIB / "ExternGruppe") is not None)
     check(win._index_of(LIB / "Extern.md") is not None, "Neues Blatt von außen erscheint")
     check(win._index_of(LIB / "ExternGruppe") is not None, "Neue Gruppe von außen erscheint")
     (LIB / "ExternGruppe" / "Zwei.md").write_text("z")
-    yield 1.2
+    yield from wait_until(lambda: str(LIB / "ExternGruppe" / "Zwei.md") in repr(win._tree_signature))
     select(LIB / "ExternGruppe")
     win.selection.get_selected_item().set_expanded(True)
     check(win._index_of(LIB / "ExternGruppe" / "Zwei.md") is not None, "Auch neue Gruppen werden beobachtet")
@@ -348,11 +357,11 @@ def steps(win, app):
     # Volltextsuche
     (LIB / "ExternGruppe" / "Fabel.md").write_text("Vorher.\nEs war einmal ein Drache, der schlief.\n")
     (LIB / "Drachenkunde.md").write_text("Nichts hier.")
-    yield 1.0  # Seitenleiste übernimmt die neuen Dateien
+    yield from wait_until(lambda: win._index_of(LIB / "Drachenkunde.md") is not None)
     win.lookup_action("search").activate(None)
     check(win.search_bar.get_search_mode() and win.search_button.get_active(), "Strg+Umschalt+F öffnet die Suche")
     win.search_entry.set_text("drache")
-    yield 0.6  # das Suchfeld wartet kurz, bis nicht mehr getippt wird
+    yield from wait_until(lambda: win.sidebar_stack.get_visible_child_name() == "results")  # Suchfeld wartet kurz
     rows = []
     row = win.results.get_row_at_index(0)
     while row is not None:
@@ -390,7 +399,7 @@ def steps(win, app):
     win.lookup_action("find").activate(None)
     check(bar.get_search_mode() and bar.context.get_highlight(), "Strg+F öffnet die Suchleiste mit Hervorhebung")
     bar.entry.set_text("rot")
-    yield 0.6
+    yield from wait_until(lambda: bar.context.get_occurrences_count() == 3)
 
     def selection():
         bounds = ed.buffer.get_selection_bounds()
@@ -447,6 +456,32 @@ def steps(win, app):
     yield 1.5
     check(not win.is_fullscreen(), "Vollbild endet mit dem Schreibmodus")
     check(not window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape außerhalb des Schreibmodus bleibt unberührt")
+
+    # Einstellungen
+    from gi.repository import Adw
+    from typecase import config
+
+    win.lookup_action("preferences").activate(None)
+    prefs = win.get_visible_dialog()
+    check(prefs is not None and type(prefs).__name__ == "PreferencesDialog", "Strg+Komma öffnet die Einstellungen")
+    check(app.get_accels_for_action("win.preferences") == ["<Control>comma"], "Strg+Komma ist registriert")
+    prefs.font_size.set_value(22)
+    prefs.line_width.set_value(55)
+    prefs.line_spacing.set_selected(2)
+    prefs.color_scheme.set_selected(2)
+    saved = config.settings()
+    check((saved["editor_font_size"], saved["line_width"], saved["line_spacing"]) == (22, 55, "relaxed"), "Änderungen werden sofort gespeichert")
+    check(ed.view.line_width_chars == 55 and ed.view.get_pixels_inside_wrap() == 10, "Breite und Zeilenabstand wirken sofort")
+    check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.FORCE_DARK, "Stil Dunkel wirkt sofort")
+    prefs.system_font.set_active(False)
+    from gi.repository import Pango
+
+    prefs.font_button.set_font_desc(Pango.FontDescription.from_string("Monospace"))
+    check(config.settings()["editor_font"] == "Monospace", "Eigene Schrift wird gespeichert")
+    prefs._reset()
+    check(config.settings() == config.SETTINGS_DEFAULTS, "Zurücksetzen stellt die Voreinstellungen her")
+    check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT, "Stil folgt wieder dem System")
+    prefs.force_close()
 
     # Fenster: Seitenleiste, Vollbild, Tastenkürzel, Über
     shown = win.split.get_show_sidebar()

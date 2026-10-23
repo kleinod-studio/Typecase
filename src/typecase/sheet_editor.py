@@ -21,6 +21,7 @@ _UNREADABLE = object()  # Datei existiert, ist aber kein UTF-8-Text (mehr)
 DEFAULT_FONT_SIZE_PT = 15
 DEFAULT_LINE_WIDTH_CHARS = 70
 MIN_SIDE_MARGIN = 32
+LINE_SPACING_PIXELS = {"compact": 2, "normal": 5, "relaxed": 10}  # Abstand umbrochener Zeilen und Absätze
 
 
 class _EditorView(GtkSource.View):
@@ -180,10 +181,17 @@ class SheetEditor(Gtk.Stack):
         font_family: str | None = None,
         font_size_pt: int = DEFAULT_FONT_SIZE_PT,
         line_width_chars: int = DEFAULT_LINE_WIDTH_CHARS,
+        line_spacing: str = "normal",
     ) -> None:
-        """Schrift und Breite des Textblocks. font_family None = Schrift der Oberfläche."""
-        family = f'font-family: "{font_family}";' if font_family else ""
+        """Schrift, Breite und Zeilenabstand des Textblocks. font_family None = Schrift der Oberfläche."""
+        family = ""
+        if font_family:
+            escaped = font_family.replace("\\", "\\\\").replace('"', '\\"')
+            family = f'font-family: "{escaped}";'
         self._css.load_from_string(f".typecase-editor {{ {family} font-size: {font_size_pt}pt; }}")
+        pixels = LINE_SPACING_PIXELS.get(line_spacing, LINE_SPACING_PIXELS["normal"])
+        self.view.set_pixels_inside_wrap(pixels)
+        self.view.set_pixels_below_lines(pixels)
         self.view.line_width_chars = line_width_chars
         self.view.queue_resize()
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 22:05+0200\n"
+"POT-Creation-Date: 2026-10-23 22:20+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -50,6 +50,69 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "Calm Markdown writing"
+msgstr ""
+
+msgid "Preferences"
+msgstr ""
+
+msgid "Editor"
+msgstr ""
+
+msgid "Font"
+msgstr ""
+
+msgid "Use System Font"
+msgstr ""
+
+msgid "The same font as the rest of the desktop"
+msgstr ""
+
+msgid "Choose Font"
+msgstr ""
+
+msgid "Font Size"
+msgstr ""
+
+msgid "In points"
+msgstr ""
+
+msgid "Text Block"
+msgstr ""
+
+msgid "Line Width"
+msgstr ""
+
+msgid "Maximum characters per line; the text stays centered"
+msgstr ""
+
+msgid "Line Spacing"
+msgstr ""
+
+msgid "Compact"
+msgstr ""
+
+msgid "Normal"
+msgstr ""
+
+msgid "Relaxed"
+msgstr ""
+
+msgid "Appearance"
+msgstr ""
+
+msgid "Style"
+msgstr ""
+
+msgid "Follow System"
+msgstr ""
+
+msgid "Light"
+msgstr ""
+
+msgid "Dark"
+msgstr ""
+
+msgid "Restore Defaults"
 msgstr ""
 
 msgid "No Sheet Open"
@@ -202,9 +265,6 @@ msgid "Close Without Saving"
 msgstr ""
 
 msgid "Rename"
-msgstr ""
-
-msgid "Editor"
 msgstr ""
 
 msgid "Undo"
