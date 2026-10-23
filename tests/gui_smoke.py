@@ -380,6 +380,44 @@ def steps(win, app):
     win.search_entry.emit("stop-search")
     check(not win.search_bar.get_search_mode() and win.sidebar_stack.get_visible_child_name() == "library", "Escape schließt die Suche, Ordnerbaum kommt zurück")
     check(win._index_of(LIB / "ExternGruppe" / "Fabel.md") == win.selection.get_selected(), "Geöffnetes Blatt ist im Baum ausgewählt")
+    check(win.find_bar.get_search_mode() and win.find_bar.entry.get_text() == "Drache", "Treffer übernimmt das Suchwort in die Suchleiste des Blatts")
+    win.find_bar.set_search_mode(False)
+
+    # Suchen und Ersetzen im Blatt
+    bar = win.find_bar
+    ed.buffer.set_text("Rot und rot und ROT, dazu Blau.")
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    win.lookup_action("find").activate(None)
+    check(bar.get_search_mode() and bar.context.get_highlight(), "Strg+F öffnet die Suchleiste mit Hervorhebung")
+    bar.entry.set_text("rot")
+    yield 0.6
+
+    def selection():
+        bounds = ed.buffer.get_selection_bounds()
+        return (bounds[0].get_offset(), bounds[1].get_offset()) if bounds else None
+
+    check(bar.context.get_occurrences_count() == 3, "Alle drei Fundstellen werden gezählt (ohne Groß/klein)")
+    check(selection() == (0, 3) and bar.label.get_text() == "1 of 3", "Erster Treffer ist markiert: 1 von 3")
+    bar.find_next()
+    check(selection() == (8, 11) and bar.label.get_text() == "2 of 3", "Weiter springt zum zweiten Treffer")
+    bar.find_previous()
+    check(selection() == (0, 3), "Zurück springt zum ersten Treffer")
+    bar.find_previous()
+    check(selection() == (16, 19), "Zurück vom ersten springt ans Ende (rundherum)")
+    bar.replace_entry.set_text("Grün")
+    bar.replace()
+    check(text(ed) == "Rot und rot und Grün, dazu Blau.", "Ersetzen ersetzt nur den markierten Treffer")
+    bar.replace_all()
+    check(text(ed) == "Grün und Grün und Grün, dazu Blau.", "Alle ersetzen ersetzt den Rest")
+    ed.buffer.undo()
+    check(text(ed) == "Rot und rot und Grün, dazu Blau.", "Rückgängig nimmt Alle ersetzen in einem Schritt zurück")
+    bar.entry.set_text("Gelb")
+    yield 0.6
+    check(bar.label.get_text() == "No matches" and bar.entry.has_css_class("error"), "Keine Treffer wird angezeigt")
+    win.lookup_action("replace").activate(None)
+    check(bar.replace_toggle.get_active(), "Strg+H öffnet die Leiste mit Ersetzen")
+    bar.entry.emit("stop-search")
+    check(not bar.get_search_mode() and not bar.context.get_highlight(), "Escape schließt die Leiste und entfernt die Hervorhebung")
     select(LIB / "a.md")
 
     # Schreibmodus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape

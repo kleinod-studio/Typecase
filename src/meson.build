@@ -7,6 +7,7 @@ install_data(
     'typecase/main.py',
     'typecase/config.py',
     'typecase/fileio.py',
+    'typecase/find_bar.py',
     'typecase/library.py',
     'typecase/markdown_lists.py',
     'typecase/markdown_style.py',

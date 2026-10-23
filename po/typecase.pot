@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 21:57+0200\n"
+"POT-Creation-Date: 2026-10-23 22:05+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,37 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+msgid "Find"
+msgstr ""
+
+msgid "Previous Match"
+msgstr ""
+
+msgid "Next Match"
+msgstr ""
+
+msgid "Replace"
+msgstr ""
+
+msgid "Replace with"
+msgstr ""
+
+msgid "Replace All"
+msgstr ""
+
+msgid "No matches"
+msgstr ""
+
+#, python-format
+msgid "%(current)s of %(total)s"
+msgstr ""
+
+#, python-format
+msgid "%(count)s match"
+msgid_plural "%(count)s matches"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Calm Markdown writing"
 msgstr ""
@@ -88,6 +119,12 @@ msgstr ""
 
 msgid "Main Menu"
 msgstr ""
+
+#, python-format
+msgid "%(count)s replacement"
+msgid_plural "%(count)s replacements"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Choose Library Folder"
 msgstr ""
@@ -164,12 +201,6 @@ msgstr ""
 msgid "Close Without Saving"
 msgstr ""
 
-#, python-format
-msgid "%(count)s match"
-msgid_plural "%(count)s matches"
-msgstr[0] ""
-msgstr[1] ""
-
 msgid "Rename"
 msgstr ""
 
@@ -183,6 +214,18 @@ msgid "Redo"
 msgstr ""
 
 msgid "New Line Without List Marker"
+msgstr ""
+
+msgid "Indent List Item"
+msgstr ""
+
+msgid "Outdent List Item"
+msgstr ""
+
+msgid "Find and Replace"
+msgstr ""
+
+msgid "Next / Previous Match"
 msgstr ""
 
 msgid "Window"

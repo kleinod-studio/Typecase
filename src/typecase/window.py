@@ -6,6 +6,7 @@ from pathlib import Path
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
+from .find_bar import FindBar
 from .library import Node, create_group, create_sheet, rename, scan
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
@@ -188,8 +189,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
             Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=main_menu, primary=True, tooltip_text=_("Main Menu"))
         )
 
+        self.find_bar = FindBar(self.editor)
+        self.find_bar.connect(
+            "replaced",
+            lambda _bar, count: self._toast(ngettext("%(count)s replacement", "%(count)s replacements", count) % {"count": count}),
+        )
+        self.find_bar.connect("notify::search-mode-enabled", self._on_find_bar_toggled)
+
         view = Adw.ToolbarView()
         view.add_top_bar(header)
+        view.add_top_bar(self.find_bar)
         view.set_content(self.editor)
         self.content_view = view
 
@@ -558,6 +567,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
         escape.connect("key-pressed", self._on_window_key)
         self.add_controller(escape)
 
+        for name, replace in [("find", False), ("replace", True)]:
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", lambda _a, _p, r=replace: self._find_in_sheet(r))
+            self.add_action(action)
+
         search = Gio.SimpleAction.new("search", None)
         search.connect("activate", lambda _a, _p: self._start_search())
         self.add_action(search)
@@ -638,8 +652,18 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 return  # Öffnen fehlgeschlagen; die Meldung kam schon
         if hit.offset >= 0:
             start, end = hit.snippet_match
+            self.find_bar.open(hit.snippet[start:end], focus=False)  # alle Fundstellen im Blatt hervorheben
             self.editor.show_match(hit.offset, end - start)
         self.editor.focus_editor()
+
+    def _find_in_sheet(self, replace: bool):
+        if self.editor.path is None:
+            return
+        self.find_bar.open(replace=replace)
+
+    def _on_find_bar_toggled(self, bar, _pspec):
+        if self.writing_mode:
+            self.content_view.set_reveal_top_bars(bar.get_search_mode())
 
     # --- Schreibmodus -------------------------------------------------------
 
@@ -672,7 +696,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         if y < 8:
             self.content_view.set_reveal_top_bars(True)
-        elif y > 120:
+        elif y > 120 and not self.find_bar.get_search_mode():
             self.content_view.set_reveal_top_bars(False)
 
     def _on_window_key(self, _controller, keyval, _keycode, _state):
@@ -699,6 +723,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Undo"), "<Primary>z"),
                     (_("Redo"), "<Primary><Shift>z"),
                     (_("New Line Without List Marker"), "<Shift>Return"),
+                    (_("Indent List Item"), "Tab"),
+                    (_("Outdent List Item"), "<Shift>Tab"),
+                    (_("Find"), "<Primary>f"),
+                    (_("Find and Replace"), "<Primary>h"),
+                    (_("Next / Previous Match"), "Return <Shift>Return"),
                 ],
             ),
             (

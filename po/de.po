@@ -4,12 +4,43 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 21:57+0200\n"
+"POT-Creation-Date: 2026-10-23 22:05+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Find"
+msgstr "Suchen"
+
+msgid "Previous Match"
+msgstr "Vorheriger Treffer"
+
+msgid "Next Match"
+msgstr "Nächster Treffer"
+
+msgid "Replace"
+msgstr "Ersetzen"
+
+msgid "Replace with"
+msgstr "Ersetzen durch"
+
+msgid "Replace All"
+msgstr "Alle ersetzen"
+
+msgid "No matches"
+msgstr "Keine Treffer"
+
+#, python-format
+msgid "%(current)s of %(total)s"
+msgstr "%(current)s von %(total)s"
+
+#, python-format
+msgid "%(count)s match"
+msgid_plural "%(count)s matches"
+msgstr[0] "%(count)s Treffer"
+msgstr[1] "%(count)s Treffer"
 
 msgid "Calm Markdown writing"
 msgstr "Ruhiges Schreiben in Markdown"
@@ -83,6 +114,12 @@ msgstr "Über Typecase"
 
 msgid "Main Menu"
 msgstr "Hauptmenü"
+
+#, python-format
+msgid "%(count)s replacement"
+msgid_plural "%(count)s replacements"
+msgstr[0] "%(count)s Ersetzung"
+msgstr[1] "%(count)s Ersetzungen"
 
 msgid "Choose Library Folder"
 msgstr "Bibliotheksordner wählen"
@@ -168,12 +205,6 @@ msgstr "Weiterschreiben"
 msgid "Close Without Saving"
 msgstr "Ohne Sichern schließen"
 
-#, python-format
-msgid "%(count)s match"
-msgid_plural "%(count)s matches"
-msgstr[0] "%(count)s Treffer"
-msgstr[1] "%(count)s Treffer"
-
 msgid "Rename"
 msgstr "Umbenennen"
 
@@ -188,6 +219,18 @@ msgstr "Wiederholen"
 
 msgid "New Line Without List Marker"
 msgstr "Neue Zeile ohne Listenzeichen"
+
+msgid "Indent List Item"
+msgstr "Listenpunkt einrücken"
+
+msgid "Outdent List Item"
+msgstr "Listenpunkt ausrücken"
+
+msgid "Find and Replace"
+msgstr "Suchen und Ersetzen"
+
+msgid "Next / Previous Match"
+msgstr "Nächster / vorheriger Treffer"
 
 msgid "Window"
 msgstr "Fenster"
