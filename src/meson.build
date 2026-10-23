@@ -10,6 +10,7 @@ python.install_sources(
     'typecase/library.py',
     'typecase/markdown_lists.py',
     'typecase/sheet_editor.py',
+    'typecase/textstats.py',
     'typecase/window.py',
   ],
   subdir: 'typecase',

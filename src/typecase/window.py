@@ -1,4 +1,6 @@
+import locale
 from gettext import gettext as _
+from gettext import ngettext
 from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
@@ -38,6 +40,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._build_ui()
         self._setup_actions()
         self.editor.connect("save-failed", self._on_save_failed)
+        self.editor.connect("counts-changed", self._on_counts_changed)
         self.connect("close-request", self._on_close_request)
 
         style = Adw.StyleManager.get_default()
@@ -327,6 +330,20 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     break
         self.selection.set_selected(position)
         self._ignore_selection = False
+
+    def _on_counts_changed(self, _editor, words, characters):
+        if self.editor.path is None:
+            self.content_title.set_subtitle("")
+            return
+
+        def number(n):
+            return locale.format_string("%d", n, grouping=True)  # 1.234 statt 1234
+
+        self.content_title.set_subtitle(
+            ngettext("%(count)s word", "%(count)s words", words) % {"count": number(words)}
+            + " · "
+            + ngettext("%(count)s character", "%(count)s characters", characters) % {"count": number(characters)}
+        )
 
     def _on_save_failed(self, _editor, message):
         self.toasts.add_toast(Adw.Toast(title=_("Could not save: %s") % message, priority=Adw.ToastPriority.HIGH))

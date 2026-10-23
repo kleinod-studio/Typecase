@@ -10,6 +10,7 @@ import stat
 
 from typecase.fileio import atomic_write_text, read_text
 from typecase.markdown_lists import on_enter
+from typecase.textstats import count_characters, count_words
 from typecase.library import create_group, create_sheet, rename, scan, sheet_filename, validate_name
 
 
@@ -136,6 +137,23 @@ class ListContinuationTest(unittest.TestCase):
 
     def test_split_in_the_middle_continues(self):
         self.assertEqual(on_enter("- Anfang Ende", 8), ("continue", "- "))
+
+
+class TextStatsTest(unittest.TestCase):
+    def test_words(self):
+        self.assertEqual(count_words(""), 0)
+        self.assertEqual(count_words("Hallo Welt"), 2)
+        self.assertEqual(count_words("# Überschrift\n\n- **fett** und *kursiv*"), 4)
+        self.assertEqual(count_words("E-Mail, geht's? 2026!"), 3)
+        self.assertEqual(count_words("  ---  > *  "), 0)
+        self.assertEqual(count_words("1. Eins\n2) Zwei\n  10. Zehn\n> 3. Zitat"), 4)
+        self.assertEqual(count_words("Im Jahr 2026 waren es 3. Plätze"), 7)
+
+    def test_characters(self):
+        self.assertEqual(count_characters(""), 0)
+        self.assertEqual(count_characters("ab c"), 4)
+        self.assertEqual(count_characters("a\nb\r\nc"), 3)
+        self.assertEqual(count_characters("Ä😀"), 2)
 
 
 class AtomicWriteTest(unittest.TestCase):

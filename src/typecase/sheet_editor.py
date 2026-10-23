@@ -5,8 +5,10 @@ from gi.repository import Adw, Gdk, GLib, GObject, Gtk, GtkSource
 
 from .fileio import atomic_write_text, read_text
 from .markdown_lists import on_enter
+from .textstats import count_characters, count_words
 
 AUTOSAVE_DELAY_MS = 800
+COUNT_DELAY_MS = 150  # Zählen erst, wenn kurz nicht getippt wird (lange Texte)
 
 
 class SheetEditor(Gtk.Stack):
@@ -15,7 +17,10 @@ class SheetEditor(Gtk.Stack):
     Ungesicherte Eingaben gehen nie verloren: wer das Blatt wechselt oder das Fenster
     schließt, ruft zuerst flush() auf und macht nur weiter, wenn es True liefert."""
 
-    __gsignals__ = {"save-failed": (GObject.SignalFlags.RUN_FIRST, None, (str,))}
+    __gsignals__ = {
+        "save-failed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "counts-changed": (GObject.SignalFlags.RUN_FIRST, None, (int, int)),  # Wörter, Zeichen
+    }
 
     def __init__(self):
         super().__init__()
@@ -23,6 +28,7 @@ class SheetEditor(Gtk.Stack):
         self._dirty = False
         self._loading = False
         self._timer = 0
+        self._count_timer = 0
 
         empty = Adw.StatusPage(
             icon_name="document-edit-symbolic",
@@ -62,6 +68,7 @@ class SheetEditor(Gtk.Stack):
         self.path = path
         self._dirty = False
         self.set_visible_child_name("editor")
+        self._emit_counts()
 
     def close_sheet(self) -> None:
         """Schließt das Blatt ohne zu speichern (nach flush() oder bewusstem Verwerfen)."""
@@ -70,6 +77,7 @@ class SheetEditor(Gtk.Stack):
         self._dirty = False
         self._set_text("")
         self.set_visible_child_name("empty")
+        self._emit_counts()
 
     def focus_editor(self) -> None:
         if self.path is not None:
@@ -101,6 +109,9 @@ class SheetEditor(Gtk.Stack):
         self._dirty = True
         self._cancel_timer()
         self._timer = GLib.timeout_add(AUTOSAVE_DELAY_MS, self._on_autosave)
+        if self._count_timer:
+            GLib.source_remove(self._count_timer)
+        self._count_timer = GLib.timeout_add(COUNT_DELAY_MS, self._emit_counts)
 
     def _on_autosave(self):
         self._timer = 0
@@ -112,6 +123,16 @@ class SheetEditor(Gtk.Stack):
         if self._timer:
             GLib.source_remove(self._timer)
             self._timer = 0
+
+    # --- Zählen ------------------------------------------------------------
+
+    def _emit_counts(self):
+        if self._count_timer:
+            GLib.source_remove(self._count_timer)
+            self._count_timer = 0
+        text = self.buffer.get_text(*self.buffer.get_bounds(), True)
+        self.emit("counts-changed", count_words(text), count_characters(text))
+        return GLib.SOURCE_REMOVE
 
     # --- Listen fortsetzen --------------------------------------------------
 

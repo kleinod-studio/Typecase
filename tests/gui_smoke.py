@@ -134,6 +134,7 @@ def steps(win, app):
     select(inner)
     win._do_delete(win._selected_node())
     check(not inner.exists() and ed.path is None, "Gelöschtes offenes Blatt verschwindet, Editor schließt")
+    check(win.content_title.get_subtitle() == "", "Ohne offenes Blatt kein Zähler")
     select(LIB / "Bücher")
     win._do_delete(win._selected_node())
     check(not (LIB / "Bücher").exists(), "Gruppe wird gelöscht")
@@ -153,6 +154,8 @@ def steps(win, app):
         return enter.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType(0))
 
     ed.buffer.insert_at_cursor("1. Eins")
+    yield 0.4  # Zähler aktualisiert sich kurz nach dem Tippen
+    check(win.content_title.get_subtitle() == "1 word · 7 characters", "Zähler zeigt Wörter und Zeichen")
     check(press_enter() and text(ed) == "1. Eins\n2. ", "Eingabetaste setzt nummerierte Liste fort")
     ed.buffer.insert_at_cursor("Zwei")
     press_enter()
