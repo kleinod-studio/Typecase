@@ -28,6 +28,31 @@ def _signature(nodes: list[Node]) -> tuple:
     return tuple((node.path, node.is_group, _signature(node.children) if node.is_group else ()) for node in nodes)
 
 
+_CSS_INSTALLED = False
+
+
+def _install_css():
+    """Aussehen der schwebenden Formatierungsleiste; Farben aus dem libadwaita-Schema (hell/dunkel)."""
+    global _CSS_INSTALLED
+    if _CSS_INSTALLED:
+        return
+    provider = Gtk.CssProvider()
+    provider.load_from_string(
+        """
+        .format-bar {
+            background-color: var(--popover-bg-color);
+            color: var(--popover-fg-color);
+            border-radius: 14px;
+            box-shadow: 0 0 0 1px alpha(currentColor, 0.1), 0 3px 10px alpha(black, 0.2);
+            margin: 6px;
+        }
+        .format-bar > viewport > box { padding: 4px 6px; }
+        """
+    )
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    _CSS_INSTALLED = True
+
+
 def _group_paths(nodes: list[Node]):
     for node in nodes:
         if node.is_group:
@@ -75,7 +100,6 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.apply_settings()
         self._apply_style_scheme()
 
-        self.inspector_split.set_show_sidebar(config.load().get("inspector_visible") is True)
         self._open_library(config.get_library_path(), restore=True)
 
     # --- Aufbau -----------------------------------------------------------
@@ -245,8 +269,20 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view = Adw.ToolbarView()
         view.add_top_bar(header)
         view.add_top_bar(self.find_bar)
-        view.set_content(self.editor)
-        view.add_bottom_bar(self._build_format_bar())
+        # Formatierungsleiste schwebt als Karte über dem Text – im Editor und im Fokus-Modus gleich.
+        self.format_revealer = Gtk.Revealer(
+            child=self._build_format_bar(),
+            transition_type=Gtk.RevealerTransitionType.CROSSFADE,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.END,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
+        )
+        editor_area = Gtk.Overlay(child=self.editor)
+        editor_area.add_overlay(self.format_revealer)
+        view.set_content(editor_area)
+        self.editor.connect("metadata-changed", lambda _e: self._update_format_bar())  # Blatt geöffnet/geschlossen
         self.content_view = view
 
         # Seitenfenster rechts für die Meta-Informationen (GNOME-Muster: zweite Seitenleiste am Ende).
@@ -274,7 +310,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _build_format_bar(self) -> Gtk.Widget:
         """Leiste unten im Editor: Markdown-Formatierungen per Klick, ohne die Syntax kennen zu müssen."""
-        bar = Gtk.Box(spacing=2, halign=Gtk.Align.CENTER, margin_top=4, margin_bottom=4)
+        bar = Gtk.Box(spacing=2, halign=Gtk.Align.CENTER)
 
         def button(kind, tooltip, icon=None, label=None):
             widget = Gtk.Button(
@@ -311,7 +347,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("codeblock", _("Code Block"), label="{ }")
         self.format_bar = bar
         # Bei schmalem Fenster seitlich scrollbar, statt den Editor breiter zu machen.
+        _install_css()
         return Gtk.ScrolledWindow(
+            css_classes=["format-bar"],
             child=bar,
             hscrollbar_policy=Gtk.PolicyType.AUTOMATIC,
             vscrollbar_policy=Gtk.PolicyType.NEVER,
@@ -382,8 +420,6 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _save_state(self):
         """Merkt Fenstergröße, aufgeklappte Gruppen und das offene Blatt für den nächsten Start."""
         values = {"window_maximized": self.is_maximized()}
-        if not self.focus_mode:
-            values["inspector_visible"] = self.inspector_split.get_show_sidebar()
         if not self.is_maximized() and not self.is_fullscreen() and self.get_width() > 0 and self.get_height() > 0:
             values.update(window_width=self.get_width(), window_height=self.get_height())
         if self.library_path is not None:
@@ -880,7 +916,6 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.split.set_show_sidebar(False)
             self.inspector_split.set_show_sidebar(False)
             self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
-            self.content_view.set_extend_content_to_bottom_edge(True)
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
             self.editor.focus_editor()
@@ -891,10 +926,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 split.set_pin_sidebar(False)
             self.content_view.set_reveal_top_bars(True)
             self.content_view.set_extend_content_to_top_edge(False)
-            self.content_view.set_extend_content_to_bottom_edge(False)
             self.split.set_show_sidebar(sidebar)
             if not was_fullscreen:
                 self.unfullscreen()
+
+    def _update_format_bar(self):
+        self.format_revealer.set_reveal_child(self._format_bar_wanted() and self.editor.path is not None)
 
     def _format_bar_wanted(self) -> bool:
         """Formatierungsleiste dauerhaft zeigen? Editor und Fokus-Modus haben je eine eigene Einstellung."""
@@ -912,9 +949,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if not self._format_bar_wanted():
             height = self.content_view.get_height()
             if y > height - 8:
-                self.content_view.set_reveal_bottom_bars(True)
+                self.format_revealer.set_reveal_child(self.editor.path is not None)
             elif y < height - 120:
-                self.content_view.set_reveal_bottom_bars(False)
+                self.format_revealer.set_reveal_child(False)
 
     def _on_window_key(self, _controller, keyval, _keycode, _state):
         if keyval == Gdk.KEY_Escape and self.focus_mode and self.get_visible_dialog() is None:
@@ -1243,7 +1280,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 "dark": Adw.ColorScheme.FORCE_DARK,
             }[current["color_scheme"]]
         )
-        self.content_view.set_reveal_bottom_bars(self._format_bar_wanted())
+        self._update_format_bar()
+        self.editor.view.set_underline_caret(config.load().get("underline_caret") is not False)
+        data = config.load()
+        self.editor.view.set_focus_effects(
+            typewriter=self.focus_mode and data.get("focus_typewriter") is not False,
+            dim_others=self.focus_mode and data.get("focus_dim") is not False,
+        )
         self.inspector.refresh()  # Voreinstellungen für Autor und Sprache können sich geändert haben
 
     def _apply_style_scheme(self):

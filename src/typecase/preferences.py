@@ -203,6 +203,15 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         self.format_bar.connect("notify::active", self._on_format_bar_changed)
         tools.add(self.format_bar)
+        self.underline_caret = Adw.SwitchRow(
+            title=_("Underline Cursor"),
+            subtitle=_("Show the text cursor as a line below the character instead of a vertical bar"),
+            active=config.load().get("underline_caret") is not False,
+        )
+        self.underline_caret.connect(
+            "notify::active", lambda row, _p: (config.update(underline_caret=row.get_active()), self._apply())
+        )
+        tools.add(self.underline_caret)
         self.editor_page.add(tools)
 
         # Eigene Werkzeug-Einstellung im Fokus-Modus (unabhängig von "Einstellungen des Editors übernehmen").
@@ -214,6 +223,14 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         self.focus_format_bar.connect("notify::active", self._on_focus_format_bar_changed)
         focus_tools.add(self.focus_format_bar)
+        for key, title, subtitle in [
+            ("focus_typewriter", _("Typewriter Scrolling"), _("Keep the line you are writing in the middle of the screen")),
+            ("focus_dim", _("Dim Surroundings"), _("Fade everything except the paragraph you are writing")),
+        ]:
+            row = Adw.SwitchRow(title=title, subtitle=subtitle, active=config.load().get(key) is not False)
+            row.connect("notify::active", lambda r, _p, k=key: (config.update(**{k: r.get_active()}), self._apply()))
+            focus_tools.add(row)
+            setattr(self, key, row)
         self.focus_page.add(focus_tools)
 
     def _on_focus_format_bar_changed(self, *_args):

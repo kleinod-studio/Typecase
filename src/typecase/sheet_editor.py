@@ -36,16 +36,104 @@ class _EditorView(GtkSource.View):
         self.line_width_chars = DEFAULT_LINE_WIDTH_CHARS
         self._char_width_cache = (None, 0.0)
         self.styler = None  # liefert die Zeilen der Codeblöcke für den Rahmen
+        # Text-Mauszeiger auch über den breiten Rändern, damit man die Schreibmarke gezielt setzen kann.
+        self.set_cursor_from_name("text")
+
+        # Fokus-Hilfen (nur im Fokus-Modus): aktuelle Zeile mittig halten, Umgebung abblenden.
+        self.typewriter = False
+        self.dim_others = False
+        self._keyboard_moved = False
+        self._margins = (kwargs.get("top_margin", 0), kwargs.get("bottom_margin", 0))
+        keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", lambda *_a: setattr(self, "_keyboard_moved", True) or False)
+        self.add_controller(keys)
+        self.get_buffer().connect("changed", lambda _b: self._keep_centered(force=True))
+        self.get_buffer().connect(
+            "mark-set", lambda b, _i, mark: mark == b.get_insert() and self._keep_centered()
+        )
+
+        # Schreibmarke als Unterstrich: GTK kann das nicht selbst, daher zeichnen wir sie (blinkend).
+        self.underline_caret = False
+        self._caret_on = True
+        self._blink_timer = 0
+        self._blink_started = 0
+        buffer = self.get_buffer()
+        buffer.connect("mark-set", lambda _b, _i, mark: mark == buffer.get_insert() and self._restart_blink())
+        buffer.connect("changed", lambda _b: self._restart_blink())
+        focus = Gtk.EventControllerFocus()
+        focus.connect("enter", lambda _c: self._restart_blink())
+        focus.connect("leave", lambda _c: self.queue_draw())
+        self.add_controller(focus)
+
+    def set_focus_effects(self, typewriter: bool, dim_others: bool) -> None:
+        self.typewriter = typewriter
+        self.dim_others = dim_others
+        self.queue_resize()
+        self.queue_draw()
+        if typewriter:
+            GLib.idle_add(self._center_cursor)
+
+    def _keep_centered(self, force: bool = False):
+        """Schreibmaschinen-Modus: nur beim Tippen und bei Tastatur-Bewegung zentrieren, damit
+        Markieren mit der Maus nicht springt."""
+        if self.dim_others:
+            self.queue_draw()  # der helle Absatz folgt der Schreibmarke
+        if self.typewriter and (force or self._keyboard_moved):
+            self._keyboard_moved = False
+            GLib.idle_add(self._center_cursor)
+        return False
+
+    def _center_cursor(self):
+        self.scroll_to_mark(self.get_buffer().get_insert(), 0.0, True, 0.0, 0.5)
+        return False
+
+    def set_underline_caret(self, enabled: bool) -> None:
+        self.underline_caret = enabled
+        self.set_cursor_visible(not enabled)
+        self._restart_blink()
+
+    def _restart_blink(self):
+        """Nach Tippen oder Bewegen sichtbar bleiben und neu zu blinken beginnen (wie die normale Schreibmarke)."""
+        self._caret_on = True
+        if self._blink_timer:
+            GLib.source_remove(self._blink_timer)
+            self._blink_timer = 0
+        settings = Gtk.Settings.get_default()
+        if self.underline_caret and settings.props.gtk_cursor_blink:
+            self._blink_started = GLib.get_monotonic_time()
+            self._blink_timer = GLib.timeout_add(max(100, settings.props.gtk_cursor_blink_time // 2), self._on_blink)
+        self.queue_draw()
+        return False
+
+    def _on_blink(self):
+        timeout_us = Gtk.Settings.get_default().props.gtk_cursor_blink_timeout * 1_000_000
+        if GLib.get_monotonic_time() - self._blink_started > timeout_us:
+            self._caret_on = True  # nach einer Weile ohne Eingabe ruhig stehen bleiben
+            self._blink_timer = 0
+            self.queue_draw()
+            return GLib.SOURCE_REMOVE
+        self._caret_on = not self._caret_on
+        self.queue_draw()
+        return GLib.SOURCE_CONTINUE
 
     def do_size_allocate(self, width, height, baseline):
         side = max(MIN_SIDE_MARGIN, int((width - self.line_width_chars * self._char_width()) / 2))
         if side != self.get_left_margin():
             self.set_left_margin(side)
             self.set_right_margin(side)
+        # Schreibmaschinen-Modus: halbe Höhe Luft oben und unten, damit auch erste und letzte Zeile mittig stehen können.
+        top, bottom = (height // 2, height // 2) if self.typewriter else self._margins
+        if (top, bottom) != (self.get_top_margin(), self.get_bottom_margin()):
+            self.set_top_margin(top)
+            self.set_bottom_margin(bottom)
         GtkSource.View.do_size_allocate(self, width, height, baseline)
 
     def do_snapshot_layer(self, layer, snapshot):
         GtkSource.View.do_snapshot_layer(self, layer, snapshot)
+        if layer == Gtk.TextViewLayer.ABOVE_TEXT:
+            self._snapshot_dimming(snapshot)
+            self._snapshot_caret(snapshot)
+            return
         if layer != Gtk.TextViewLayer.BELOW_TEXT or self.styler is None or not self.styler.code_blocks:
             return
         dark = self.styler.dark
@@ -67,6 +155,41 @@ class _EditorView(GtkSource.View):
             snapshot.append_color(fill, rect)
             snapshot.pop()
             snapshot.append_border(rounded, [1, 1, 1, 1], [border, border, border, border])
+
+    def _snapshot_dimming(self, snapshot):
+        """Umgebung abblenden: alles außer dem aktuellen Absatz mit der Hintergrundfarbe überdecken."""
+        if not self.dim_others:
+            return
+        buffer = self.get_buffer()
+        scheme = buffer.get_style_scheme()
+        style = scheme.get_style("text") if scheme else None
+        background = Gdk.RGBA()
+        if not (style and style.props.background and background.parse(style.props.background)):
+            return
+        background.alpha = 0.6
+        line_start = buffer.get_iter_at_mark(buffer.get_insert())
+        line_start.set_line_offset(0)
+        top, height = self.get_line_yrange(line_start)
+        visible = self.get_visible_rect()
+        if top > visible.y:
+            snapshot.append_color(background, Graphene.Rect().init(visible.x, visible.y, visible.width, top - visible.y))
+        bottom = top + height
+        if bottom < visible.y + visible.height:
+            snapshot.append_color(
+                background, Graphene.Rect().init(visible.x, bottom, visible.width, visible.y + visible.height - bottom)
+            )
+
+    def _snapshot_caret(self, snapshot):
+        buffer = self.get_buffer()
+        if not (self.underline_caret and self._caret_on and self.has_focus() and self.get_editable()):
+            return
+        if buffer.get_has_selection():
+            return  # mit Markierung genügt die Markierung
+        where = self.get_iter_location(buffer.get_iter_at_mark(buffer.get_insert()))
+        width = where.width if where.width > 2 else self._char_width()
+        thickness = 2
+        rect = Graphene.Rect().init(where.x, where.y + where.height - thickness, width, thickness)
+        snapshot.append_color(self.get_color(), rect)
 
     def _char_width(self) -> float:
         context = self.get_pango_context()

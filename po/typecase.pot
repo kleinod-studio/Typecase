@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 23:47+0200\n"
+"POT-Creation-Date: 2026-10-24 00:15+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -229,10 +229,29 @@ msgstr ""
 msgid "Buttons below the text for bold, lists, headings and more"
 msgstr ""
 
+msgid "Underline Cursor"
+msgstr ""
+
+msgid ""
+"Show the text cursor as a line below the character instead of a vertical bar"
+msgstr ""
+
 msgid "Show Formatting Bar"
 msgstr ""
 
 msgid "When off, it appears when you move the pointer to the bottom edge"
+msgstr ""
+
+msgid "Typewriter Scrolling"
+msgstr ""
+
+msgid "Keep the line you are writing in the middle of the screen"
+msgstr ""
+
+msgid "Dim Surroundings"
+msgstr ""
+
+msgid "Fade everything except the paragraph you are writing"
 msgstr ""
 
 msgid "No Sheet Open"
