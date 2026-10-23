@@ -1,3 +1,7 @@
+import gettext
+import locale
+from pathlib import Path
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -9,6 +13,21 @@ from gi.repository import Adw, Gio, GtkSource
 from .window import TypecaseWindow
 
 APP_ID = "studio.kleinod.Typecase"
+GETTEXT_DOMAIN = "typecase"
+
+
+def _setup_translations():
+    """Bindet die Übersetzungen: erst ./locale im Quellordner (run-dev.sh), dann <prefix>/share/locale."""
+    here = Path(__file__).resolve()
+    candidates = [here.parents[2] / "locale", here.parents[4] / "share" / "locale"] if len(here.parents) > 4 else []
+    localedir = next((str(path) for path in candidates if path.is_dir()), None)
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error:
+        pass  # Unbekannte Locale: Texte bleiben englisch.
+    for module in (gettext, locale):
+        module.bindtextdomain(GETTEXT_DOMAIN, localedir)
+    gettext.textdomain(GETTEXT_DOMAIN)
 
 
 class TypecaseApplication(Adw.Application):
@@ -28,4 +47,5 @@ class TypecaseApplication(Adw.Application):
 
 
 def main():
+    _setup_translations()
     return TypecaseApplication().run(None)

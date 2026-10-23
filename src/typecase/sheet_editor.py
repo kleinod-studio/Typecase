@@ -1,9 +1,10 @@
 from gettext import gettext as _
 from pathlib import Path
 
-from gi.repository import Adw, GLib, GObject, Gtk, GtkSource
+from gi.repository import Adw, Gdk, GLib, GObject, Gtk, GtkSource
 
 from .fileio import atomic_write_text, read_text
+from .markdown_lists import on_enter
 
 AUTOSAVE_DELAY_MS = 800
 
@@ -42,6 +43,9 @@ class SheetEditor(Gtk.Stack):
             right_margin=32,
             monospace=False,
         )
+        keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        keys.connect("key-pressed", self._on_key_pressed)
+        self.view.add_controller(keys)
         scrolled = Gtk.ScrolledWindow(child=self.view, hexpand=True, vexpand=True)
 
         self.add_named(empty, "empty")
@@ -108,6 +112,39 @@ class SheetEditor(Gtk.Stack):
         if self._timer:
             GLib.source_remove(self._timer)
             self._timer = 0
+
+    # --- Listen fortsetzen --------------------------------------------------
+
+    def _on_key_pressed(self, _controller, keyval, _keycode, state):
+        if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+            return False
+        modifiers = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SHIFT_MASK
+        if state & modifiers or self.path is None or self.buffer.get_has_selection():
+            return False
+        return self._continue_list()
+
+    def _continue_list(self) -> bool:
+        buffer = self.buffer
+        cursor = buffer.get_iter_at_mark(buffer.get_insert())
+        line_start = cursor.copy()
+        line_start.set_line_offset(0)
+        line_end = cursor.copy()
+        if not line_end.ends_line():
+            line_end.forward_to_line_end()
+
+        decision = on_enter(buffer.get_text(line_start, line_end, False), cursor.get_line_offset())
+        if decision is None:
+            return False
+        action, prefix = decision
+
+        buffer.begin_user_action()  # Ein Schritt für Rückgängig
+        if action == "end":
+            buffer.delete(line_start, line_end)
+        else:
+            buffer.insert_at_cursor("\n" + prefix)
+        buffer.end_user_action()
+        self.view.scroll_mark_onscreen(buffer.get_insert())
+        return True
 
     # --- intern -----------------------------------------------------------
 

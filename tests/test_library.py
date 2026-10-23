@@ -9,6 +9,7 @@ import os
 import stat
 
 from typecase.fileio import atomic_write_text, read_text
+from typecase.markdown_lists import on_enter
 from typecase.library import create_group, create_sheet, rename, scan, sheet_filename, validate_name
 
 
@@ -103,6 +104,38 @@ class FileOperationsTest(unittest.TestCase):
             with self.assertRaises(ValueError, msg=repr(bad)):
                 validate_name(bad)
         self.assertEqual(sheet_filename("  Titel "), "Titel.md")
+
+
+class ListContinuationTest(unittest.TestCase):
+    def test_bullets_keep_their_marker(self):
+        for marker in ["-", "*", "+"]:
+            line = f"{marker} Eintrag"
+            self.assertEqual(on_enter(line, len(line)), ("continue", f"{marker} "))
+
+    def test_numbers_count_up(self):
+        self.assertEqual(on_enter("1. Eins", 7), ("continue", "2. "))
+        self.assertEqual(on_enter("9) Neun", 7), ("continue", "10) "))
+
+    def test_indentation_is_kept(self):
+        self.assertEqual(on_enter("    - Unterpunkt", 16), ("continue", "    - "))
+
+    def test_task_list_and_quote(self):
+        self.assertEqual(on_enter("- [x] erledigt", 14), ("continue", "- [ ] "))
+        self.assertEqual(on_enter("> Zitat", 7), ("continue", "> "))
+
+    def test_empty_item_ends_list(self):
+        self.assertEqual(on_enter("- ", 2), ("end", ""))
+        self.assertEqual(on_enter("3. ", 3), ("end", ""))
+        self.assertEqual(on_enter("  - [ ] ", 8), ("end", ""))
+
+    def test_cursor_inside_marker_or_plain_text_is_untouched(self):
+        self.assertIsNone(on_enter("- Eintrag", 1))
+        self.assertIsNone(on_enter("Normaler Text", 5))
+        self.assertIsNone(on_enter("**fett** und mehr", 17))
+        self.assertIsNone(on_enter("-kein Listenpunkt", 5))
+
+    def test_split_in_the_middle_continues(self):
+        self.assertEqual(on_enter("- Anfang Ende", 8), ("continue", "- "))
 
 
 class AtomicWriteTest(unittest.TestCase):

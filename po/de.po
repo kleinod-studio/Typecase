@@ -1,0 +1,129 @@
+# German translation for Typecase.
+# This file is distributed under the same license as the Typecase package.
+msgid ""
+msgstr ""
+"Project-Id-Version: typecase\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-23 19:53+0200\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "No Sheet Open"
+msgstr "Kein Blatt geöffnet"
+
+msgid "Select a sheet in the library to start writing."
+msgstr "Wähle ein Blatt in der Bibliothek, um zu schreiben."
+
+msgid "Library"
+msgstr "Bibliothek"
+
+msgid "Choose Library Folder…"
+msgstr "Bibliotheksordner wählen …"
+
+msgid "New Sheet"
+msgstr "Neues Blatt"
+
+msgid "New Group"
+msgstr "Neue Gruppe"
+
+msgid "New…"
+msgstr "Neu …"
+
+msgid "Rename…"
+msgstr "Umbenennen …"
+
+msgid "Move to Trash…"
+msgstr "In den Papierkorb …"
+
+msgid "No Library Yet"
+msgstr "Noch keine Bibliothek"
+
+msgid ""
+"Choose a folder. Its subfolders become groups, its .md files become sheets."
+msgstr ""
+"Wähle einen Ordner. Seine Unterordner werden zu Gruppen, seine .md-Dateien "
+"zu Blättern."
+
+msgid "Choose Library Folder"
+msgstr "Bibliotheksordner wählen"
+
+msgid "not a UTF-8 text file"
+msgstr "keine UTF-8-Textdatei"
+
+#, python-format
+msgid "Could not open “%(name)s”: %(reason)s"
+msgstr "„%(name)s“ konnte nicht geöffnet werden: %(reason)s"
+
+#, python-format
+msgid "Could not save: %s"
+msgstr "Speichern fehlgeschlagen: %s"
+
+msgid "Could Not Save"
+msgstr "Speichern fehlgeschlagen"
+
+msgid ""
+"The latest changes to this sheet could not be saved. Closing now would lose "
+"them."
+msgstr ""
+"Die letzten Änderungen an diesem Blatt konnten nicht gesichert werden. Beim "
+"Schließen gingen sie verloren."
+
+msgid "Keep Editing"
+msgstr "Weiterschreiben"
+
+msgid "Close Without Saving"
+msgstr "Ohne Sichern schließen"
+
+msgid "Untitled"
+msgstr "Unbenannt"
+
+#, python-format
+msgid "Could not create the sheet: %s"
+msgstr "Das Blatt konnte nicht angelegt werden: %s"
+
+#, python-format
+msgid "Could not create the group: %s"
+msgstr "Die Gruppe konnte nicht angelegt werden: %s"
+
+msgid "Rename Group"
+msgstr "Gruppe umbenennen"
+
+msgid "Rename Sheet"
+msgstr "Blatt umbenennen"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Rename"
+msgstr "Umbenennen"
+
+msgid "This name is not allowed."
+msgstr "Dieser Name ist nicht erlaubt."
+
+#, python-format
+msgid "“%s” already exists."
+msgstr "„%s“ gibt es schon."
+
+#, python-format
+msgid "Could not rename: %s"
+msgstr "Umbenennen fehlgeschlagen: %s"
+
+#, python-format
+msgid "Move “%s” to the Trash?"
+msgstr "„%s“ in den Papierkorb legen?"
+
+msgid "The group and everything in it will be moved to the trash."
+msgstr "Die Gruppe und alles darin wird in den Papierkorb gelegt."
+
+msgid "The sheet will be moved to the trash."
+msgstr "Das Blatt wird in den Papierkorb gelegt."
+
+msgid "Move to Trash"
+msgstr "In den Papierkorb"
+
+#, python-format
+msgid "Could not move to the trash: %s"
+msgstr "Verschieben in den Papierkorb fehlgeschlagen: %s"

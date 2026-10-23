@@ -23,7 +23,13 @@ def _make_store(nodes: list[Node]) -> Gio.ListStore:
 
 class TypecaseWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
-        super().__init__(title="Typecase", default_width=1000, default_height=700, **kwargs)
+        state = config.load()
+        width, height = state.get("window_width"), state.get("window_height")
+        if not (isinstance(width, int) and isinstance(height, int) and width >= 400 and height >= 300):
+            width, height = 1000, 700
+        super().__init__(title="Typecase", default_width=width, default_height=height, **kwargs)
+        if state.get("window_maximized") is True:
+            self.maximize()
 
         self.library_path: Path | None = None
         self._open_row = None  # Zeile des Blatts, das gerade im Editor offen ist
@@ -38,7 +44,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         style.connect("notify::dark", lambda *_args: self._apply_style_scheme())
         self._apply_style_scheme()
 
-        self._open_library(config.get_library_path())
+        self._open_library(config.get_library_path(), restore=True)
 
     # --- Aufbau -----------------------------------------------------------
 
@@ -151,7 +157,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         config.set_library_path(Path(path))
         self._open_library(Path(path))
 
-    def _open_library(self, path: Path | None):
+    def _open_library(self, path: Path | None, restore: bool = False):
         self.library_path = path
         self._show_sheet(None)
         self._ignore_selection = True
@@ -163,14 +169,52 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.sidebar_stack.set_visible_child_name("empty")
         else:
             self.sidebar_title.set_subtitle(path.name or str(path))
-            self._reload()
+            expand, last_sheet = self._restored_state(path) if restore else (set(), None)
+            self._reload(select_path=last_sheet, expand=expand)
             self.sidebar_stack.set_visible_child_name("library")
+            if last_sheet is not None:
+                self._open_selected()
+                GLib.idle_add(self.editor.focus_editor)
         self._update_actions()
 
-    def _reload(self, select_path: Path | None = None, renamed: tuple[Path, Path] | None = None):
+    @staticmethod
+    def _restored_state(library: Path) -> tuple[set[Path], Path | None]:
+        """Aufgeklappte Gruppen und letztes Blatt aus der Konfiguration; unbrauchbare Einträge werden ignoriert."""
+        data = config.load()
+
+        def resolve(relative) -> Path | None:
+            if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts:
+                return None
+            return library / relative
+
+        groups = data.get("expanded_groups")
+        expand = {p for p in map(resolve, groups if isinstance(groups, list) else []) if p and p.is_dir()}
+        last = resolve(data.get("last_sheet"))
+        return expand, (last if last is not None and last.is_file() else None)
+
+    def _save_state(self):
+        """Merkt Fenstergröße, aufgeklappte Gruppen und das offene Blatt für den nächsten Start."""
+        values = {"window_maximized": self.is_maximized()}
+        if not self.is_maximized() and not self.is_fullscreen() and self.get_width() > 0 and self.get_height() > 0:
+            values.update(window_width=self.get_width(), window_height=self.get_height())
+        if self.library_path is not None:
+            values["expanded_groups"] = sorted(str(p.relative_to(self.library_path)) for p in self._expanded_paths())
+            if self.editor.path is not None:
+                values["last_sheet"] = str(self.editor.path.relative_to(self.library_path))
+        try:
+            config.update(**values)
+        except OSError:
+            pass  # Der Zustand ist nur eine Annehmlichkeit; ein Fehler darf nichts blockieren.
+
+    def _reload(
+        self,
+        select_path: Path | None = None,
+        renamed: tuple[Path, Path] | None = None,
+        expand: set[Path] | None = None,
+    ):
         """Liest die Bibliothek neu ein und behält aufgeklappte Gruppen, das offene Blatt und die Auswahl.
         renamed=(alt, neu) überträgt den Zustand von einem umbenannten Pfad auf den neuen."""
-        expanded = self._expanded_paths()
+        expanded = self._expanded_paths() | (expand or set())
         if renamed is not None:
             old, new = renamed
             expanded = {new / p.relative_to(old) if p == old or old in p.parents else p for p in expanded}
@@ -249,7 +293,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.editor.open(node.path)
         except (OSError, UnicodeDecodeError) as error:
             reason = error.strerror if isinstance(error, OSError) else _("not a UTF-8 text file")
-            self.toasts.add_toast(Adw.Toast(title=_("Could not open “%s”: %s") % (node.name, reason)))
+            self.toasts.add_toast(
+                Adw.Toast(title=_("Could not open “%(name)s”: %(reason)s") % {"name": node.name, "reason": reason})
+            )
             self._reselect(self._open_row)
             return
         self._show_sheet(row)
@@ -268,6 +314,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         else:
             self.content_title.set_title(row.get_item().node.name)
         self._open_row = row
+        if row is not None:
+            self._save_state()
 
     def _reselect(self, row):
         self._ignore_selection = True
@@ -285,6 +333,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _on_close_request(self, _window):
         if self.editor.flush():
+            self._save_state()
             return False
         dialog = Adw.AlertDialog(
             heading=_("Could Not Save"),
@@ -301,6 +350,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _on_close_dialog_response(self, _dialog, response):
         if response == "discard":
+            self._save_state()
             self.editor.close_sheet()
             self.close()
 

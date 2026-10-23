@@ -142,6 +142,57 @@ def steps(win, app):
     select(LIB / "a.md")
     check(ed.path == LIB / "a.md", "Danach lässt sich wieder ein Blatt öffnen")
 
+    # Listen im Editor fortsetzen (Eingabetaste wie bei echter Tastatur)
+    from gi.repository import Gdk
+
+    win.lookup_action("new-sheet").activate(None)
+    list_sheet = ed.path
+    enter = next(c for c in ed.view.observe_controllers() if isinstance(c, Gtk.EventControllerKey))
+
+    def press_enter():
+        return enter.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType(0))
+
+    ed.buffer.insert_at_cursor("1. Eins")
+    check(press_enter() and text(ed) == "1. Eins\n2. ", "Eingabetaste setzt nummerierte Liste fort")
+    ed.buffer.insert_at_cursor("Zwei")
+    press_enter()
+    check(text(ed) == "1. Eins\n2. Zwei\n3. ", "Nummer zählt hoch")
+    check(press_enter() and text(ed) == "1. Eins\n2. Zwei\n", "Leerer Listenpunkt beendet die Liste")
+    ed.buffer.undo()
+    check(text(ed) == "1. Eins\n2. Zwei\n3. ", "Rückgängig nimmt das Beenden in einem Schritt zurück")
+    ed.buffer.undo()
+    check(text(ed) == "1. Eins\n2. Zwei", "Rückgängig nimmt die Fortsetzung in einem Schritt zurück")
+    ed.buffer.set_text("Absatz")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    check(not press_enter(), "Normaler Text: Eingabetaste bleibt unberührt")
+    ed.flush()
+    select(LIB / "a.md")
+
+    # Zustand merken: zweites Fenster stellt Blatt, Gruppen und Größe wieder her
+    group = LIB / "Merken"
+    group.mkdir()
+    (group / "Blatt.md").write_text("gemerkt")
+    win._reload()
+    select(group)
+    win.selection.get_selected_item().set_expanded(True)
+    select(group / "Blatt.md")
+    from typecase import config
+
+    check(config.load().get("last_sheet") == "Merken/Blatt.md", "Letztes Blatt wird gemerkt")
+    win._save_state()
+    check(config.load().get("expanded_groups") == ["Merken"], "Aufgeklappte Gruppen werden gemerkt")
+    saved = config.load()
+    # Unter Tiling-Fenstermanagern gilt ein Fenster als maximiert; dann wird nur das gemerkt.
+    check(isinstance(saved.get("window_width"), int) or saved.get("window_maximized") is True, "Fenstergröße wird gemerkt")
+    from typecase.window import TypecaseWindow
+
+    second = TypecaseWindow(application=app)
+    check(second.editor.path == group / "Blatt.md", "Neustart öffnet das letzte Blatt")
+    check(second._index_of(group / "Blatt.md") is not None, "Neustart klappt die Gruppe wieder auf")
+    check(text(second.editor) == "gemerkt", "Neustart lädt den Text des letzten Blatts")
+    second.close()
+    select(LIB / "a.md")
+
     # Kontextmenü: echter Rechtsklick auf die erste Zeile
     first_row = win.list_view.get_first_child().get_first_child()  # TreeExpander der ersten Zeile
     right_click = next(c for c in first_row.observe_controllers() if isinstance(c, Gtk.GestureClick))

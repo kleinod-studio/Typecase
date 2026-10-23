@@ -28,7 +28,16 @@ def get_library_path() -> Path | None:
     return path if path.is_dir() else None
 
 
+def update(**values) -> None:
+    data = load()
+    data.update(values)
+    save(data)
+
+
 def set_library_path(path: Path) -> None:
     data = load()
+    if data.get("library_path") != str(path):
+        data.pop("last_sheet", None)  # gilt nur für die bisherige Bibliothek
+        data.pop("expanded_groups", None)
     data["library_path"] = str(path)
     save(data)
