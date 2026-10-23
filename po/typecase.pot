@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 20:02+0200\n"
+"POT-Creation-Date: 2026-10-23 20:06+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,9 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+msgid "Calm Markdown writing"
+msgstr ""
 
 msgid "No Sheet Open"
 msgstr ""
@@ -50,6 +53,21 @@ msgstr ""
 
 msgid ""
 "Choose a folder. Its subfolders become groups, its .md files become sheets."
+msgstr ""
+
+msgid "Show Sidebar"
+msgstr ""
+
+msgid "Fullscreen"
+msgstr ""
+
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+msgid "About Typecase"
+msgstr ""
+
+msgid "Main Menu"
 msgstr ""
 
 msgid "Choose Library Folder"
@@ -92,6 +110,27 @@ msgstr ""
 msgid "Close Without Saving"
 msgstr ""
 
+msgid "Rename"
+msgstr ""
+
+msgid "Editor"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "New Line Without List Marker"
+msgstr ""
+
+msgid "Window"
+msgstr ""
+
+msgid "Quit"
+msgstr ""
+
 msgid "Untitled"
 msgstr ""
 
@@ -110,9 +149,6 @@ msgid "Rename Sheet"
 msgstr ""
 
 msgid "Cancel"
-msgstr ""
-
-msgid "Rename"
 msgstr ""
 
 msgid "This name is not allowed."

@@ -52,10 +52,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
     # --- Aufbau -----------------------------------------------------------
 
     def _build_ui(self):
-        split = Adw.OverlaySplitView(min_sidebar_width=220, max_sidebar_width=320)
-        split.set_sidebar(self._build_sidebar())
-        split.set_content(self._build_content())
-        self.set_content(split)
+        self.split = Adw.OverlaySplitView(min_sidebar_width=220, max_sidebar_width=320)
+        self.split.set_sidebar(self._build_sidebar())
+        self.split.set_content(self._build_content())
+        self.set_content(self.split)
 
     def _build_sidebar(self):
         self.sidebar_title = Adw.WindowTitle(title=_("Library"), subtitle="")
@@ -131,6 +131,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self.content_title = Adw.WindowTitle(title="Typecase", subtitle="")
         header = Adw.HeaderBar(title_widget=self.content_title)
+
+        view_section = Gio.Menu()
+        view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
+        view_section.append(_("Fullscreen"), "win.fullscreen")
+        help_section = Gio.Menu()
+        help_section.append(_("Keyboard Shortcuts"), "win.show-shortcuts")
+        help_section.append(_("About Typecase"), "app.about")
+        main_menu = Gio.Menu()
+        main_menu.append_section(None, view_section)
+        main_menu.append_section(None, help_section)
+        header.pack_end(
+            Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=main_menu, primary=True, tooltip_text=_("Main Menu"))
+        )
 
         view = Adw.ToolbarView()
         view.add_top_bar(header)
@@ -384,6 +397,50 @@ class TypecaseWindow(Adw.ApplicationWindow):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, h=handler: h())
             self.add_action(action)
+
+        # An Eigenschaften gekoppelt: Menü zeigt ein Häkchen, und der Zustand bleibt stimmig,
+        # auch wenn der Fenstermanager das Vollbild selbst beendet.
+        self.add_action(Gio.PropertyAction.new("toggle-sidebar", self.split, "show-sidebar"))
+        self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
+
+        shortcuts = Gio.SimpleAction.new("show-shortcuts", None)
+        shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
+        self.add_action(shortcuts)
+
+    def _show_shortcuts(self):
+        dialog = Adw.ShortcutsDialog()
+        for title, items in [
+            (
+                _("Library"),
+                [
+                    (_("New Sheet"), "<Primary>n"),
+                    (_("New Group"), "<Primary><Shift>n"),
+                    (_("Rename"), "F2"),
+                ],
+            ),
+            (
+                _("Editor"),
+                [
+                    (_("Undo"), "<Primary>z"),
+                    (_("Redo"), "<Primary><Shift>z"),
+                    (_("New Line Without List Marker"), "<Shift>Return"),
+                ],
+            ),
+            (
+                _("Window"),
+                [
+                    (_("Show Sidebar"), "F9"),
+                    (_("Fullscreen"), "F11"),
+                    (_("Keyboard Shortcuts"), "<Primary>question"),
+                    (_("Quit"), "<Primary>q"),
+                ],
+            ),
+        ]:
+            section = Adw.ShortcutsSection(title=title)
+            for label, accelerator in items:
+                section.add(Adw.ShortcutsItem(title=label, accelerator=accelerator))
+            dialog.add(section)
+        dialog.present(self)
 
     def _update_actions(self):
         has_library = self.library_path is not None

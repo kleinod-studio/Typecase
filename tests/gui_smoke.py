@@ -215,13 +215,34 @@ def steps(win, app):
     win.get_visible_dialog().force_close()
     win.row_menu.popdown()
 
-    # Fenster schließen sichert ebenfalls
+    # Fenster: Seitenleiste, Vollbild, Tastenkürzel, Über
+    shown = win.split.get_show_sidebar()
+    win.lookup_action("toggle-sidebar").activate(None)
+    check(win.split.get_show_sidebar() != shown, "F9-Aktion blendet die Seitenleiste um")
+    win.lookup_action("toggle-sidebar").activate(None)
+    check(win.split.get_show_sidebar() == shown, "F9-Aktion blendet sie wieder ein")
+    win.lookup_action("fullscreen").activate(None)
+    yield 1.5  # der Fenstermanager braucht einen Moment
+    check(win.is_fullscreen(), "F11-Aktion schaltet Vollbild ein")
+    win.lookup_action("fullscreen").activate(None)
+    yield 1.5
+    check(not win.is_fullscreen(), "F11-Aktion schaltet Vollbild aus")
+    win.lookup_action("show-shortcuts").activate(None)
+    check(win.get_visible_dialog() is not None, "Tastenkürzel-Übersicht öffnet sich")
+    win.get_visible_dialog().force_close()
+    app.lookup_action("about").activate(None)
+    check(win.get_visible_dialog() is not None, "Über-Dialog öffnet sich")
+    win.get_visible_dialog().force_close()
+    accels = {name: app.get_accels_for_action(name) for name in ["win.fullscreen", "win.toggle-sidebar", "app.quit"]}
+    check(accels == {"win.fullscreen": ["F11"], "win.toggle-sidebar": ["F9"], "app.quit": ["<Control>q"]}, "Tastenkürzel sind registriert")
+
+    # Beenden (Strg+Q) sichert ebenfalls
     ed.buffer.insert_at_cursor("W")
     expected_a = text(ed)
     while win.get_visible_dialog() is not None:  # Offener Umbenennen-Dialog fängt das Schließen zuerst ab.
         win.get_visible_dialog().force_close()
-    win.close()
-    check(read("a.md") == expected_a, "Schließen sichert ungespeicherte Eingaben")
+    app.lookup_action("quit").activate(None)
+    check(read("a.md") == expected_a, "Beenden sichert ungespeicherte Eingaben")
     app.quit()
 
 
