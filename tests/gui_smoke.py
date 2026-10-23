@@ -345,6 +345,43 @@ def steps(win, app):
     check(ed.path == LIB / "a.md", "Offenes Blatt bleibt beim Aktualisieren offen")
     select(LIB / "a.md")
 
+    # Volltextsuche
+    (LIB / "ExternGruppe" / "Fabel.md").write_text("Vorher.\nEs war einmal ein Drache, der schlief.\n")
+    (LIB / "Drachenkunde.md").write_text("Nichts hier.")
+    yield 1.0  # Seitenleiste übernimmt die neuen Dateien
+    win.lookup_action("search").activate(None)
+    check(win.search_bar.get_search_mode() and win.search_button.get_active(), "Strg+Umschalt+F öffnet die Suche")
+    win.search_entry.set_text("drache")
+    yield 0.6  # das Suchfeld wartet kurz, bis nicht mehr getippt wird
+    rows = []
+    row = win.results.get_row_at_index(0)
+    while row is not None:
+        rows.append(row.hit)
+        row = win.results.get_row_at_index(len(rows))
+    check(win.sidebar_stack.get_visible_child_name() == "results", "Treffer ersetzen den Ordnerbaum")
+    check([h.name for h in rows] == ["Drachenkunde", "Fabel"], "Treffer im Namen zuerst, dann im Text")
+    ed.buffer.insert_at_cursor("Ein Drache auch hier ")  # ungesichert im offenen Blatt
+    win.search_entry.set_text("drache ")
+    win.search_entry.set_text("drache")
+    yield 0.6
+    names = []
+    row = win.results.get_row_at_index(0)
+    while row is not None:
+        names.append(row.hit.name)
+        row = win.results.get_row_at_index(len(names))
+    check(ed.path.stem in names, "Suche findet auch Ungespeichertes im offenen Blatt")
+    win._open_hit(next(h for h in rows if h.name == "Fabel"))
+    yield 0.3
+    selected = ed.buffer.get_text(*ed.buffer.get_selection_bounds(), True) if ed.buffer.get_has_selection() else ""
+    check(ed.path == LIB / "ExternGruppe" / "Fabel.md" and selected == "Drache", "Treffer öffnet das Blatt und markiert die Fundstelle")
+    win.search_entry.set_text("Einhorn")
+    yield 0.6
+    check(win.sidebar_stack.get_visible_child_name() == "no-results", "Keine Treffer wird angezeigt")
+    win.search_entry.emit("stop-search")
+    check(not win.search_bar.get_search_mode() and win.sidebar_stack.get_visible_child_name() == "library", "Escape schließt die Suche, Ordnerbaum kommt zurück")
+    check(win._index_of(LIB / "ExternGruppe" / "Fabel.md") == win.selection.get_selected(), "Geöffnetes Blatt ist im Baum ausgewählt")
+    select(LIB / "a.md")
+
     # Schreibmodus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
     from gi.repository import Gdk
 

@@ -43,6 +43,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.new-sheet", ["<Primary>n"])
         self.set_accels_for_action("win.new-group", ["<Primary><Shift>n"])
         self.set_accels_for_action("win.rename", ["F2"])
+        self.set_accels_for_action("win.search", ["<Primary><Shift>f"])
         # F9 ist GNOME-Standard; unter Omarchy belegt das System F9 (Diktieren), daher zusätzlich Strg+Umschalt+L.
         self.set_accels_for_action("win.toggle-sidebar", ["F9", "<Primary><Shift>l"])
         self.set_accels_for_action("win.fullscreen", ["F11"])

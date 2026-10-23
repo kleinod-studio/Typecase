@@ -187,6 +187,17 @@ class SheetEditor(Gtk.Stack):
         self.view.line_width_chars = line_width_chars
         self.view.queue_resize()
 
+    def text(self) -> str:
+        return self._buffer_text()
+
+    def show_match(self, offset: int, length: int) -> None:
+        """Markiert eine Fundstelle und scrollt sie in die Mitte."""
+        start = self.buffer.get_iter_at_offset(offset)
+        end = self.buffer.get_iter_at_offset(offset + length)
+        self.buffer.select_range(end, start)
+        # Erst nach dem Layout des neuen Texts scrollen, sonst stimmen die Höhen noch nicht.
+        GLib.idle_add(lambda: self.view.scroll_to_mark(self.buffer.get_insert(), 0.1, True, 0.0, 0.35) and False)
+
     def focus_editor(self) -> None:
         if self.path is not None:
             self.view.grab_focus()

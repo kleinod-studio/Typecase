@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 21:27+0200\n"
+"POT-Creation-Date: 2026-10-23 21:57+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -49,6 +49,9 @@ msgstr ""
 msgid "New…"
 msgstr ""
 
+msgid "Search Library"
+msgstr ""
+
 msgid "Rename…"
 msgstr ""
 
@@ -60,6 +63,12 @@ msgstr ""
 
 msgid ""
 "Choose a folder. Its subfolders become groups, its .md files become sheets."
+msgstr ""
+
+msgid "No Results"
+msgstr ""
+
+msgid "Try a different search term."
 msgstr ""
 
 msgid "Show Sidebar"
@@ -154,6 +163,12 @@ msgstr ""
 
 msgid "Close Without Saving"
 msgstr ""
+
+#, python-format
+msgid "%(count)s match"
+msgid_plural "%(count)s matches"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "Rename"
 msgstr ""

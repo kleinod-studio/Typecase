@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 21:27+0200\n"
+"POT-Creation-Date: 2026-10-23 21:57+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -42,6 +42,9 @@ msgstr "Neue Gruppe"
 msgid "New…"
 msgstr "Neu …"
 
+msgid "Search Library"
+msgstr "Bibliothek durchsuchen"
+
 msgid "Rename…"
 msgstr "Umbenennen …"
 
@@ -56,6 +59,12 @@ msgid ""
 msgstr ""
 "Wähle einen Ordner. Seine Unterordner werden zu Gruppen, seine .md-Dateien "
 "zu Blättern."
+
+msgid "No Results"
+msgstr "Keine Treffer"
+
+msgid "Try a different search term."
+msgstr "Versuche einen anderen Suchbegriff."
 
 msgid "Show Sidebar"
 msgstr "Seitenleiste anzeigen"
@@ -158,6 +167,12 @@ msgstr "Weiterschreiben"
 
 msgid "Close Without Saving"
 msgstr "Ohne Sichern schließen"
+
+#, python-format
+msgid "%(count)s match"
+msgid_plural "%(count)s matches"
+msgstr[0] "%(count)s Treffer"
+msgstr[1] "%(count)s Treffer"
 
 msgid "Rename"
 msgstr "Umbenennen"

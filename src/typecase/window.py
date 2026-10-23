@@ -7,6 +7,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
 from .library import Node, create_group, create_sheet, rename, scan
+from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
 
 
@@ -44,6 +45,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._library_monitors: list[Gio.FileMonitor] = []
         self._tree_check_timer = 0
         self._tree_signature: tuple = ()
+        self._search = LibrarySearch()
 
         self._build_ui()
         self._setup_actions()
@@ -83,6 +85,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
         header.pack_end(
             Gtk.MenuButton(icon_name="list-add-symbolic", menu_model=new_menu, tooltip_text=_("New…"))
         )
+        self.search_button = Gtk.ToggleButton(icon_name="system-search-symbolic", tooltip_text=_("Search Library"))
+        header.pack_end(self.search_button)
+
+        self.search_entry = Gtk.SearchEntry(placeholder_text=_("Search Library"), hexpand=True)
+        self.search_entry.connect("search-changed", self._on_search_changed)
+        self.search_entry.connect("activate", self._on_search_activate)
+        self.search_entry.connect("stop-search", lambda _e: self.search_bar.set_search_mode(False))
+        self.search_bar = Gtk.SearchBar(child=self.search_entry)
+        self.search_bar.connect_entry(self.search_entry)
+        self.search_button.bind_property(
+            "active", self.search_bar, "search-mode-enabled", GObject.BindingFlags.BIDIRECTIONAL
+        )
+        self.search_bar.connect("notify::search-mode-enabled", self._on_search_mode)
 
         row_menu = Gio.Menu()
         creation = Gio.Menu()
@@ -126,12 +141,24 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.row_menu.set_parent(self.list_view)
         self.connect("destroy", lambda _w: self.row_menu.unparent())
 
+        self.results = Gtk.ListBox(css_classes=["navigation-sidebar"], activate_on_single_click=True)
+        self.results.connect("row-activated", lambda _list, row: self._open_hit(row.hit))
+        no_results = Adw.StatusPage(
+            icon_name="system-search-symbolic",
+            title=_("No Results"),
+            description=_("Try a different search term."),
+            css_classes=["compact"],
+        )
+
         self.sidebar_stack = Gtk.Stack()
         self.sidebar_stack.add_named(empty, "empty")
         self.sidebar_stack.add_named(tree_scroller, "library")
+        self.sidebar_stack.add_named(Gtk.ScrolledWindow(child=self.results, vexpand=True), "results")
+        self.sidebar_stack.add_named(no_results, "no-results")
 
         view = Adw.ToolbarView()
         view.add_top_bar(header)
+        view.add_top_bar(self.search_bar)
         view.set_content(self.sidebar_stack)
         return Adw.NavigationPage(title=_("Library"), child=view)
 
@@ -196,6 +223,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._open_library(Path(path))
 
     def _open_library(self, path: Path | None, restore: bool = False):
+        self.search_bar.set_search_mode(False)
         self.library_path = path
         self._show_sheet(None)
         self._ignore_selection = True
@@ -530,9 +558,88 @@ class TypecaseWindow(Adw.ApplicationWindow):
         escape.connect("key-pressed", self._on_window_key)
         self.add_controller(escape)
 
+        search = Gio.SimpleAction.new("search", None)
+        search.connect("activate", lambda _a, _p: self._start_search())
+        self.add_action(search)
+
         shortcuts = Gio.SimpleAction.new("show-shortcuts", None)
         shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
         self.add_action(shortcuts)
+
+    # --- Volltextsuche ------------------------------------------------------
+
+    def _start_search(self):
+        if self.library_path is None:
+            return
+        if self.writing_mode:
+            self.lookup_action("writing-mode").change_state(GLib.Variant.new_boolean(False))
+        self.split.set_show_sidebar(True)
+        self.search_bar.set_search_mode(True)
+        self.search_entry.grab_focus()
+        self.search_entry.select_region(0, -1)
+
+    def _on_search_mode(self, bar, _pspec):
+        if bar.get_search_mode():
+            if self.library_path is None:
+                bar.set_search_mode(False)
+            return
+        self.search_entry.set_text("")
+        self._show_library_page()
+
+    def _show_library_page(self):
+        self.sidebar_stack.set_visible_child_name("library" if self.library_path else "empty")
+
+    def _on_search_changed(self, entry):
+        query = entry.get_text()
+        if not query.strip() or self.library_path is None:
+            self._show_library_page()
+            return
+        overrides = {self.editor.path: self.editor.text()} if self.editor.path else {}
+        hits = self._search.search(self.library_path, query, overrides)
+        self.results.remove_all()
+        for hit in hits[:200]:
+            self.results.append(self._result_row(hit))
+        self.sidebar_stack.set_visible_child_name("results" if hits else "no-results")
+
+    def _on_search_activate(self, _entry):
+        first = self.results.get_row_at_index(0)
+        if first is not None and self.sidebar_stack.get_visible_child_name() == "results":
+            self._open_hit(first.hit)
+
+    def _result_row(self, hit: Hit) -> Gtk.ListBoxRow:
+        meta = [hit.group] if hit.group else []
+        if hit.count:
+            meta.append(ngettext("%(count)s match", "%(count)s matches", hit.count) % {"count": hit.count})
+        start, end = hit.snippet_match
+        snippet = (
+            GLib.markup_escape_text(hit.snippet[:start])
+            + "<b>" + GLib.markup_escape_text(hit.snippet[start:end]) + "</b>"
+            + GLib.markup_escape_text(hit.snippet[end:])
+        )
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=6, margin_bottom=6)
+        box.append(Gtk.Label(label=hit.name, xalign=0, ellipsize=3, css_classes=["heading"]))
+        if meta:
+            box.append(Gtk.Label(label=" · ".join(meta), xalign=0, ellipsize=3, css_classes=["caption", "dim-label"]))
+        if hit.snippet:
+            box.append(
+                Gtk.Label(label=snippet, use_markup=True, xalign=0, wrap=True, lines=2, ellipsize=3, css_classes=["caption"])
+            )
+        row = Gtk.ListBoxRow(child=box)
+        row.hit = hit
+        return row
+
+    def _open_hit(self, hit: Hit):
+        if self.editor.path != hit.path:
+            if not self.editor.flush():
+                return
+            self._reload(select_path=hit.path)
+            self._open_selected()
+            if self.editor.path != hit.path:
+                return  # Öffnen fehlgeschlagen; die Meldung kam schon
+        if hit.offset >= 0:
+            start, end = hit.snippet_match
+            self.editor.show_match(hit.offset, end - start)
+        self.editor.focus_editor()
 
     # --- Schreibmodus -------------------------------------------------------
 
@@ -583,6 +690,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("New Sheet"), "<Primary>n"),
                     (_("New Group"), "<Primary><Shift>n"),
                     (_("Rename"), "F2"),
+                    (_("Search Library"), "<Primary><Shift>f"),
                 ],
             ),
             (

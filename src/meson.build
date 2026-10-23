@@ -11,6 +11,7 @@ install_data(
     'typecase/markdown_lists.py',
     'typecase/markdown_style.py',
     'typecase/markdown_styler.py',
+    'typecase/search.py',
     'typecase/sheet_editor.py',
     'typecase/textstats.py',
     'typecase/window.py',
