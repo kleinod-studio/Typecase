@@ -3,11 +3,11 @@ import time
 from gettext import gettext as _
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource, Pango
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
-from .markdown_lists import on_enter
+from .markdown_lists import change_indent, on_enter, renumber
 from .markdown_styler import MarkdownStyler
 from .textstats import count_characters, count_words
 
@@ -33,6 +33,7 @@ class _EditorView(GtkSource.View):
         super().__init__(**kwargs)
         self.line_width_chars = DEFAULT_LINE_WIDTH_CHARS
         self._char_width_cache = (None, 0.0)
+        self.styler = None  # liefert die Zeilen der Codeblöcke für den Rahmen
 
     def do_size_allocate(self, width, height, baseline):
         side = max(MIN_SIDE_MARGIN, int((width - self.line_width_chars * self._char_width()) / 2))
@@ -40,6 +41,30 @@ class _EditorView(GtkSource.View):
             self.set_left_margin(side)
             self.set_right_margin(side)
         GtkSource.View.do_size_allocate(self, width, height, baseline)
+
+    def do_snapshot_layer(self, layer, snapshot):
+        GtkSource.View.do_snapshot_layer(self, layer, snapshot)
+        if layer != Gtk.TextViewLayer.BELOW_TEXT or self.styler is None or not self.styler.code_blocks:
+            return
+        dark = self.styler.dark
+        fill = Gdk.RGBA()
+        fill.parse("rgba(255,255,255,0.04)" if dark else "rgba(0,0,0,0.035)")
+        border = Gdk.RGBA()
+        border.parse("rgba(255,255,255,0.12)" if dark else "rgba(0,0,0,0.12)")
+
+        buffer = self.get_buffer()
+        left = self.get_left_margin()
+        width = self.get_width() - left - self.get_right_margin()
+        for open_line, last_line, _closed in self.styler.code_blocks:
+            top, _height = self.get_line_yrange(buffer.get_iter_at_line(open_line)[1])
+            bottom_y, bottom_height = self.get_line_yrange(buffer.get_iter_at_line(last_line)[1])
+            rect = Graphene.Rect().init(left - 14, top - 6, width + 28, bottom_y + bottom_height - top + 12)
+            rounded = Gsk.RoundedRect()
+            rounded.init_from_rect(rect, 8)
+            snapshot.push_rounded_clip(rounded)
+            snapshot.append_color(fill, rect)
+            snapshot.pop()
+            snapshot.append_border(rounded, [1, 1, 1, 1], [border, border, border, border])
 
     def _char_width(self) -> float:
         context = self.get_pango_context()
@@ -102,6 +127,8 @@ class SheetEditor(Gtk.Stack):
             monospace=False,
             css_classes=["typecase-editor"],
         )
+        self.view.styler = self.styler
+        self.styler.on_blocks_changed = self.view.queue_draw
         self._css = Gtk.CssProvider()
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -325,6 +352,11 @@ class SheetEditor(Gtk.Stack):
     # --- Listen fortsetzen --------------------------------------------------
 
     def _on_key_pressed(self, _controller, keyval, _keycode, state):
+        if keyval in (Gdk.KEY_Tab, Gdk.KEY_KP_Tab, Gdk.KEY_ISO_Left_Tab):
+            if state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK) or self.path is None:
+                return False
+            outdent = keyval == Gdk.KEY_ISO_Left_Tab or state & Gdk.ModifierType.SHIFT_MASK
+            return self._indent_list(-1 if outdent else 1)
         if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             return False
         ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
@@ -352,12 +384,71 @@ class SheetEditor(Gtk.Stack):
 
         buffer.begin_user_action()  # Ein Schritt für Rückgängig
         if action == "end":
-            buffer.delete(line_start, line_end)
+            lines = self._lines()
+            outdented = change_indent(lines, cursor.get_line(), -1)
+            if outdented is not None:
+                self._apply_lines(lines, outdented)  # leerer Unterpunkt: erst eine Ebene zurück
+            else:
+                buffer.delete(line_start, line_end)
         else:
             buffer.insert_at_cursor("\n" + prefix)
+            lines = self._lines()
+            self._apply_lines(lines, renumber(lines, self._cursor_line()))
         buffer.end_user_action()
         self.view.scroll_mark_onscreen(buffer.get_insert())
         return True
+
+    def _indent_list(self, direction: int) -> bool:
+        """Tab/Umschalt+Tab in Listenpunkten (auch mehrere markierte Zeilen). False = normales Tab."""
+        buffer = self.buffer
+        if buffer.get_has_selection():
+            start, end = buffer.get_selection_bounds()
+            first, last = start.get_line(), end.get_line()
+            if end.starts_line() and last > first:
+                last -= 1
+        else:
+            first = last = self._cursor_line()
+
+        old = self._lines()
+        lines = old
+        for index in range(first, last + 1):
+            changed = change_indent(lines, index, direction)
+            if changed is not None:
+                lines = changed
+        if lines == old:
+            return False
+        buffer.begin_user_action()
+        self._apply_lines(old, lines)
+        buffer.end_user_action()
+        return True
+
+    def _lines(self) -> list[str]:
+        return self._buffer_text().split("\n")
+
+    def _cursor_line(self) -> int:
+        return self.buffer.get_iter_at_mark(self.buffer.get_insert()).get_line()
+
+    def _apply_lines(self, old: list[str], new: list[str]) -> None:
+        """Überträgt geänderte Zeilen in den Puffer und ändert dabei nur die abweichenden Zeichen,
+        damit der Cursor an seiner Stelle im Text bleibt."""
+        buffer = self.buffer
+        for index, (before, after) in enumerate(zip(old, new)):
+            if before == after:
+                continue
+            prefix = 0
+            while prefix < min(len(before), len(after)) and before[prefix] == after[prefix]:
+                prefix += 1
+            suffix = 0
+            while (
+                suffix < min(len(before), len(after)) - prefix
+                and before[len(before) - 1 - suffix] == after[len(after) - 1 - suffix]
+            ):
+                suffix += 1
+            _found, start = buffer.get_iter_at_line_offset(index, prefix)
+            _found, end = buffer.get_iter_at_line_offset(index, len(before) - suffix)
+            buffer.delete(start, end)
+            _found, start = buffer.get_iter_at_line_offset(index, prefix)
+            buffer.insert(start, after[prefix : len(after) - suffix])
 
     # --- intern -----------------------------------------------------------
 

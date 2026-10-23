@@ -9,7 +9,7 @@ import os
 import stat
 
 from typecase.fileio import atomic_write_text, read_text
-from typecase.markdown_lists import on_enter
+from typecase.markdown_lists import change_indent, on_enter, renumber
 from typecase.textstats import count_characters, count_words
 from typecase.library import create_group, create_sheet, rename, scan, sheet_filename, validate_name
 
@@ -137,6 +137,49 @@ class ListContinuationTest(unittest.TestCase):
 
     def test_split_in_the_middle_continues(self):
         self.assertEqual(on_enter("- Anfang Ende", 8), ("continue", "- "))
+
+
+class RenumberTest(unittest.TestCase):
+    def test_inserted_item_shifts_following(self):
+        lines = ["1. Eins", "2. Zwei", "3. Neu", "3. Drei", "4. Vier", "", "Absatz"]
+        self.assertEqual(renumber(lines, 2), ["1. Eins", "2. Zwei", "3. Neu", "4. Drei", "5. Vier", "", "Absatz"])
+
+    def test_nested_items_are_skipped_and_kept(self):
+        lines = ["1. A", "    1. a", "    2. b", "1. B", "1. C"]
+        self.assertEqual(renumber(lines, 3), ["1. A", "    1. a", "    2. b", "2. B", "3. C"])
+
+    def test_stops_at_bullets_text_and_blank_lines(self):
+        self.assertEqual(renumber(["1. A", "1. B", "- x", "1. C"], 1), ["1. A", "2. B", "- x", "1. C"])
+        self.assertEqual(renumber(["5) A", "5) B"], 1), ["5) A", "6) B"])
+
+    def test_restart(self):
+        self.assertEqual(renumber(["3. A", "4. B"], 0, restart=True), ["1. A", "2. B"])
+
+
+class IndentTest(unittest.TestCase):
+    def test_indent_bullet(self):
+        self.assertEqual(change_indent(["- A", "- B"], 1, 1), ["- A", "    - B"])
+
+    def test_outdent_bullet(self):
+        self.assertEqual(change_indent(["- A", "    - B"], 1, -1), ["- A", "- B"])
+        self.assertEqual(change_indent(["- A", "\t- B"], 1, -1), ["- A", "- B"])
+        self.assertIsNone(change_indent(["- A"], 0, -1))
+
+    def test_not_a_list(self):
+        self.assertIsNone(change_indent(["Text"], 0, 1))
+        self.assertIsNone(change_indent(["> Zitat"], 0, 1))
+
+    def test_indent_numbered_starts_sublist_and_closes_gap(self):
+        lines = ["1. A", "2. B", "3. C", "4. D"]
+        self.assertEqual(change_indent(lines, 2, 1), ["1. A", "2. B", "    1. C", "3. D"])
+
+    def test_indent_numbered_continues_existing_sublist(self):
+        lines = ["1. A", "    1. a", "2. B"]
+        self.assertEqual(change_indent(lines, 2, 1), ["1. A", "    1. a", "    2. B"])
+
+    def test_outdent_numbered(self):
+        lines = ["1. A", "    1. a", "    2. b", "    3. c", "2. B"]
+        self.assertEqual(change_indent(lines, 2, -1), ["1. A", "    1. a", "2. b", "    1. c", "3. B"])
 
 
 class TextStatsTest(unittest.TestCase):

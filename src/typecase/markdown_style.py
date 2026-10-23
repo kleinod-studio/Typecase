@@ -8,7 +8,7 @@ import re
 
 Span = tuple[int, int, str]
 
-FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)")
+FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)[ \t]*([\w+#.-]*)")
 _HEADING = re.compile(r"^(#{1,6})([ \t]+|$)")
 _RULE = re.compile(r"^[ \t]{0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
 _QUOTE = re.compile(r"^[ \t]*(?:>[ \t]?)+")
@@ -24,12 +24,18 @@ _STRIKE = re.compile(r"(~~)(?=\S)(.+?)(?<=\S)~~")
 _MASK = "\x00"  # verdeckt schon vergebene Zeichen vor den folgenden Mustern
 
 
+def fence_language(line: str) -> str:
+    """Sprache hinter dem öffnenden Zaun ("```python" -> "python"), sonst ""."""
+    match = FENCE.match(line)
+    return match.group(2).lower() if match else ""
+
+
 def line_spans(line: str, in_code_block: bool) -> list[Span]:
     """Gestaltung einer Zeile. in_code_block: Zeile liegt zwischen zwei ```-Zäunen."""
     if FENCE.match(line):
         return [(0, len(line), "syntax")] if line else []
     if in_code_block:
-        return [(0, len(line), "code")] if line else []
+        return [(0, len(line), "codeblock")] if line else []
     if _RULE.match(line):
         return [(0, len(line), "syntax")]
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase.markdown_style import line_spans
+from typecase.markdown_style import fence_language, line_spans
 
 
 def styled(line, in_code=False):
@@ -83,7 +83,13 @@ class BlockTest(unittest.TestCase):
         self.assertEqual(styled("```python"), {"syntax": ["```python"]})
 
     def test_code_block_content(self):
-        self.assertEqual(styled("**nicht fett**", in_code=True), {"code": ["**nicht fett**"]})
+        self.assertEqual(styled("**nicht fett**", in_code=True), {"codeblock": ["**nicht fett**"]})
+
+    def test_fence_language(self):
+        self.assertEqual(fence_language("```Python"), "python")
+        self.assertEqual(fence_language("~~~ c++"), "c++")
+        self.assertEqual(fence_language("```"), "")
+        self.assertEqual(fence_language("Text"), "")
 
     def test_plain_and_empty(self):
         self.assertEqual(styled("Nur Text."), {})

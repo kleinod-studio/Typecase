@@ -169,6 +169,37 @@ def steps(win, app):
     ed.buffer.place_cursor(ed.buffer.get_end_iter())
     check(not press_enter(), "Normaler Text: Eingabetaste bleibt unberührt")
 
+    # Nachnummerieren und Einrücken
+    def press(keyval, state=0):
+        return enter.emit("key-pressed", keyval, 0, Gdk.ModifierType(state))
+
+    def cursor_to(line, column):
+        ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(line, column)[1])
+
+    ed.buffer.set_text("1. Eins\n2. Zwei\n3. Drei")
+    cursor_to(0, 7)
+    press(Gdk.KEY_Return)
+    check(text(ed) == "1. Eins\n2. \n3. Zwei\n4. Drei", "Eingefügter Punkt: die folgenden zählen mit hoch")
+    ed.buffer.insert_at_cursor("Neu")
+    check(press(Gdk.KEY_Tab) and text(ed) == "1. Eins\n    1. Neu\n2. Zwei\n3. Drei", "Tab rückt ein und nummeriert beide Ebenen neu")
+    cursor = ed.buffer.get_iter_at_mark(ed.buffer.get_insert())
+    check((cursor.get_line(), cursor.get_line_offset()) == (1, 10), "Cursor bleibt hinter dem Wort")
+    check(press(Gdk.KEY_ISO_Left_Tab, Gdk.ModifierType.SHIFT_MASK) and text(ed) == "1. Eins\n2. Neu\n3. Zwei\n4. Drei", "Umschalt+Tab rückt aus")
+    ed.buffer.undo()
+    check(text(ed) == "1. Eins\n    1. Neu\n2. Zwei\n3. Drei", "Rückgängig nimmt das Ausrücken in einem Schritt zurück")
+
+    ed.buffer.set_text("- A")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    press(Gdk.KEY_Return)
+    press(Gdk.KEY_Tab)
+    check(text(ed) == "- A\n    - ", "Tab rückt einen leeren Unterpunkt ein")
+    press(Gdk.KEY_Return)
+    check(text(ed) == "- A\n- ", "Enter auf leerem Unterpunkt rückt erst aus")
+    press(Gdk.KEY_Return)
+    check(text(ed) == "- A\n", "Enter auf leerem Punkt der obersten Ebene beendet die Liste")
+    ed.buffer.set_text("Normaler Text")
+    check(not press(Gdk.KEY_Tab), "Tab außerhalb von Listen bleibt ein normales Tab")
+
     # Markdown-Gestaltung beim Tippen
     def tags_at(offset):
         return {t.props.name for t in ed.buffer.get_iter_at_offset(offset).get_tags()}
@@ -183,8 +214,21 @@ def steps(win, app):
     check("md-bold" not in tags_at(16), "Gestaltung verschwindet, wenn die Auszeichnung kaputtgeht")
     ed.buffer.set_text("```\n**kein fett**\n```\nnach dem Block **fett**")
     yield 0.2
-    check("md-code" in tags_at(6) and "md-bold" not in tags_at(6), "Codeblock: Inhalt als Code, nicht fett")
+    check("md-codeblock" in tags_at(6) and "md-bold" not in tags_at(6), "Codeblock: Inhalt als Code, nicht fett")
     check("md-bold" in tags_at(40), "Nach dem Codeblock wird wieder gestaltet")
+
+    # Codeblock: Rahmen-Zeilen und Syntaxfarben
+    ed.buffer.set_text("Text\n```python\nreturn 42\n```\nnoch Text\n```\nohne Sprache\n```")
+    yield 0.2
+    check(ed.styler.code_blocks == [(1, 3, True), (5, 7, True)], "Codeblöcke werden für den Rahmen erkannt")
+    colored = [t for t in ed.buffer.get_iter_at_offset(16).get_tags() if t.props.foreground_set and not (t.props.name or "").startswith("md-")]
+    check(colored, "Codeblock mit Sprache bekommt Syntaxfarben")
+    plain = [t for t in ed.buffer.get_iter_at_offset(43).get_tags() if t.props.foreground_set]
+    check(not plain, "Codeblock ohne Sprache bleibt ungefärbt")
+    ed.buffer.insert(ed.buffer.get_iter_at_offset(14), "x")  # ```pythonx: unbekannte Sprache
+    yield 0.2
+    colored = [t for t in ed.buffer.get_iter_at_offset(17).get_tags() if t.props.foreground_set and not (t.props.name or "").startswith("md-")]
+    check(not colored, "Farben verschwinden bei unbekannter Sprache")
     ed.flush()
     select(LIB / "a.md")
 
