@@ -193,7 +193,9 @@ def steps(win, app):
     check(second.editor.path == group / "Blatt.md", "Neustart öffnet das letzte Blatt")
     check(second._index_of(group / "Blatt.md") is not None, "Neustart klappt die Gruppe wieder auf")
     check(text(second.editor) == "gemerkt", "Neustart lädt den Text des letzten Blatts")
-    second.close()
+    check(second.editor.flush(), "Zweites Fenster hat nichts Ungesichertes")
+    second.destroy()  # nie angezeigt, daher würde close() es nicht entfernen
+    check(app.get_windows() == [win], "Nur noch das Testfenster ist offen")
     select(LIB / "a.md")
 
     # Kontextmenü: echter Rechtsklick auf die erste Zeile

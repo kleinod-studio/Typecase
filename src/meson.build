@@ -1,6 +1,6 @@
-python = import('python').find_installation('python3')
+pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 
-python.install_sources(
+install_data(
   [
     'typecase/__init__.py',
     'typecase/__main__.py',
@@ -13,12 +13,18 @@ python.install_sources(
     'typecase/textstats.py',
     'typecase/window.py',
   ],
-  subdir: 'typecase',
+  install_dir: pkgdatadir / 'typecase',
 )
 
-install_data(
-  'typecase.in',
+launcher = configuration_data()
+launcher.set('pkgdatadir', pkgdatadir)
+launcher.set('localedir', get_option('prefix') / get_option('localedir'))
+
+configure_file(
+  input: 'typecase.in',
+  output: 'typecase',
+  configuration: launcher,
+  install: true,
   install_dir: get_option('bindir'),
   install_mode: 'rwxr-xr-x',
-  rename: 'typecase',
 )

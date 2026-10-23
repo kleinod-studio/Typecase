@@ -12,6 +12,28 @@ Benötigt Python, PyGObject, GTK 4, libadwaita und GtkSourceView 5.
 ./run-dev.sh
 ```
 
+Tests:
+
+```bash
+python3 -m unittest discover -s tests
+python3 tests/gui_smoke.py   # braucht eine laufende Desktop-Sitzung
+```
+
+## Flatpak bauen
+
+Einmalig: `flatpak-builder`, `meson` und die GNOME-Laufzeit installieren.
+
+```bash
+flatpak install flathub org.gnome.Platform//51 org.gnome.Sdk//51
+```
+
+Bauen und für den eigenen Benutzer installieren:
+
+```bash
+flatpak-builder --user --install --force-clean build-dir studio.kleinod.Typecase.yml
+flatpak run studio.kleinod.Typecase
+```
+
 ## Lizenz
 
 GPL-3.0-or-later, siehe [LICENSE](LICENSE).

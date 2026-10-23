@@ -19,11 +19,11 @@ VERSION = "0.1.0"  # muss zu meson.build passen
 GETTEXT_DOMAIN = "typecase"
 
 
-def _setup_translations():
-    """Bindet die Übersetzungen: erst ./locale im Quellordner (run-dev.sh), dann <prefix>/share/locale."""
-    here = Path(__file__).resolve()
-    candidates = [here.parents[2] / "locale", here.parents[4] / "share" / "locale"] if len(here.parents) > 4 else []
-    localedir = next((str(path) for path in candidates if path.is_dir()), None)
+def _setup_translations(localedir: str | None = None):
+    """Bindet die Übersetzungen: installiert vom Startprogramm vorgegeben, sonst ./locale im Quellordner (run-dev.sh)."""
+    if localedir is None:
+        source_locale = Path(__file__).resolve().parents[2] / "locale"
+        localedir = str(source_locale) if source_locale.is_dir() else None
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
@@ -76,6 +76,6 @@ class TypecaseApplication(Adw.Application):
         win.present()
 
 
-def main():
-    _setup_translations()
+def main(localedir: str | None = None):
+    _setup_translations(localedir)
     return TypecaseApplication().run(None)
