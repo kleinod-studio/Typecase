@@ -3,7 +3,7 @@ import time
 from gettext import gettext as _
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource, Pango
 
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
@@ -16,6 +16,38 @@ COUNT_DELAY_MS = 150  # Zählen erst, wenn kurz nicht getippt wird (lange Texte)
 CHECK_DELAY_MS = 300  # Nach einer Dateiänderung kurz warten, bis Sync-Programme fertig geschrieben haben
 
 _UNREADABLE = object()  # Datei existiert, ist aber kein UTF-8-Text (mehr)
+
+# Voreinstellungen fürs Schreiben; später über die Einstellungen änderbar (P2-05).
+DEFAULT_FONT_SIZE_PT = 15
+DEFAULT_LINE_WIDTH_CHARS = 70
+MIN_SIDE_MARGIN = 32
+
+
+class _EditorView(GtkSource.View):
+    """Textfeld, dessen Textblock eine Höchstbreite hat und mittig steht.
+
+    Die Ränder werden bei jeder Größenänderung neu berechnet; die Breite richtet sich
+    nach der Schrift (Anzahl Zeichen), wächst also mit der Schriftgröße mit."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.line_width_chars = DEFAULT_LINE_WIDTH_CHARS
+        self._char_width_cache = (None, 0.0)
+
+    def do_size_allocate(self, width, height, baseline):
+        side = max(MIN_SIDE_MARGIN, int((width - self.line_width_chars * self._char_width()) / 2))
+        if side != self.get_left_margin():
+            self.set_left_margin(side)
+            self.set_right_margin(side)
+        GtkSource.View.do_size_allocate(self, width, height, baseline)
+
+    def _char_width(self) -> float:
+        context = self.get_pango_context()
+        key = context.get_font_description().to_string()
+        if self._char_width_cache[0] != key:
+            metrics = context.get_metrics(None, None)
+            self._char_width_cache = (key, metrics.get_approximate_char_width() / Pango.SCALE)
+        return self._char_width_cache[1]
 
 
 class SheetEditor(Gtk.Stack):
@@ -58,15 +90,23 @@ class SheetEditor(Gtk.Stack):
         self.styler = MarkdownStyler(self.buffer)
         self.buffer.connect("changed", self._on_changed)
 
-        self.view = GtkSource.View(
+        self.view = _EditorView(
             buffer=self.buffer,
             wrap_mode=Gtk.WrapMode.WORD_CHAR,
-            top_margin=24,
-            bottom_margin=24,
-            left_margin=32,
-            right_margin=32,
+            top_margin=48,
+            bottom_margin=96,
+            left_margin=MIN_SIDE_MARGIN,
+            right_margin=MIN_SIDE_MARGIN,
+            pixels_inside_wrap=5,
+            pixels_below_lines=5,
             monospace=False,
+            css_classes=["typecase-editor"],
         )
+        self._css = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        self.set_appearance()
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key_pressed)
         self.view.add_controller(keys)
@@ -107,6 +147,18 @@ class SheetEditor(Gtk.Stack):
         self._set_text("")
         self.set_visible_child_name("empty")
         self._emit_counts()
+
+    def set_appearance(
+        self,
+        font_family: str | None = None,
+        font_size_pt: int = DEFAULT_FONT_SIZE_PT,
+        line_width_chars: int = DEFAULT_LINE_WIDTH_CHARS,
+    ) -> None:
+        """Schrift und Breite des Textblocks. font_family None = Schrift der Oberfläche."""
+        family = f'font-family: "{font_family}";' if font_family else ""
+        self._css.load_from_string(f".typecase-editor {{ {family} font-size: {font_size_pt}pt; }}")
+        self.view.line_width_chars = line_width_chars
+        self.view.queue_resize()
 
     def focus_editor(self) -> None:
         if self.path is not None:
@@ -275,6 +327,10 @@ class SheetEditor(Gtk.Stack):
     def _on_key_pressed(self, _controller, keyval, _keycode, state):
         if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             return False
+        ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        if state & ctrl_shift == ctrl_shift:
+            # Kürzel für den Schreibmodus; das Textfeld würde sonst einen Zeilenumbruch einfügen.
+            return self.activate_action("win.writing-mode", None)
         modifiers = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SHIFT_MASK
         if state & modifiers or self.path is None or self.buffer.get_has_selection():
             return False

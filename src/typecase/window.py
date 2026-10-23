@@ -148,6 +148,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         header.pack_start(self.sidebar_button)
 
         view_section = Gio.Menu()
+        view_section.append(_("Writing Mode"), "win.writing-mode")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
         view_section.append(_("Fullscreen"), "win.fullscreen")
         help_section = Gio.Menu()
@@ -163,6 +164,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view = Adw.ToolbarView()
         view.add_top_bar(header)
         view.set_content(self.editor)
+        self.content_view = view
+
+        # Im Schreibmodus erscheint die Kopfzeile, wenn die Maus an den oberen Rand kommt.
+        motion = Gtk.EventControllerMotion()
+        motion.connect("motion", self._on_content_motion)
+        view.add_controller(motion)
 
         self.toasts = Adw.ToastOverlay(child=view)
         return Adw.NavigationPage(title="Typecase", child=self.toasts)
@@ -515,9 +522,57 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.add_action(Gio.PropertyAction.new("toggle-sidebar", self.split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
 
+        writing = Gio.SimpleAction.new_stateful("writing-mode", None, GLib.Variant.new_boolean(False))
+        writing.connect("change-state", self._on_writing_mode_changed)
+        self.add_action(writing)
+        self._before_writing = (True, False)  # Seitenleiste sichtbar, Vollbild – zum Wiederherstellen
+        escape = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        escape.connect("key-pressed", self._on_window_key)
+        self.add_controller(escape)
+
         shortcuts = Gio.SimpleAction.new("show-shortcuts", None)
         shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
         self.add_action(shortcuts)
+
+    # --- Schreibmodus -------------------------------------------------------
+
+    @property
+    def writing_mode(self) -> bool:
+        return self.lookup_action("writing-mode").get_state().get_boolean()
+
+    def _on_writing_mode_changed(self, action, value):
+        on = value.get_boolean()
+        if on == self.writing_mode:
+            return
+        action.set_state(value)
+        if on:
+            self._before_writing = (self.split.get_show_sidebar(), self.is_fullscreen())
+            self.split.set_show_sidebar(False)
+            self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
+            self.content_view.set_reveal_top_bars(False)
+            self.fullscreen()
+            self.editor.focus_editor()
+        else:
+            sidebar, was_fullscreen = self._before_writing
+            self.content_view.set_reveal_top_bars(True)
+            self.content_view.set_extend_content_to_top_edge(False)
+            self.split.set_show_sidebar(sidebar)
+            if not was_fullscreen:
+                self.unfullscreen()
+
+    def _on_content_motion(self, _controller, _x, y):
+        if not self.writing_mode:
+            return
+        if y < 8:
+            self.content_view.set_reveal_top_bars(True)
+        elif y > 120:
+            self.content_view.set_reveal_top_bars(False)
+
+    def _on_window_key(self, _controller, keyval, _keycode, _state):
+        if keyval == Gdk.KEY_Escape and self.writing_mode and self.get_visible_dialog() is None:
+            self.lookup_action("writing-mode").change_state(GLib.Variant.new_boolean(False))
+            return True
+        return False
 
     def _show_shortcuts(self):
         dialog = Adw.ShortcutsDialog()
@@ -541,6 +596,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             (
                 _("Window"),
                 [
+                    (_("Writing Mode"), "<Primary><Shift>Return"),
+                    (_("Leave Writing Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Fullscreen"), "F11"),
                     (_("Keyboard Shortcuts"), "<Primary>question"),

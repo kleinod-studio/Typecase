@@ -46,6 +46,7 @@ class TypecaseApplication(Adw.Application):
         # F9 ist GNOME-Standard; unter Omarchy belegt das System F9 (Diktieren), daher zusätzlich Strg+Umschalt+L.
         self.set_accels_for_action("win.toggle-sidebar", ["F9", "<Primary><Shift>l"])
         self.set_accels_for_action("win.fullscreen", ["F11"])
+        self.set_accels_for_action("win.writing-mode", ["<Primary><Shift>Return"])
         self.set_accels_for_action("win.show-shortcuts", ["<Primary>question"])
         self.set_accels_for_action("app.quit", ["<Primary>q"])
 

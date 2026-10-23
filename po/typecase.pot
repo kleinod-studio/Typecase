@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 20:28+0200\n"
+"POT-Creation-Date: 2026-10-23 21:27+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -63,6 +63,9 @@ msgid ""
 msgstr ""
 
 msgid "Show Sidebar"
+msgstr ""
+
+msgid "Writing Mode"
 msgstr ""
 
 msgid "Fullscreen"
@@ -168,6 +171,9 @@ msgid "New Line Without List Marker"
 msgstr ""
 
 msgid "Window"
+msgstr ""
+
+msgid "Leave Writing Mode"
 msgstr ""
 
 msgid "Quit"

@@ -301,6 +301,34 @@ def steps(win, app):
     check(ed.path == LIB / "a.md", "Offenes Blatt bleibt beim Aktualisieren offen")
     select(LIB / "a.md")
 
+    # Schreibmodus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
+    from gi.repository import Gdk
+
+    editor_keys = next(c for c in ed.view.observe_controllers() if isinstance(c, Gtk.EventControllerKey))
+    ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+    text_before = text(ed)
+    check(editor_keys.emit("key-pressed", Gdk.KEY_Return, 0, ctrl_shift), "Strg+Umschalt+Enter wird im Text abgefangen")
+    check(win.writing_mode and not win.split.get_show_sidebar(), "Schreibmodus blendet die Seitenleiste aus")
+    check(not win.content_view.get_reveal_top_bars(), "Schreibmodus blendet die Kopfzeile aus")
+    check(text(ed) == text_before, "Kein Zeilenumbruch durch das Kürzel")
+    yield 1.5
+    check(win.is_fullscreen(), "Schreibmodus schaltet auf Vollbild")
+    margin = ed.view.get_left_margin()
+    check(margin > 100 and margin == ed.view.get_right_margin(), "Textblock steht mittig mit begrenzter Breite")
+    win._on_content_motion(None, 200, 2)
+    check(win.content_view.get_reveal_top_bars(), "Maus am oberen Rand zeigt die Kopfzeile")
+    win._on_content_motion(None, 200, 400)
+    check(not win.content_view.get_reveal_top_bars(), "Maus weg vom Rand blendet sie wieder aus")
+    window_keys = next(
+        c for c in win.observe_controllers()
+        if isinstance(c, Gtk.EventControllerKey) and c.get_propagation_phase() == Gtk.PropagationPhase.CAPTURE
+    )
+    check(window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape wird abgefangen")
+    check(not win.writing_mode and win.split.get_show_sidebar() and win.content_view.get_reveal_top_bars(), "Escape beendet den Schreibmodus und stellt alles wieder her")
+    yield 1.5
+    check(not win.is_fullscreen(), "Vollbild endet mit dem Schreibmodus")
+    check(not window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape außerhalb des Schreibmodus bleibt unberührt")
+
     # Fenster: Seitenleiste, Vollbild, Tastenkürzel, Über
     shown = win.split.get_show_sidebar()
     win.lookup_action("toggle-sidebar").activate(None)
