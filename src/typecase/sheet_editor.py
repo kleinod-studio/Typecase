@@ -89,7 +89,10 @@ class _EditorView(GtkSource.View):
 
     def set_underline_caret(self, enabled: bool) -> None:
         self.underline_caret = enabled
-        self.set_cursor_visible(not enabled)
+        if enabled:
+            self.add_css_class("underline-caret")
+        else:
+            self.remove_css_class("underline-caret")
         self._restart_blink()
 
     def _restart_blink(self):
@@ -320,7 +323,12 @@ class SheetEditor(Gtk.Stack):
         if font_family:
             escaped = font_family.replace("\\", "\\\\").replace('"', '\\"')
             family = f'font-family: "{escaped}";'
-        self._css.load_from_string(f".typecase-editor {{ {family} font-size: {font_size_pt}pt; }}")
+        self._css.load_from_string(
+            f".typecase-editor {{ {family} font-size: {font_size_pt}pt; }}"
+            # Unterstrich-Schreibmarke: die normale nur unsichtbar machen. Abschalten (cursor-visible)
+            # ginge nicht, dann scrollen die Pfeiltasten nur noch und der Text-Mauszeiger fehlt.
+            ".typecase-editor.underline-caret { caret-color: transparent; }"
+        )
         pixels = LINE_SPACING_PIXELS.get(line_spacing, LINE_SPACING_PIXELS["normal"])
         self.view.set_pixels_inside_wrap(pixels)
         self.view.set_pixels_below_lines(pixels)

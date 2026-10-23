@@ -295,10 +295,12 @@ def steps(win, app):
 
     # Mauszeiger und Schreibmarke
     check(ed.view.get_cursor() is not None and ed.view.get_cursor().get_name() == "text", "Über dem Textblock erscheint der Text-Mauszeiger")
-    check(ed.view.underline_caret and not ed.view.get_cursor_visible(), "Schreibmarke ist anfangs ein Unterstrich (eigene statt GTK-Marke)")
+    check(ed.view.underline_caret and ed.view.has_css_class("underline-caret"), "Schreibmarke ist anfangs ein Unterstrich (GTK-Marke unsichtbar)")
+    # Nicht abschalten: ohne sichtbare Schreibmarke scrollen die Pfeiltasten nur noch, statt sie zu bewegen.
+    check(ed.view.get_cursor_visible(), "Pfeiltasten bewegen weiter die Schreibmarke (cursor-visible bleibt an)")
     cfg2.update(underline_caret=False)
     win.apply_settings()
-    check(not ed.view.underline_caret and ed.view.get_cursor_visible(), "Abschaltbar: dann wieder die normale Schreibmarke")
+    check(not ed.view.underline_caret and not ed.view.has_css_class("underline-caret"), "Abschaltbar: dann wieder die normale Schreibmarke")
     cfg2.update(underline_caret=True)
     win.apply_settings()
     ed.flush()
