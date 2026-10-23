@@ -9,6 +9,8 @@ install_data(
     'typecase/fileio.py',
     'typecase/library.py',
     'typecase/markdown_lists.py',
+    'typecase/markdown_style.py',
+    'typecase/markdown_styler.py',
     'typecase/sheet_editor.py',
     'typecase/textstats.py',
     'typecase/window.py',

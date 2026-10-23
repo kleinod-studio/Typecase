@@ -715,3 +715,4 @@ class TypecaseWindow(Adw.ApplicationWindow):
         scheme = manager.get_scheme("Adwaita-dark" if dark else "Adwaita")
         if scheme is not None:
             self.editor.buffer.set_style_scheme(scheme)
+        self.editor.styler.set_dark(dark)

@@ -168,6 +168,23 @@ def steps(win, app):
     ed.buffer.set_text("Absatz")
     ed.buffer.place_cursor(ed.buffer.get_end_iter())
     check(not press_enter(), "Normaler Text: Eingabetaste bleibt unberührt")
+
+    # Markdown-Gestaltung beim Tippen
+    def tags_at(offset):
+        return {t.props.name for t in ed.buffer.get_iter_at_offset(offset).get_tags()}
+
+    ed.buffer.set_text("")
+    ed.buffer.insert_at_cursor("# Titel\nEin **fettes** Wort")
+    yield 0.2
+    check("md-h1" in tags_at(3) and "md-syntax" in tags_at(0), "Überschrift wird groß, # gedimmt")
+    check("md-bold" in tags_at(15) and "md-syntax" in tags_at(12), "Fett wird fett, ** gedimmt")
+    ed.buffer.insert(ed.buffer.get_iter_at_offset(14), " ")  # "** fettes**" ist kein Fett mehr
+    yield 0.2
+    check("md-bold" not in tags_at(16), "Gestaltung verschwindet, wenn die Auszeichnung kaputtgeht")
+    ed.buffer.set_text("```\n**kein fett**\n```\nnach dem Block **fett**")
+    yield 0.2
+    check("md-code" in tags_at(6) and "md-bold" not in tags_at(6), "Codeblock: Inhalt als Code, nicht fett")
+    check("md-bold" in tags_at(40), "Nach dem Codeblock wird wieder gestaltet")
     ed.flush()
     select(LIB / "a.md")
 

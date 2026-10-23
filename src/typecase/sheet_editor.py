@@ -8,6 +8,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
 from .markdown_lists import on_enter
+from .markdown_styler import MarkdownStyler
 from .textstats import count_characters, count_words
 
 AUTOSAVE_DELAY_MS = 800
@@ -53,8 +54,8 @@ class SheetEditor(Gtk.Stack):
             description=_("Select a sheet in the library to start writing."),
         )
 
-        self.buffer = GtkSource.Buffer()
-        self.buffer.set_language(GtkSource.LanguageManager.get_default().get_language("markdown"))
+        self.buffer = GtkSource.Buffer(highlight_syntax=False)  # eigene Gestaltung statt GtkSource-Färbung
+        self.styler = MarkdownStyler(self.buffer)
         self.buffer.connect("changed", self._on_changed)
 
         self.view = GtkSource.View(
