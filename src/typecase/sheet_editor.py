@@ -5,6 +5,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
+from . import frontmatter
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
 from .markdown_lists import change_indent, on_enter, renumber
@@ -92,6 +93,9 @@ class SheetEditor(Gtk.Stack):
         "counts-changed": (GObject.SignalFlags.RUN_FIRST, None, (int, int)),  # Wörter, Zeichen
         # "reloaded" | "deleted" | "restored" | "conflict"
         "external-change": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        # Dateikopf (Meta-Informationen) wurde geladen, von außen geändert oder das Blatt geschlossen
+        "metadata-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "saved": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self):
@@ -104,6 +108,7 @@ class SheetEditor(Gtk.Stack):
         self._check_timer = 0
         self._monitor = None
         self._disk_text = None  # Inhalt der Datei, wie zuletzt gelesen oder geschrieben
+        self._header = None  # Dateikopf (Frontmatter); im Editor ausgeblendet, beim Speichern wieder davor
         self.in_conflict = False  # Solange True, wird nicht gespeichert
 
         empty = Adw.StatusPage(
@@ -150,7 +155,9 @@ class SheetEditor(Gtk.Stack):
         """Lädt ein Blatt. Der Aufrufer muss vorher flush() erfolgreich aufgerufen haben.
         Wirft OSError oder UnicodeDecodeError; dann bleibt der bisherige Zustand unberührt."""
         text = read_text(path)
-        self._set_text(text)
+        header, body = frontmatter.split(text)
+        self._set_text(body)
+        self._header = header
         self.path = path
         self._disk_text = text
         self._dirty = False
@@ -158,6 +165,7 @@ class SheetEditor(Gtk.Stack):
         self.set_visible_child_name("editor")
         self._watch()
         self._emit_counts()
+        self.emit("metadata-changed")
 
     def set_path(self, path: Path) -> None:
         """Das offene Blatt wurde (samt Gruppe) umbenannt; Inhalt bleibt, Beobachtung zieht um."""
@@ -170,6 +178,7 @@ class SheetEditor(Gtk.Stack):
         self._unwatch()
         self.path = None
         self._disk_text = None
+        self._header = None
         self._dirty = False
         self.in_conflict = False
         self._set_text("")
@@ -196,7 +205,23 @@ class SheetEditor(Gtk.Stack):
         self.view.queue_resize()
 
     def text(self) -> str:
-        return self._buffer_text()
+        """Der ganze Dateiinhalt, wie er gespeichert würde (mit Dateikopf)."""
+        return self._file_text()
+
+    # --- Meta-Informationen (Dateikopf) ---------------------------------------
+
+    def metadata(self) -> dict:
+        return frontmatter.parse(self._header)
+
+    def set_metadata(self, changes: dict) -> None:
+        """Ändert Felder im Dateikopf; nur die betroffenen Zeilen, gesichert wie eine Texteingabe."""
+        if self.path is None:
+            return
+        header = frontmatter.update(self._header, changes)
+        if header == self._header:
+            return
+        self._header = header
+        self._mark_dirty()
 
     def show_match(self, offset: int, length: int) -> None:
         """Markiert eine Fundstelle und scrollt sie in die Mitte."""
@@ -230,7 +255,7 @@ class SheetEditor(Gtk.Stack):
         if disk is not None and disk != self._disk_text:
             self._enter_conflict()  # Fremde Änderung: nicht drüberschreiben
             return False
-        if not self._write(self._buffer_text()):
+        if not self._write(self._file_text()):
             return False
         if disk is None and self._disk_text is not None:
             self.emit("external-change", "restored")  # außerhalb gelöscht, unsere Fassung neu angelegt
@@ -244,6 +269,7 @@ class SheetEditor(Gtk.Stack):
             return False
         self._disk_text = text
         self._dirty = False
+        self.emit("saved")
         return True
 
     # --- Änderungen von außen ----------------------------------------------
@@ -261,13 +287,12 @@ class SheetEditor(Gtk.Stack):
         if disk is None:
             if self._dirty:
                 self._cancel_timer()
-                if self._write(self._buffer_text()):
+                if self._write(self._file_text()):
                     self.emit("external-change", "restored")
             else:
                 self.emit("external-change", "deleted")
         elif not self._dirty and disk is not _UNREADABLE:
-            self._replace_text(disk)
-            self._disk_text = disk
+            self._load_from_disk(disk)
             self.emit("external-change", "reloaded")
         else:
             self._enter_conflict()
@@ -275,7 +300,7 @@ class SheetEditor(Gtk.Stack):
     def resolve_conflict(self, keep_mine: bool) -> Path | None:
         """Löst einen Konflikt. Die nicht gewählte Fassung wird als Kopie neben dem Blatt gesichert;
         liefert deren Pfad. Wirft OSError oder UnicodeDecodeError (dann ist die eigene Fassung schon sicher)."""
-        mine = self._buffer_text()
+        mine = self._file_text()
         stamp = time.strftime("%Y-%m-%d %H.%M")
         base = _("%(name)s (conflict %(date)s)") % {"name": self.path.stem, "date": stamp}
         copy = unique_path(self.path.parent, base, ".md")
@@ -290,9 +315,7 @@ class SheetEditor(Gtk.Stack):
                 raise OSError(_("could not save"))
         else:
             atomic_write_text(copy, mine)
-            theirs = read_text(self.path)
-            self._replace_text(theirs)
-            self._disk_text = theirs
+            self._load_from_disk(read_text(self.path))
             self._dirty = False
             self.in_conflict = False
         return copy
@@ -340,12 +363,15 @@ class SheetEditor(Gtk.Stack):
     def _on_changed(self, _buffer):
         if self._loading or self.path is None:
             return
-        self._dirty = True
-        self._cancel_timer()
-        self._timer = GLib.timeout_add(AUTOSAVE_DELAY_MS, self._on_autosave)
+        self._mark_dirty()
         if self._count_timer:
             GLib.source_remove(self._count_timer)
         self._count_timer = GLib.timeout_add(COUNT_DELAY_MS, self._emit_counts)
+
+    def _mark_dirty(self):
+        self._dirty = True
+        self._cancel_timer()
+        self._timer = GLib.timeout_add(AUTOSAVE_DELAY_MS, self._on_autosave)
 
     def _on_autosave(self):
         self._timer = 0
@@ -378,6 +404,9 @@ class SheetEditor(Gtk.Stack):
             return self._indent_list(-1 if outdent else 1)
         if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             return False
+        if state & Gdk.ModifierType.ALT_MASK:
+            # Alt+Enter: Eigenschaften (Seitenfenster); das Textfeld würde sonst einen Zeilenumbruch einfügen.
+            return self.activate_action("win.inspector", None)
         ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
         if state & ctrl_shift == ctrl_shift:
             # Kürzel für den Fokus-Modus; das Textfeld würde sonst einen Zeilenumbruch einfügen.
@@ -470,6 +499,18 @@ class SheetEditor(Gtk.Stack):
             buffer.insert(start, after[prefix : len(after) - suffix])
 
     # --- intern -----------------------------------------------------------
+
+    def _file_text(self) -> str:
+        return frontmatter.join(self._header, self._buffer_text())
+
+    def _load_from_disk(self, text: str) -> None:
+        """Übernimmt einen neuen Dateiinhalt (Änderung von außen oder gewählte fremde Fassung)."""
+        header, body = frontmatter.split(text)
+        self._replace_text(body)
+        self._header = header
+        self._disk_text = text
+        self._dirty = False
+        self.emit("metadata-changed")
 
     def _buffer_text(self) -> str:
         return self.buffer.get_text(*self.buffer.get_bounds(), True)

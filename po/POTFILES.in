@@ -1,4 +1,5 @@
 src/typecase/find_bar.py
+src/typecase/inspector.py
 src/typecase/main.py
 src/typecase/preferences.py
 src/typecase/sheet_editor.py

@@ -96,3 +96,31 @@ def effective_settings(focus_mode: bool) -> dict:
 
 def update_profile(profile: str, values: dict) -> None:
     update(**{_PREFIX[profile] + key: value for key, value in values.items()})
+
+
+# --- Vorgaben für Meta-Informationen der Blätter ----------------------------------
+
+LANGUAGES = ("de-DE", "de-AT", "de-CH", "en-US", "en-GB", "fr-FR", "es-ES", "it-IT", "nl-NL")
+
+
+def _system_language() -> str:
+    for name in GLib.get_language_names():
+        code = name.split(".")[0].split("@")[0].replace("_", "-")
+        if code in LANGUAGES:
+            return code
+        for known in LANGUAGES:
+            if known.split("-")[0] == code:
+                return known
+    return "en-US"
+
+
+def sheet_defaults() -> dict:
+    """Voreinstellungen für Autor und Sprache. Sie gelten, solange ein Blatt nichts Eigenes angibt,
+    und werden nicht in die Dateien geschrieben."""
+    data = load()
+    author = data.get("default_author")
+    lang = data.get("default_lang")
+    return {
+        "author": author.strip() if isinstance(author, str) and author.strip() else None,
+        "lang": lang if isinstance(lang, str) and lang.strip() else _system_language(),
+    }

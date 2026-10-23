@@ -53,6 +53,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.show-shortcuts", ["<Primary>question"])
         self.set_accels_for_action("app.quit", ["<Primary>q"])
         self.set_accels_for_action("win.preferences", ["<Primary>comma"])
+        self.set_accels_for_action("win.inspector", ["<Alt>Return"])
 
         for name, handler in [("quit", self._on_quit), ("about", self._on_about)]:
             action = Gio.SimpleAction.new(name, None)

@@ -132,6 +132,36 @@ class _ProfilePage(Adw.PreferencesPage):
         self.save()
 
 
+class _SheetsPage(Adw.PreferencesPage):
+    """Voreinstellungen für die Meta-Informationen der Blätter (nicht in die Dateien geschrieben)."""
+
+    def __init__(self, apply):
+        super().__init__(title=_("Sheets"), icon_name="document-properties-symbolic", name="sheets")
+        self._apply = apply
+        defaults = config.sheet_defaults()
+        group = Adw.PreferencesGroup(
+            title=_("Defaults"),
+            description=_("Used for every sheet that does not set its own value, for example when exporting. They are not written into your files."),
+        )
+        self.add(group)
+        self.author = Adw.EntryRow(title=_("Author"), text=defaults["author"] or "")
+        self.author.connect("changed", lambda row: self._save())
+        group.add(self.author)
+        from .inspector import language_name
+
+        self.lang = Adw.ComboRow(
+            title=_("Language"),
+            model=Gtk.StringList.new([language_name(code) for code in config.LANGUAGES]),
+            selected=config.LANGUAGES.index(defaults["lang"]) if defaults["lang"] in config.LANGUAGES else 0,
+        )
+        self.lang.connect("notify::selected", lambda *_a: self._save())
+        group.add(self.lang)
+
+    def _save(self):
+        config.update(default_author=self.author.get_text().strip() or None, default_lang=config.LANGUAGES[self.lang.get_selected()])
+        self._apply()
+
+
 class PreferencesDialog(Adw.PreferencesDialog):
     """Einstellungen im GNOME-Stil: Änderungen wirken sofort und werden gleich gespeichert.
 
@@ -154,8 +184,10 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
         self.editor_page = _ProfilePage("editor", _("Editor"), "document-edit-symbolic", apply)
         self.focus_page = _ProfilePage("focus", _("Focus Mode"), "view-fullscreen-symbolic", apply, intro)
+        self.sheets_page = _SheetsPage(apply)
         self.add(self.editor_page)
         self.add(self.focus_page)
+        self.add(self.sheets_page)
 
         for group in self.focus_page.groups:
             self.focus_same.bind_property(

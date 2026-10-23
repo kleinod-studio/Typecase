@@ -6,7 +6,10 @@ from pathlib import Path
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
+from . import frontmatter
 from .find_bar import FindBar
+from .fileio import atomic_write_text
+from .inspector import Inspector
 from .preferences import PreferencesDialog
 from .library import Node, all_groups, create_group, create_sheet, move, rename, scan
 from .search import Hit, LibrarySearch
@@ -61,6 +64,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.apply_settings()
         self._apply_style_scheme()
 
+        self.inspector_split.set_show_sidebar(config.load().get("inspector_visible") is True)
         self._open_library(config.get_library_path(), restore=True)
 
     # --- Aufbau -----------------------------------------------------------
@@ -70,6 +74,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.split.set_sidebar(self._build_sidebar())
         self.split.set_content(self._build_content())
         self.set_content(self.split)
+
+        # Schmale Fenster (GNOME-Muster): Seitenleisten legen sich über den Text, statt Platz zu nehmen.
+        self.set_size_request(360, 360)
+        for condition, split in [("max-width: 1000sp", self.inspector_split), ("max-width: 640sp", self.split)]:
+            breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(condition))
+            breakpoint.add_setter(split, "collapsed", True)
+            self.add_breakpoint(breakpoint)
 
     def _build_sidebar(self):
         self.sidebar_title = Adw.WindowTitle(title=_("Library"), subtitle="")
@@ -185,6 +196,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view_section = Gio.Menu()
         view_section.append(_("Focus Mode"), "win.focus-mode")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
+        view_section.append(_("Properties"), "win.inspector")
         view_section.append(_("Fullscreen"), "win.fullscreen")
         help_section = Gio.Menu()
         help_section.append(_("Preferences"), "win.preferences")
@@ -210,12 +222,27 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view.set_content(self.editor)
         self.content_view = view
 
+        # Seitenfenster rechts für die Meta-Informationen (GNOME-Muster: zweite Seitenleiste am Ende).
+        self.inspector = Inspector(self.editor)
+        self.inspector_split = Adw.OverlaySplitView(
+            sidebar_position=Gtk.PackType.END,
+            show_sidebar=False,
+            min_sidebar_width=280,
+            max_sidebar_width=360,
+            sidebar=self.inspector,
+            content=view,
+        )
+        header.pack_end(
+            Gtk.ToggleButton(icon_name="sidebar-show-right-symbolic", action_name="win.inspector", tooltip_text=_("Properties"))
+        )
+        self.inspector_split.connect("notify::show-sidebar", self._on_inspector_toggled)
+
         # Im Fokus-Modus erscheint die Kopfzeile, wenn die Maus an den oberen Rand kommt.
         motion = Gtk.EventControllerMotion()
         motion.connect("motion", self._on_content_motion)
         view.add_controller(motion)
 
-        self.toasts = Adw.ToastOverlay(child=view)
+        self.toasts = Adw.ToastOverlay(child=self.inspector_split)
         return Adw.NavigationPage(title="Typecase", child=self.toasts)
 
     # --- Bibliothek -------------------------------------------------------
@@ -279,6 +306,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _save_state(self):
         """Merkt Fenstergröße, aufgeklappte Gruppen und das offene Blatt für den nächsten Start."""
         values = {"window_maximized": self.is_maximized()}
+        if not self.focus_mode:
+            values["inspector_visible"] = self.inspector_split.get_show_sidebar()
         if not self.is_maximized() and not self.is_fullscreen() and self.get_width() > 0 and self.get_height() > 0:
             values.update(window_width=self.get_width(), window_height=self.get_height())
         if self.library_path is not None:
@@ -566,12 +595,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
         # An Eigenschaften gekoppelt: Menü zeigt ein Häkchen, und der Zustand bleibt stimmig,
         # auch wenn der Fenstermanager das Vollbild selbst beendet.
         self.add_action(Gio.PropertyAction.new("toggle-sidebar", self.split, "show-sidebar"))
+        self.add_action(Gio.PropertyAction.new("inspector", self.inspector_split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
 
         focus_action = Gio.SimpleAction.new_stateful("focus-mode", None, GLib.Variant.new_boolean(False))
         focus_action.connect("change-state", self._on_focus_mode_changed)
         self.add_action(focus_action)
-        self._before_focus = (True, False)  # Seitenleiste sichtbar, Vollbild – zum Wiederherstellen
+        self._before_focus = (True, False, False)  # Seitenleiste, Vollbild, Eigenschaften – zum Wiederherstellen
         escape = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         escape.connect("key-pressed", self._on_window_key)
         self.add_controller(escape)
@@ -669,6 +699,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.editor.show_match(hit.offset, end - start)
         self.editor.focus_editor()
 
+    def _on_inspector_toggled(self, split, _pspec):
+        """Springt der Cursor beim Einblenden in ein Feld, nichts markieren: Weitertippen soll nichts überschreiben."""
+        if not split.get_show_sidebar():
+            return
+
+        def deselect():
+            focus = self.get_focus()
+            editable = focus if isinstance(focus, Gtk.Editable) else None
+            if editable is None and focus is not None and isinstance(focus.get_parent(), Gtk.Editable):
+                editable = focus.get_parent()
+            if editable is not None and editable.is_ancestor(self.inspector):
+                position = editable.get_position()
+                editable.select_region(position, position)
+            return False
+
+        GLib.idle_add(deselect)
+
     def _find_in_sheet(self, replace: bool):
         if self.editor.path is None:
             return
@@ -691,14 +738,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         action.set_state(value)
         self.apply_settings()  # der Fokus-Modus kann eigene Schrift, Größe und Stil haben
         if on:
-            self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen())
+            self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen(), self.inspector_split.get_show_sidebar())
             self.split.set_show_sidebar(False)
+            self.inspector_split.set_show_sidebar(False)
             self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
             self.editor.focus_editor()
         else:
-            sidebar, was_fullscreen = self._before_focus
+            sidebar, was_fullscreen, inspector = self._before_focus
+            self.inspector_split.set_show_sidebar(inspector)
             self.content_view.set_reveal_top_bars(True)
             self.content_view.set_extend_content_to_top_edge(False)
             self.split.set_show_sidebar(sidebar)
@@ -750,6 +799,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Focus Mode"), "<Primary><Shift>Return"),
                     (_("Leave Focus Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
+                    (_("Properties"), "<Alt>Return"),
                     (_("Fullscreen"), "F11"),
                     (_("Preferences"), "<Primary>comma"),
                     (_("Keyboard Shortcuts"), "<Primary>question"),
@@ -794,6 +844,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         try:
             path = create_sheet(self._target_folder(), _("Untitled"))
+            # Erstelldatum einmalig in den Dateikopf; so übersteht es Sync und Kopieren.
+            atomic_write_text(path, frontmatter.update(None, {"created": GLib.DateTime.new_now_local().format("%Y-%m-%dT%H:%M")}))
         except OSError as error:
             self._toast(_("Could not create the sheet: %s") % (error.strerror or error))
             return
@@ -1029,6 +1081,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 "dark": Adw.ColorScheme.FORCE_DARK,
             }[current["color_scheme"]]
         )
+        self.inspector.refresh()  # Voreinstellungen für Autor und Sprache können sich geändert haben
 
     def _apply_style_scheme(self):
         dark = Adw.StyleManager.get_default().get_dark()

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 22:48+0200\n"
+"POT-Creation-Date: 2026-10-23 23:15+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -48,6 +48,86 @@ msgid "%(count)s match"
 msgid_plural "%(count)s matches"
 msgstr[0] ""
 msgstr[1] ""
+
+msgid "German"
+msgstr ""
+
+msgid "German (Austria)"
+msgstr ""
+
+msgid "German (Switzerland)"
+msgstr ""
+
+msgid "English (US)"
+msgstr ""
+
+msgid "English (UK)"
+msgstr ""
+
+msgid "French"
+msgstr ""
+
+msgid "Spanish"
+msgstr ""
+
+msgid "Italian"
+msgstr ""
+
+msgid "Dutch"
+msgstr ""
+
+msgid "Draft"
+msgstr ""
+
+msgid "Revision"
+msgstr ""
+
+msgid "Final"
+msgstr ""
+
+msgid "Title"
+msgstr ""
+
+msgid "Subtitle"
+msgstr ""
+
+msgid "Author"
+msgstr ""
+
+msgid "Organize"
+msgstr ""
+
+msgid "Keywords, separated by commas"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Language"
+msgstr ""
+
+msgid "Dates"
+msgstr ""
+
+msgid "Created"
+msgstr ""
+
+msgid "Last Modified"
+msgstr ""
+
+msgid "Properties"
+msgstr ""
+
+#, python-format
+msgid "Default (%s)"
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+#, python-format
+msgid "%s (according to the file system)"
+msgstr ""
 
 msgid "Calm Markdown writing"
 msgstr ""
@@ -107,6 +187,17 @@ msgid "Dark"
 msgstr ""
 
 msgid "Restore Defaults"
+msgstr ""
+
+msgid "Sheets"
+msgstr ""
+
+msgid "Defaults"
+msgstr ""
+
+msgid ""
+"Used for every sheet that does not set its own value, for example when "
+"exporting. They are not written into your files."
 msgstr ""
 
 msgid "Preferences"

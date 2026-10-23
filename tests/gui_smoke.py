@@ -55,6 +55,13 @@ def wait_until(condition, timeout=3.0):
         waited += 0.1
 
 
+def body(path):
+    """Textteil einer Datei ohne Dateikopf (neue Blätter bekommen ein Erstelldatum im Kopf)."""
+    from typecase.frontmatter import split
+
+    return split(path.read_text(encoding="utf-8"))[1]
+
+
 def read(name):
     return (LIB / name).read_text(encoding="utf-8")
 
@@ -129,14 +136,14 @@ def steps(win, app):
     win._do_rename(win._selected_node(), "Entwurf")
     inner = LIB / "Romane" / "Entwurf.md"
     check(inner.exists() and ed.path == inner, "Offenes Blatt wird umbenannt, Editor folgt")
-    check(inner.read_text() == "Kapitel", "Ungesicherte Eingabe überlebt das Umbenennen")
+    check(body(inner) == "Kapitel", "Ungesicherte Eingabe überlebt das Umbenennen")
 
     select(LIB / "Romane")
     win._do_rename(win._selected_node(), "Bücher")
     inner = LIB / "Bücher" / "Entwurf.md"
     check(ed.path == inner, "Gruppe mit offenem Blatt umbenannt, Editor folgt")
     ed.buffer.insert_at_cursor("!")
-    check(ed.flush() and inner.read_text() == "!Kapitel" or inner.read_text() == "Kapitel!", "Speichern geht nach Umbenennen an den neuen Ort")
+    check(ed.flush() and body(inner) in ("!Kapitel", "Kapitel!"), "Speichern geht nach Umbenennen an den neuen Ort")
 
     select(LIB / "Untitled 2.md")
     win._do_rename(win._selected_node(), "a")
@@ -477,6 +484,64 @@ def steps(win, app):
     check((LIB / "ExternGruppe" / "Extern.md").exists() and ed.path == LIB / "ExternGruppe" / "Extern.md", "Verschieben nach … verschiebt per Tastatur")
     select(LIB / "a.md")
 
+    # Meta-Informationen: Dateikopf ausgeblendet, Seitenfenster rechts
+    from typecase.frontmatter import parse, split
+    from gi.repository import Adw
+
+    meta = LIB / "Meta.md"
+    meta.write_text("---\ntitle: Der Drache\ncssclass: wide   # fremdes Feld\n---\nEs war einmal.\n", encoding="utf-8")
+    yield from wait_until(lambda: win._index_of(meta) is not None)
+    select(meta)
+    check(text(ed) == "Es war einmal.\n", "Dateikopf ist im Editor ausgeblendet")
+    check(win.inspector.title_row.get_text() == "Der Drache", "Seitenfenster zeigt den Titel aus dem Dateikopf")
+    check(win.content_title.get_subtitle().startswith("3 words"), "Wortzähler zählt den Dateikopf nicht mit")
+    ed.buffer.insert(ed.buffer.get_end_iter(), "Ende.")
+    ed.flush()
+    check(meta.read_text().startswith("---\ntitle: Der Drache\ncssclass: wide   # fremdes Feld\n---\n") and body(meta) == "Es war einmal.\nEnde.", "Speichern setzt den Dateikopf unverändert wieder davor")
+
+    inspector = win.inspector
+    win.lookup_action("inspector").activate(None)
+    check(win.inspector_split.get_show_sidebar(), "Eigenschaften lassen sich einblenden")
+    inspector.author_row.set_text("Anna")
+    inspector.keywords_row.set_text("Roman, Entwurf ,")
+    inspector.status_row.set_selected(1)
+    ed.flush()
+    data = parse(split(meta.read_text())[0])
+    check(data.get("author") == "Anna" and data.get("keywords") == ["Roman", "Entwurf"] and data.get("status") == "draft", "Eingaben im Seitenfenster landen im Dateikopf")
+    check(data.get("cssclass") == "wide" and "# fremdes Feld" in meta.read_text(), "Fremde Felder bleiben erhalten")
+    inspector.author_row.set_text("")
+    ed.flush()
+    check("author" not in parse(split(meta.read_text())[0]), "Geleertes Feld verschwindet aus dem Dateikopf")
+    check(not ed.buffer.props.can_undo or text(ed) == "Es war einmal.\nEnde.", "Text bleibt von Meta-Änderungen unberührt")
+
+    meta.write_text(meta.read_text().replace("title: Der Drache", "title: Fridolin"), encoding="utf-8")
+    yield from wait_until(lambda: inspector.title_row.get_text() == "Fridolin")
+    check(inspector.title_row.get_text() == "Fridolin" and not ed.in_conflict, "Änderung am Dateikopf von außen wird übernommen")
+    check(text(ed) == "Es war einmal.\nEnde.", "Text bleibt dabei unverändert")
+
+    from typecase import config as cfg
+
+    cfg.update(default_author="Sascha")
+    win.apply_settings()
+    check(inspector.author_default.get_label() == "Sascha" and inspector.author_default.get_visible(), "Voreinstellung Autor erscheint als Platzhalter")
+    check("author" not in parse(split(meta.read_text())[0]), "Voreinstellung wird nicht in die Datei geschrieben")
+
+    editor_keys = next(c for c in ed.view.observe_controllers() if isinstance(c, Gtk.EventControllerKey))
+    before = text(ed)
+    check(editor_keys.emit("key-pressed", Gdk.KEY_Return, 0, Gdk.ModifierType.ALT_MASK) and not win.inspector_split.get_show_sidebar(), "Alt+Enter blendet die Eigenschaften um")
+    check(text(ed) == before, "Alt+Enter fügt keinen Zeilenumbruch ein")
+
+    win.lookup_action("new-sheet").activate(None)
+    created = parse(split(ed.path.read_text())[0]).get("created", "")
+    now = GLib.DateTime.new_now_local()
+    check(created.startswith(now.format("%Y-%m-%dT")) and len(created) == 16 and text(ed) == "", "Neues Blatt bekommt Erstelldatum mit Uhrzeit im Dateikopf")
+    from typecase.inspector import format_created
+
+    check(inspector.created_row.get_subtitle() == format_created(created) and ":" in inspector.created_row.get_subtitle(), "Seitenfenster zeigt das Erstelldatum mit Uhrzeit")
+    check(isinstance(inspector.created_row, Adw.ActionRow) and not isinstance(inspector.created_row, Adw.EntryRow), "Erstellt ist nicht bearbeitbar")
+    check(not isinstance(inspector.modified_row, Adw.EntryRow), "Zuletzt geändert ist nicht bearbeitbar")
+    select(LIB / "a.md")
+
     # Fokus-Modus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
     from gi.repository import Gdk
 
@@ -484,7 +549,9 @@ def steps(win, app):
     ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
     text_before = text(ed)
     check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F2 vor Fokus-Modus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
+    win.inspector_split.set_show_sidebar(True)
     check(editor_keys.emit("key-pressed", Gdk.KEY_Return, 0, ctrl_shift), "Strg+Umschalt+Enter wird im Text abgefangen")
+    check(not win.inspector_split.get_show_sidebar(), "Fokus-Modus blendet die Eigenschaften aus")
     check(win.focus_mode and not win.split.get_show_sidebar(), "Fokus-Modus blendet die Seitenleiste aus")
     check(not win.content_view.get_reveal_top_bars(), "Fokus-Modus blendet die Kopfzeile aus")
     check(text(ed) == text_before, "Kein Zeilenumbruch durch das Kürzel")
@@ -503,6 +570,8 @@ def steps(win, app):
     )
     check(window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape wird abgefangen")
     check(not win.focus_mode and win.split.get_show_sidebar() and win.content_view.get_reveal_top_bars(), "Escape beendet den Fokus-Modus und stellt alles wieder her")
+    check(win.inspector_split.get_show_sidebar(), "Eigenschaften kommen nach dem Fokus-Modus zurück")
+    win.inspector_split.set_show_sidebar(False)
     check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F4 nach Escape: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     yield 1.5
     check(not win.is_fullscreen(), "Vollbild endet mit dem Fokus-Modus")

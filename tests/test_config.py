@@ -59,5 +59,16 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(config.effective_settings(focus_mode=False)["color_scheme"], "system")
 
 
+    def test_sheet_defaults(self):
+        defaults = config.sheet_defaults()
+        self.assertIsNone(defaults["author"])
+        self.assertIn(defaults["lang"], config.LANGUAGES)
+        config.update(default_author="  Sascha  ", default_lang="en-GB")
+        self.assertEqual(config.sheet_defaults(), {"author": "Sascha", "lang": "en-GB"})
+        config.update(default_author="", default_lang=42)
+        self.assertIsNone(config.sheet_defaults()["author"])
+        self.assertIn(config.sheet_defaults()["lang"], config.LANGUAGES)
+
+
 if __name__ == "__main__":
     unittest.main()
