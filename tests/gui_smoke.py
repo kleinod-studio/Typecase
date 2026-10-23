@@ -327,13 +327,18 @@ def steps(win, app):
     win.inspector_split.set_show_sidebar(True)
     win._save_state()
     second = TypecaseWindow(application=app)
+    second.present()  # erst beim Anzeigen wächst das Fenster über die Umbruchbreite – da blendete libadwaita es ein
+    yield 0.8
     check(not second.inspector_split.get_show_sidebar(), "Eigenschaften sind beim Start immer ausgeblendet")
+    second.inspector_split.set_collapsed(True)  # Fenster startet schmal und wird dann breit (Tiling, Maximieren)
+    second.inspector_split.set_collapsed(False)
+    check(not second.inspector_split.get_show_sidebar(), "Breiter werdendes Fenster blendet die Eigenschaften nicht ein")
     win.inspector_split.set_show_sidebar(False)
     check(second.editor.path == group / "Blatt.md", "Neustart öffnet das letzte Blatt")
     check(second._index_of(group / "Blatt.md") is not None, "Neustart klappt die Gruppe wieder auf")
     check(text(second.editor) == "gemerkt", "Neustart lädt den Text des letzten Blatts")
     check(second.editor.flush(), "Zweites Fenster hat nichts Ungesichertes")
-    second.destroy()  # nie angezeigt, daher würde close() es nicht entfernen
+    second.destroy()  # ohne close(): das würde Fenstergröße und Zustand des Tests überschreiben
     check(app.get_windows() == [win], "Nur noch das Testfenster ist offen")
     select(LIB / "a.md")
 

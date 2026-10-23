@@ -290,6 +290,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.inspector_split = Adw.OverlaySplitView(
             sidebar_position=Gtk.PackType.END,
             show_sidebar=False,
+            # Festgehalten: sonst blendet libadwaita es ein, sobald das Fenster beim Start breit genug wird.
+            # So erscheint es nur, wenn man es selbst öffnet.
+            pin_sidebar=True,
             min_sidebar_width=280,
             max_sidebar_width=360,
             sidebar=self.inspector,
@@ -911,8 +914,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if on:
             self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen(), self.inspector_split.get_show_sidebar())
             # Festhalten: sonst blendet libadwaita Seitenleisten wieder ein, wenn das Vollbild das Fenster verbreitert.
-            for split in (self.split, self.inspector_split):
-                split.set_pin_sidebar(True)
+            self.split.set_pin_sidebar(True)
             self.split.set_show_sidebar(False)
             self.inspector_split.set_show_sidebar(False)
             self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
@@ -922,8 +924,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         else:
             sidebar, was_fullscreen, inspector = self._before_focus
             self.inspector_split.set_show_sidebar(inspector)
-            for split in (self.split, self.inspector_split):
-                split.set_pin_sidebar(False)
+            self.split.set_pin_sidebar(False)
             self.content_view.set_reveal_top_bars(True)
             self.content_view.set_extend_content_to_top_edge(False)
             self.split.set_show_sidebar(sidebar)
