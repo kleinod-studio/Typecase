@@ -11,7 +11,8 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "src"))
+# TYPECASE_CODE: anderen Code testen, z. B. den im Flatpak installierten (/app/share/typecase)
+sys.path.insert(0, os.environ.get("TYPECASE_CODE", str(ROOT / "src")))
 
 # Im Home-Verzeichnis, damit der System-Papierkorb funktioniert (auf /tmp oft nicht).
 TMP = Path(tempfile.mkdtemp(prefix="typecase-smoke-", dir=Path.home() / ".cache"))

@@ -34,6 +34,12 @@ flatpak-builder --user --install --force-clean build-dir studio.kleinod.Typecase
 flatpak run studio.kleinod.Typecase
 ```
 
+Den Oberflächentest gegen das installierte Flatpak laufen lassen (eigener Testordner, berührt keine echten Daten):
+
+```bash
+flatpak run --env=TYPECASE_CODE=/app/share/typecase --env=LANGUAGE=en --command=python3 studio.kleinod.Typecase tests/gui_smoke.py
+```
+
 ## Lizenz
 
 GPL-3.0-or-later, siehe [LICENSE](LICENSE).
