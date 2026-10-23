@@ -64,10 +64,11 @@ def steps(win, app):
 
     sel.set_selected(0)
     check(ed.path == LIB / "a.md", "Blatt a wird per Auswahl geöffnet")
+    check(not win.list_view.get_single_click_activate(), "Darüberfahren mit der Maus wählt kein Blatt aus")
     check(text(ed) == "Alpha", "Text von a steht im Editor")
 
     ed.buffer.insert_at_cursor(" eins")
-    yield 1.4
+    yield from wait_until(lambda: read("a.md") == " einsAlpha")
     check(read("a.md") == " einsAlpha" and text(ed) == " einsAlpha", "Autosave schreibt nach kurzer Pause")
 
     ed.buffer.insert_at_cursor("X")
@@ -83,7 +84,7 @@ def steps(win, app):
     check(text(ed) == "Beta", "Rückgängig wirkt im Blatt")
     ed.buffer.redo()
     check(text(ed) == "YBeta", "Wiederholen wirkt im Blatt")
-    yield 1.4
+    yield from wait_until(lambda: read("b.md") == "YBeta")
     check(read("b.md") == "YBeta", "Autosave nach Rückgängig/Wiederholen")
 
     # Speichern schlägt fehl: Ordner schreibgeschützt
@@ -104,6 +105,8 @@ def steps(win, app):
     # --- Neu, Umbenennen, Löschen ---
     def select(path):
         win.selection.set_selected(win._index_of(path))
+        if path.suffix == ".md" and ed.path != path:
+            check(False, f"Auswahl von {path.name} öffnet es im Editor (offen: {ed.path and ed.path.name})")
 
     win.lookup_action("new-sheet").activate(None)
     new_sheet = LIB / "Untitled.md"
@@ -429,18 +432,20 @@ def steps(win, app):
     check(not bar.get_search_mode() and not bar.context.get_highlight(), "Escape schließt die Leiste und entfernt die Hervorhebung")
     select(LIB / "a.md")
 
-    # Schreibmodus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
+    # Fokus-Modus: Strg+Umschalt+Enter im Text, Kopfzeile am oberen Rand, Escape
     from gi.repository import Gdk
 
     editor_keys = next(c for c in ed.view.observe_controllers() if isinstance(c, Gtk.EventControllerKey))
     ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
     text_before = text(ed)
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F2 vor Fokus-Modus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     check(editor_keys.emit("key-pressed", Gdk.KEY_Return, 0, ctrl_shift), "Strg+Umschalt+Enter wird im Text abgefangen")
-    check(win.writing_mode and not win.split.get_show_sidebar(), "Schreibmodus blendet die Seitenleiste aus")
-    check(not win.content_view.get_reveal_top_bars(), "Schreibmodus blendet die Kopfzeile aus")
+    check(win.focus_mode and not win.split.get_show_sidebar(), "Fokus-Modus blendet die Seitenleiste aus")
+    check(not win.content_view.get_reveal_top_bars(), "Fokus-Modus blendet die Kopfzeile aus")
     check(text(ed) == text_before, "Kein Zeilenumbruch durch das Kürzel")
     yield 1.5
-    check(win.is_fullscreen(), "Schreibmodus schaltet auf Vollbild")
+    check(win.is_fullscreen(), "Fokus-Modus schaltet auf Vollbild")
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F3 im Fokus-Modus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     margin = ed.view.get_left_margin()
     check(margin > 100 and margin == ed.view.get_right_margin(), "Textblock steht mittig mit begrenzter Breite")
     win._on_content_motion(None, 200, 2)
@@ -452,10 +457,12 @@ def steps(win, app):
         if isinstance(c, Gtk.EventControllerKey) and c.get_propagation_phase() == Gtk.PropagationPhase.CAPTURE
     )
     check(window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape wird abgefangen")
-    check(not win.writing_mode and win.split.get_show_sidebar() and win.content_view.get_reveal_top_bars(), "Escape beendet den Schreibmodus und stellt alles wieder her")
+    check(not win.focus_mode and win.split.get_show_sidebar() and win.content_view.get_reveal_top_bars(), "Escape beendet den Fokus-Modus und stellt alles wieder her")
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F4 nach Escape: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     yield 1.5
-    check(not win.is_fullscreen(), "Vollbild endet mit dem Schreibmodus")
-    check(not window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape außerhalb des Schreibmodus bleibt unberührt")
+    check(not win.is_fullscreen(), "Vollbild endet mit dem Fokus-Modus")
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt F5 Vollbild aus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
+    check(not window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape außerhalb des Fokus-Modus bleibt unberührt")
 
     # Einstellungen
     from gi.repository import Adw
@@ -463,25 +470,44 @@ def steps(win, app):
 
     win.lookup_action("preferences").activate(None)
     prefs = win.get_visible_dialog()
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt Einstellungen geöffnet: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     check(prefs is not None and type(prefs).__name__ == "PreferencesDialog", "Strg+Komma öffnet die Einstellungen")
     check(app.get_accels_for_action("win.preferences") == ["<Control>comma"], "Strg+Komma ist registriert")
-    prefs.font_size.set_value(22)
-    prefs.line_width.set_value(55)
-    prefs.line_spacing.set_selected(2)
-    prefs.color_scheme.set_selected(2)
+    prefs.editor_page.font_size.set_value(22)
+    prefs.editor_page.line_width.set_value(55)
+    prefs.editor_page.line_spacing.set_selected(2)
+    prefs.editor_page.color_scheme.set_selected(2)
     saved = config.settings()
     check((saved["editor_font_size"], saved["line_width"], saved["line_spacing"]) == (22, 55, "relaxed"), "Änderungen werden sofort gespeichert")
     check(ed.view.line_width_chars == 55 and ed.view.get_pixels_inside_wrap() == 10, "Breite und Zeilenabstand wirken sofort")
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.FORCE_DARK, "Stil Dunkel wirkt sofort")
-    prefs.system_font.set_active(False)
+    prefs.editor_page.system_font.set_active(False)
     from gi.repository import Pango
 
-    prefs.font_button.set_font_desc(Pango.FontDescription.from_string("Monospace"))
+    prefs.editor_page.font_button.set_font_desc(Pango.FontDescription.from_string("Monospace"))
     check(config.settings()["editor_font"] == "Monospace", "Eigene Schrift wird gespeichert")
-    prefs._reset()
+    prefs.editor_page.reset()
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt Zurückgesetzt: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     check(config.settings() == config.SETTINGS_DEFAULTS, "Zurücksetzen stellt die Voreinstellungen her")
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT, "Stil folgt wieder dem System")
+
+    # Eigene Einstellungen für den Fokus-Modus
+    focus = prefs.focus_page
+    check(prefs.focus_same.get_active() and not focus.groups[0].get_sensitive(), "Fokus-Modus übernimmt zunächst die Editor-Einstellungen")
+    prefs.focus_same.set_active(False)
+    focus.color_scheme.set_selected(2)
+    focus.font_size.set_value(26)
+    check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT, "Außerhalb des Fokus-Modus bleibt der Editor-Stil")
     prefs.force_close()
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt Einstellungen geschlossen: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
+    win.lookup_action("focus-mode").activate(None)
+    check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.FORCE_DARK, "Fokus-Modus schaltet auf seinen eigenen Stil (Dunkel)")
+    check("26pt" in ed._css.to_string(), "Fokus-Modus nutzt seine eigene Schriftgröße")
+    win.lookup_action("focus-mode").activate(None)
+    check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT and "15pt" in ed._css.to_string(), "Zurück im Editor gelten wieder dessen Einstellungen")
+    yield from wait_until(lambda: not win.is_fullscreen())
+    config.update(focus_same_as_editor=True)
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt nach Fokus-Modus: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
 
     # Fenster: Seitenleiste, Vollbild, Tastenkürzel, Über
     shown = win.split.get_show_sidebar()
@@ -489,6 +515,7 @@ def steps(win, app):
     check(win.split.get_show_sidebar() != shown, "F9-Aktion blendet die Seitenleiste um")
     win.lookup_action("toggle-sidebar").activate(None)
     check(win.split.get_show_sidebar() == shown, "F9-Aktion blendet sie wieder ein")
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt nach Seitenleiste: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     win.sidebar_button.emit("clicked")  # wie ein Klick
     check(not win.split.get_show_sidebar() and not win.sidebar_button.get_active(), "Knopf blendet die Seitenleiste aus")
     win.sidebar_button.emit("clicked")
@@ -499,12 +526,14 @@ def steps(win, app):
     win.lookup_action("fullscreen").activate(None)
     yield 1.5
     check(not win.is_fullscreen(), "F11-Aktion schaltet Vollbild aus")
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt nach Vollbild: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     win.lookup_action("show-shortcuts").activate(None)
     check(win.get_visible_dialog() is not None, "Tastenkürzel-Übersicht öffnet sich")
     win.get_visible_dialog().force_close()
     app.lookup_action("about").activate(None)
     check(win.get_visible_dialog() is not None, "Über-Dialog öffnet sich")
     win.get_visible_dialog().force_close()
+    check(ed.path and ed.path.name == "a.md", "Kontrollpunkt nach Über-Dialog: a.md noch offen (offen: " + str(ed.path and ed.path.name) + ")")
     accels = {name: app.get_accels_for_action(name) for name in ["win.fullscreen", "win.toggle-sidebar", "app.quit"]}
     check(accels == {"win.fullscreen": ["F11"], "win.toggle-sidebar": ["F9", "<Shift><Control>l"], "app.quit": ["<Control>q"]}, "Tastenkürzel sind registriert")
 

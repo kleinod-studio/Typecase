@@ -58,19 +58,41 @@ FONT_SIZE_RANGE = (8, 48)
 LINE_WIDTH_RANGE = (30, 200)
 
 
-def settings() -> dict:
-    """Die Einstellungen, geprüft: Ungültiges oder Fehlendes wird durch die Voreinstellung ersetzt."""
+PROFILES = ("editor", "focus")  # normaler Editor und Fokus-Modus
+_PREFIX = {"editor": "", "focus": "focus_"}
+
+
+def settings(profile: str = "editor") -> dict:
+    """Die Einstellungen eines Profils, geprüft: Ungültiges oder Fehlendes wird durch die Voreinstellung ersetzt.
+    Im Fokus-Profil sind das dessen eigene Werte, auch wenn es gerade die des Editors übernimmt."""
     data = load()
+    prefix = _PREFIX[profile]
     result = dict(SETTINGS_DEFAULTS)
-    font = data.get("editor_font")
+    font = data.get(prefix + "editor_font")
     if isinstance(font, str) and font.strip():
         result["editor_font"] = font.strip()
     for key, (low, high) in [("editor_font_size", FONT_SIZE_RANGE), ("line_width", LINE_WIDTH_RANGE)]:
-        value = data.get(key)
+        value = data.get(prefix + key)
         if isinstance(value, int) and not isinstance(value, bool) and low <= value <= high:
             result[key] = value
-    if data.get("line_spacing") in LINE_SPACINGS:
-        result["line_spacing"] = data["line_spacing"]
-    if data.get("color_scheme") in COLOR_SCHEMES:
-        result["color_scheme"] = data["color_scheme"]
+    if data.get(prefix + "line_spacing") in LINE_SPACINGS:
+        result["line_spacing"] = data[prefix + "line_spacing"]
+    if data.get(prefix + "color_scheme") in COLOR_SCHEMES:
+        result["color_scheme"] = data[prefix + "color_scheme"]
     return result
+
+
+def focus_uses_editor_settings() -> bool:
+    """Übernimmt der Fokus-Modus die Einstellungen des Editors? (Voreinstellung: ja)"""
+    return load().get("focus_same_as_editor") is not False
+
+
+def effective_settings(focus_mode: bool) -> dict:
+    """Was gerade gelten soll: im Fokus-Modus dessen Profil, sofern es nicht die des Editors übernimmt."""
+    if focus_mode and not focus_uses_editor_settings():
+        return settings("focus")
+    return settings("editor")
+
+
+def update_profile(profile: str, values: dict) -> None:
+    update(**{_PREFIX[profile] + key: value for key, value in values.items()})

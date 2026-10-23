@@ -45,5 +45,19 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(config.settings(), config.SETTINGS_DEFAULTS)
 
 
+    def test_focus_profile_is_separate(self):
+        config.update_profile("focus", {"editor_font_size": 24, "color_scheme": "dark"})
+        self.assertEqual(config.settings("editor")["editor_font_size"], 15)
+        self.assertEqual(config.settings("focus")["editor_font_size"], 24)
+
+    def test_focus_uses_editor_settings_by_default(self):
+        config.update_profile("focus", {"color_scheme": "dark"})
+        self.assertTrue(config.focus_uses_editor_settings())
+        self.assertEqual(config.effective_settings(focus_mode=True)["color_scheme"], "system")
+        config.update(focus_same_as_editor=False)
+        self.assertEqual(config.effective_settings(focus_mode=True)["color_scheme"], "dark")
+        self.assertEqual(config.effective_settings(focus_mode=False)["color_scheme"], "system")
+
+
 if __name__ == "__main__":
     unittest.main()

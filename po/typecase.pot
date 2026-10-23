@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 22:20+0200\n"
+"POT-Creation-Date: 2026-10-23 22:39+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -50,12 +50,6 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "Calm Markdown writing"
-msgstr ""
-
-msgid "Preferences"
-msgstr ""
-
-msgid "Editor"
 msgstr ""
 
 msgid "Font"
@@ -115,6 +109,26 @@ msgstr ""
 msgid "Restore Defaults"
 msgstr ""
 
+msgid "Preferences"
+msgstr ""
+
+msgid ""
+"Focus mode hides the sidebar and toolbars and shows only your text, full "
+"screen."
+msgstr ""
+
+msgid "Use Editor Settings"
+msgstr ""
+
+msgid "Switch off to give focus mode its own font, size and style"
+msgstr ""
+
+msgid "Editor"
+msgstr ""
+
+msgid "Focus Mode"
+msgstr ""
+
 msgid "No Sheet Open"
 msgstr ""
 
@@ -166,9 +180,6 @@ msgid "Try a different search term."
 msgstr ""
 
 msgid "Show Sidebar"
-msgstr ""
-
-msgid "Writing Mode"
 msgstr ""
 
 msgid "Fullscreen"
@@ -291,7 +302,7 @@ msgstr ""
 msgid "Window"
 msgstr ""
 
-msgid "Leave Writing Mode"
+msgid "Leave Focus Mode"
 msgstr ""
 
 msgid "Quit"

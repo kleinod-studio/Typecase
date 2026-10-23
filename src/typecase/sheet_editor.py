@@ -380,8 +380,8 @@ class SheetEditor(Gtk.Stack):
             return False
         ctrl_shift = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
         if state & ctrl_shift == ctrl_shift:
-            # Kürzel für den Schreibmodus; das Textfeld würde sonst einen Zeilenumbruch einfügen.
-            return self.activate_action("win.writing-mode", None)
+            # Kürzel für den Fokus-Modus; das Textfeld würde sonst einen Zeilenumbruch einfügen.
+            return self.activate_action("win.focus-mode", None)
         modifiers = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SHIFT_MASK
         if state & modifiers or self.path is None or self.buffer.get_has_selection():
             return False

@@ -5,21 +5,26 @@ from gi.repository import Adw, GObject, Gtk, Pango
 from . import config
 
 
-class PreferencesDialog(Adw.PreferencesDialog):
-    """Einstellungen im GNOME-Stil: Änderungen wirken sofort und werden gleich gespeichert."""
+def _system_font_family() -> str:
+    name = Gtk.Settings.get_default().props.gtk_font_name or "Sans"
+    return Pango.FontDescription.from_string(name).get_family()
 
-    def __init__(self, apply):
-        super().__init__(title=_("Preferences"))
-        self._apply = apply  # Rückruf: Einstellungen auf Fenster und Editor anwenden
-        current = config.settings()
 
-        page = Adw.PreferencesPage(title=_("Editor"), icon_name="document-edit-symbolic")
-        self.add(page)
+class _ProfilePage(Adw.PreferencesPage):
+    """Eine Rubrik mit Schrift, Textblock und Stil für ein Profil (Editor oder Fokus-Modus)."""
+
+    def __init__(self, profile: str, title: str, icon_name: str, on_change, intro: Adw.PreferencesGroup | None = None):
+        super().__init__(title=title, icon_name=icon_name, name=profile)
+        self.profile = profile
+        self._on_change = on_change
+        self._loading = True
+        current = config.settings(profile)
+        self.groups: list[Adw.PreferencesGroup] = []
+        if intro is not None:
+            self.add(intro)  # steht über den übrigen Gruppen
 
         # Schrift
-        font_group = Adw.PreferencesGroup(title=_("Font"))
-        page.add(font_group)
-
+        font_group = self._group(_("Font"))
         self.system_font = Adw.SwitchRow(
             title=_("Use System Font"),
             subtitle=_("The same font as the rest of the desktop"),
@@ -33,9 +38,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
             valign=Gtk.Align.CENTER,
         )
         # Nur die Familie zeigen (Größe hat eine eigene Zeile); ohne eigene Schrift die des Systems.
-        family = current["editor_font"] or Pango.FontDescription.from_string(
-            Gtk.Settings.get_default().props.gtk_font_name or "Sans"
-        ).get_family()
+        family = current["editor_font"] or _system_font_family()
         self.font_button.set_font_desc(Pango.FontDescription.from_string(family))
         font_row = Adw.ActionRow(title=_("Font"))
         font_row.add_suffix(self.font_button)
@@ -53,9 +56,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         font_group.add(self.font_size)
 
         # Textblock
-        text_group = Adw.PreferencesGroup(title=_("Text Block"))
-        page.add(text_group)
-
+        text_group = self._group(_("Text Block"))
         low, high = config.LINE_WIDTH_RANGE
         self.line_width = Adw.SpinRow.new_with_range(low, high, 5)
         self.line_width.set_title(_("Line Width"))
@@ -71,8 +72,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         text_group.add(self.line_spacing)
 
         # Darstellung
-        look_group = Adw.PreferencesGroup(title=_("Appearance"))
-        page.add(look_group)
+        look_group = self._group(_("Appearance"))
         self.color_scheme = Adw.ComboRow(
             title=_("Style"),
             model=Gtk.StringList.new([_("Follow System"), _("Light"), _("Dark")]),
@@ -80,10 +80,9 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         look_group.add(self.color_scheme)
 
-        reset_group = Adw.PreferencesGroup()
-        page.add(reset_group)
+        reset_group = self._group(None)
         reset = Gtk.Button(label=_("Restore Defaults"), halign=Gtk.Align.CENTER, css_classes=["pill"])
-        reset.connect("clicked", lambda _b: self._reset())
+        reset.connect("clicked", lambda _b: self.reset())
         reset_group.add(reset)
 
         for widget, signal in [
@@ -94,26 +93,76 @@ class PreferencesDialog(Adw.PreferencesDialog):
             (self.line_spacing, "notify::selected"),
             (self.color_scheme, "notify::selected"),
         ]:
-            widget.connect(signal, lambda *_args: self._save())
+            widget.connect(signal, lambda *_args: self.save())
+        self._loading = False
 
-    def _save(self):
+    def _group(self, title: str | None) -> Adw.PreferencesGroup:
+        group = Adw.PreferencesGroup(title=title) if title else Adw.PreferencesGroup()
+        self.add(group)
+        self.groups.append(group)
+        return group
+
+    def save(self):
+        if self._loading:
+            return
         font = None
         if not self.system_font.get_active() and self.font_button.get_font_desc() is not None:
             font = self.font_button.get_font_desc().get_family()
-        config.update(
-            editor_font=font,
-            editor_font_size=int(self.font_size.get_value()),
-            line_width=int(self.line_width.get_value()),
-            line_spacing=config.LINE_SPACINGS[self.line_spacing.get_selected()],
-            color_scheme=config.COLOR_SCHEMES[self.color_scheme.get_selected()],
+        config.update_profile(
+            self.profile,
+            {
+                "editor_font": font,
+                "editor_font_size": int(self.font_size.get_value()),
+                "line_width": int(self.line_width.get_value()),
+                "line_spacing": config.LINE_SPACINGS[self.line_spacing.get_selected()],
+                "color_scheme": config.COLOR_SCHEMES[self.color_scheme.get_selected()],
+            },
         )
-        self._apply()
+        self._on_change()
 
-    def _reset(self):
+    def reset(self):
         defaults = config.SETTINGS_DEFAULTS
+        self._loading = True
         self.system_font.set_active(True)
         self.font_size.set_value(defaults["editor_font_size"])
         self.line_width.set_value(defaults["line_width"])
         self.line_spacing.set_selected(config.LINE_SPACINGS.index(defaults["line_spacing"]))
         self.color_scheme.set_selected(config.COLOR_SCHEMES.index(defaults["color_scheme"]))
-        self._save()
+        self._loading = False
+        self.save()
+
+
+class PreferencesDialog(Adw.PreferencesDialog):
+    """Einstellungen im GNOME-Stil: Änderungen wirken sofort und werden gleich gespeichert.
+
+    Zwei Rubriken: der normale Editor und der Fokus-Modus. Der Fokus-Modus übernimmt
+    zunächst die Einstellungen des Editors; erst wenn das abgeschaltet ist, gelten seine eigenen."""
+
+    def __init__(self, apply):
+        super().__init__(title=_("Preferences"))
+        self._apply = apply
+
+        intro = Adw.PreferencesGroup(
+            description=_("Focus mode hides the sidebar and toolbars and shows only your text, full screen.")
+        )
+        self.focus_same = Adw.SwitchRow(
+            title=_("Use Editor Settings"),
+            subtitle=_("Switch off to give focus mode its own font, size and style"),
+            active=config.focus_uses_editor_settings(),
+        )
+        intro.add(self.focus_same)
+
+        self.editor_page = _ProfilePage("editor", _("Editor"), "document-edit-symbolic", apply)
+        self.focus_page = _ProfilePage("focus", _("Focus Mode"), "view-fullscreen-symbolic", apply, intro)
+        self.add(self.editor_page)
+        self.add(self.focus_page)
+
+        for group in self.focus_page.groups:
+            self.focus_same.bind_property(
+                "active", group, "sensitive", GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN
+            )
+        self.focus_same.connect("notify::active", self._on_focus_same_changed)
+
+    def _on_focus_same_changed(self, *_args):
+        config.update(focus_same_as_editor=self.focus_same.get_active())
+        self._apply()

@@ -135,7 +135,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.list_view = Gtk.ListView(
             model=self.selection,
             factory=factory,
-            single_click_activate=True,
+            # Kein single_click_activate: das würde schon beim Darüberfahren mit der Maus auswählen.
             css_classes=["navigation-sidebar"],
         )
         self.list_view.connect("activate", self._on_row_activated)
@@ -178,7 +178,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         header.pack_start(self.sidebar_button)
 
         view_section = Gio.Menu()
-        view_section.append(_("Writing Mode"), "win.writing-mode")
+        view_section.append(_("Focus Mode"), "win.focus-mode")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
         view_section.append(_("Fullscreen"), "win.fullscreen")
         help_section = Gio.Menu()
@@ -205,7 +205,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view.set_content(self.editor)
         self.content_view = view
 
-        # Im Schreibmodus erscheint die Kopfzeile, wenn die Maus an den oberen Rand kommt.
+        # Im Fokus-Modus erscheint die Kopfzeile, wenn die Maus an den oberen Rand kommt.
         motion = Gtk.EventControllerMotion()
         motion.connect("motion", self._on_content_motion)
         view.add_controller(motion)
@@ -562,10 +562,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.add_action(Gio.PropertyAction.new("toggle-sidebar", self.split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
 
-        writing = Gio.SimpleAction.new_stateful("writing-mode", None, GLib.Variant.new_boolean(False))
-        writing.connect("change-state", self._on_writing_mode_changed)
-        self.add_action(writing)
-        self._before_writing = (True, False)  # Seitenleiste sichtbar, Vollbild – zum Wiederherstellen
+        focus_action = Gio.SimpleAction.new_stateful("focus-mode", None, GLib.Variant.new_boolean(False))
+        focus_action.connect("change-state", self._on_focus_mode_changed)
+        self.add_action(focus_action)
+        self._before_focus = (True, False)  # Seitenleiste sichtbar, Vollbild – zum Wiederherstellen
         escape = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         escape.connect("key-pressed", self._on_window_key)
         self.add_controller(escape)
@@ -592,8 +592,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _start_search(self):
         if self.library_path is None:
             return
-        if self.writing_mode:
-            self.lookup_action("writing-mode").change_state(GLib.Variant.new_boolean(False))
+        if self.focus_mode:
+            self.lookup_action("focus-mode").change_state(GLib.Variant.new_boolean(False))
         self.split.set_show_sidebar(True)
         self.search_bar.set_search_mode(True)
         self.search_entry.grab_focus()
@@ -669,29 +669,30 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.find_bar.open(replace=replace)
 
     def _on_find_bar_toggled(self, bar, _pspec):
-        if self.writing_mode:
+        if self.focus_mode:
             self.content_view.set_reveal_top_bars(bar.get_search_mode())
 
-    # --- Schreibmodus -------------------------------------------------------
+    # --- Fokus-Modus -------------------------------------------------------
 
     @property
-    def writing_mode(self) -> bool:
-        return self.lookup_action("writing-mode").get_state().get_boolean()
+    def focus_mode(self) -> bool:
+        return self.lookup_action("focus-mode").get_state().get_boolean()
 
-    def _on_writing_mode_changed(self, action, value):
+    def _on_focus_mode_changed(self, action, value):
         on = value.get_boolean()
-        if on == self.writing_mode:
+        if on == self.focus_mode:
             return
         action.set_state(value)
+        self.apply_settings()  # der Fokus-Modus kann eigene Schrift, Größe und Stil haben
         if on:
-            self._before_writing = (self.split.get_show_sidebar(), self.is_fullscreen())
+            self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen())
             self.split.set_show_sidebar(False)
             self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
             self.editor.focus_editor()
         else:
-            sidebar, was_fullscreen = self._before_writing
+            sidebar, was_fullscreen = self._before_focus
             self.content_view.set_reveal_top_bars(True)
             self.content_view.set_extend_content_to_top_edge(False)
             self.split.set_show_sidebar(sidebar)
@@ -699,7 +700,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 self.unfullscreen()
 
     def _on_content_motion(self, _controller, _x, y):
-        if not self.writing_mode:
+        if not self.focus_mode:
             return
         if y < 8:
             self.content_view.set_reveal_top_bars(True)
@@ -707,8 +708,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.content_view.set_reveal_top_bars(False)
 
     def _on_window_key(self, _controller, keyval, _keycode, _state):
-        if keyval == Gdk.KEY_Escape and self.writing_mode and self.get_visible_dialog() is None:
-            self.lookup_action("writing-mode").change_state(GLib.Variant.new_boolean(False))
+        if keyval == Gdk.KEY_Escape and self.focus_mode and self.get_visible_dialog() is None:
+            self.lookup_action("focus-mode").change_state(GLib.Variant.new_boolean(False))
             return True
         return False
 
@@ -740,8 +741,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             (
                 _("Window"),
                 [
-                    (_("Writing Mode"), "<Primary><Shift>Return"),
-                    (_("Leave Writing Mode"), "Escape"),
+                    (_("Focus Mode"), "<Primary><Shift>Return"),
+                    (_("Leave Focus Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Fullscreen"), "F11"),
                     (_("Preferences"), "<Primary>comma"),
@@ -878,10 +879,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
         box.append(icon)
         box.append(label)
         expander = Gtk.TreeExpander(child=box)
+        left_click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
+        left_click.connect("released", self._on_row_clicked, list_item)
+        expander.add_controller(left_click)
         right_click = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
         right_click.connect("pressed", self._on_row_right_click, list_item)
         expander.add_controller(right_click)
         list_item.set_child(expander)
+
+    def _on_row_clicked(self, _gesture, _n_press, _x, _y, list_item):
+        """Nach einem Klick auf ein Blatt gleich weiterschreiben können (Pfeiltasten bleiben in der Liste)."""
+        row = list_item.get_item()
+        if row is not None and not row.get_item().node.is_group:
+            GLib.idle_add(lambda: self.editor.focus_editor() and False)
 
     def _on_row_right_click(self, gesture, _n_press, x, y, list_item):
         position = list_item.get_position()
@@ -913,7 +923,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def apply_settings(self):
         """Wendet die gespeicherten Einstellungen an (beim Start und bei jeder Änderung im Dialog)."""
-        current = config.settings()
+        current = config.effective_settings(self.focus_mode)
         self.editor.set_appearance(
             font_family=current["editor_font"],
             font_size_pt=current["editor_font_size"],
