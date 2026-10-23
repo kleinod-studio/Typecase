@@ -16,6 +16,11 @@ class LibraryItem(GObject.Object):
         self.node = node
 
 
+def _signature(nodes: list[Node]) -> tuple:
+    """Struktur der Bibliothek zum Vergleichen: Pfade und ob Gruppe."""
+    return tuple((node.path, node.is_group, _signature(node.children) if node.is_group else ()) for node in nodes)
+
+
 def _make_store(nodes: list[Node]) -> Gio.ListStore:
     store = Gio.ListStore(item_type=LibraryItem)
     for node in nodes:
@@ -36,11 +41,15 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.library_path: Path | None = None
         self._open_row = None  # Zeile des Blatts, das gerade im Editor offen ist
         self._ignore_selection = False
+        self._library_monitors: list[Gio.FileMonitor] = []
+        self._tree_check_timer = 0
+        self._tree_signature: tuple = ()
 
         self._build_ui()
         self._setup_actions()
         self.editor.connect("save-failed", self._on_save_failed)
         self.editor.connect("counts-changed", self._on_counts_changed)
+        self.editor.connect("external-change", self._on_external_change)
         self.connect("close-request", self._on_close_request)
 
         style = Adw.StyleManager.get_default()
@@ -186,6 +195,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.selection.set_model(None)
         self._ignore_selection = False
         self.tree_model = None
+        self._unwatch_library()
         if path is None:
             self.sidebar_title.set_subtitle("")
             self.sidebar_stack.set_visible_child_name("empty")
@@ -247,7 +257,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
             expanded.update(p for p in select_path.parents if p != self.library_path)
 
         self._ignore_selection = True
-        root = _make_store(scan(self.library_path))
+        nodes = scan(self.library_path)
+        self._tree_signature = _signature(nodes)
+        self._watch_library(nodes)
+        root = _make_store(nodes)
         self.tree_model = Gtk.TreeListModel.new(root, False, False, self._create_children)
         self.selection.set_model(self.tree_model)
         i = 0
@@ -268,6 +281,99 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if select_index is not None:
             self.list_view.scroll_to(select_index, Gtk.ListScrollFlags.NONE, None)
         self._update_actions()
+
+    # --- Bibliothek beobachten (Änderungen von außen) ----------------------
+
+    def _watch_library(self, nodes: list[Node]):
+        """Beobachtet den Stammordner und alle Gruppen; Gio beobachtet nicht rekursiv."""
+        self._unwatch_library()
+        folders = [self.library_path]
+        stack = list(nodes)
+        while stack:
+            node = stack.pop()
+            if node.is_group:
+                folders.append(node.path)
+                stack.extend(node.children)
+        for folder in folders:
+            try:
+                monitor = Gio.File.new_for_path(str(folder)).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, None)
+            except GLib.Error:
+                continue
+            monitor.connect("changed", self._on_library_event)
+            self._library_monitors.append(monitor)
+
+    def _unwatch_library(self):
+        for monitor in self._library_monitors:
+            monitor.cancel()
+        self._library_monitors = []
+        if self._tree_check_timer:
+            GLib.source_remove(self._tree_check_timer)
+            self._tree_check_timer = 0
+
+    def _on_library_event(self, _monitor, file, other, _event):
+        names = [f.get_basename() for f in (file, other) if f is not None]
+        if names and all(name.startswith(".") for name in names):
+            return  # versteckte Dateien, z. B. unsere eigenen Temp-Dateien beim Speichern
+        if self._tree_check_timer:
+            GLib.source_remove(self._tree_check_timer)
+        self._tree_check_timer = GLib.timeout_add(300, self._check_tree)
+
+    def _check_tree(self):
+        self._tree_check_timer = 0
+        if self.library_path is not None and _signature(scan(self.library_path)) != self._tree_signature:
+            self._reload()  # nur wenn sich Gruppen oder Blätter wirklich geändert haben
+        return GLib.SOURCE_REMOVE
+
+    def _on_external_change(self, _editor, kind):
+        name = self.editor.path.stem if self.editor.path else ""
+        if kind == "reloaded":
+            self._toast(_("“%s” was changed outside Typecase and reloaded.") % name)
+        elif kind == "deleted":
+            self._show_sheet(None)
+            self._reload()
+            self._toast(_("“%s” was deleted outside Typecase.") % name)
+        elif kind == "restored":
+            self._toast(_("“%s” was deleted outside Typecase. Your version was saved again.") % name)
+            self._check_tree()
+        elif kind == "conflict":
+            self._ask_conflict(name)
+
+    def _ask_conflict(self, name: str):
+        dialog = Adw.AlertDialog(
+            heading=_("Sheet Changed Elsewhere"),
+            body=_(
+                "“%s” was changed outside Typecase while you were writing. "
+                "Which version should stay in the sheet? The other one is kept as a copy next to it."
+            )
+            % name,
+        )
+        dialog.add_response("theirs", _("Load Other Version"))
+        dialog.add_response("mine", _("Keep My Version"))
+        dialog.set_response_appearance("mine", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("mine")
+        dialog.set_close_response("mine")  # Escape behält die eigene Fassung; beide bleiben erhalten
+        dialog.connect("response", self._on_conflict_response)
+        dialog.present(self)
+
+    def _on_conflict_response(self, _dialog, response):
+        if not self.editor.in_conflict:
+            return  # schon entschieden (der Dialog meldet sich beim Schließen ggf. ein zweites Mal)
+        try:
+            copy = self.editor.resolve_conflict(keep_mine=response == "mine")
+        except UnicodeDecodeError:
+            # Die fremde Fassung ist kein Text mehr; unsere liegt sicher in der Kopie.
+            self._show_sheet(None)
+            self._reload()
+            self._toast(_("The other version is not a UTF-8 text file. Your version was saved as a copy."))
+            return
+        except OSError as error:
+            # Noch nichts entschieden; erneut fragen, statt im Konflikt hängen zu bleiben.
+            self._toast(_("Could not save: %s") % (error.strerror or error))
+            self._ask_conflict(self.editor.path.stem)
+            return
+        self._reload()
+        if copy is not None:
+            self._toast(_("The other version was kept as “%s”.") % copy.stem)
 
     def _expanded_paths(self) -> set[Path]:
         paths: set[Path] = set()
@@ -527,7 +633,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         open_path = self.editor.path
         if open_path is not None and (open_path == node.path or node.path in open_path.parents):
-            self.editor.path = new_path / open_path.relative_to(node.path)
+            self.editor.set_path(new_path / open_path.relative_to(node.path))
         self._reload(select_path=new_path, renamed=(node.path, new_path))
 
     def _on_delete(self):

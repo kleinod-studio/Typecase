@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-23 20:06+0200\n"
+"POT-Creation-Date: 2026-10-23 20:28+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,6 +25,13 @@ msgid "No Sheet Open"
 msgstr ""
 
 msgid "Select a sheet in the library to start writing."
+msgstr ""
+
+#, python-format
+msgid "%(name)s (conflict %(date)s)"
+msgstr ""
+
+msgid "could not save"
 msgstr ""
 
 msgid "Library"
@@ -73,6 +80,45 @@ msgstr ""
 msgid "Choose Library Folder"
 msgstr ""
 
+#, python-format
+msgid "“%s” was changed outside Typecase and reloaded."
+msgstr ""
+
+#, python-format
+msgid "“%s” was deleted outside Typecase."
+msgstr ""
+
+#, python-format
+msgid "“%s” was deleted outside Typecase. Your version was saved again."
+msgstr ""
+
+msgid "Sheet Changed Elsewhere"
+msgstr ""
+
+#, python-format
+msgid ""
+"“%s” was changed outside Typecase while you were writing. Which version "
+"should stay in the sheet? The other one is kept as a copy next to it."
+msgstr ""
+
+msgid "Load Other Version"
+msgstr ""
+
+msgid "Keep My Version"
+msgstr ""
+
+msgid ""
+"The other version is not a UTF-8 text file. Your version was saved as a copy."
+msgstr ""
+
+#, python-format
+msgid "Could not save: %s"
+msgstr ""
+
+#, python-format
+msgid "The other version was kept as “%s”."
+msgstr ""
+
 msgid "not a UTF-8 text file"
 msgstr ""
 
@@ -91,10 +137,6 @@ msgid "%(count)s character"
 msgid_plural "%(count)s characters"
 msgstr[0] ""
 msgstr[1] ""
-
-#, python-format
-msgid "Could not save: %s"
-msgstr ""
 
 msgid "Could Not Save"
 msgstr ""

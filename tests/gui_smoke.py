@@ -215,6 +215,73 @@ def steps(win, app):
     win.get_visible_dialog().force_close()
     win.row_menu.popdown()
 
+    # --- Änderungen von außen (Sync-Programme, andere Editoren) ---
+    def conflict_copies():
+        return sorted(p for p in LIB.iterdir() if "conflict" in p.name)
+
+    def answer_dialog(response):
+        dialog = win.get_visible_dialog()
+        dialog.emit("response", response)
+        dialog.force_close()
+
+    sheet_b = LIB / "b.md"
+    select(sheet_b)
+    sheet_b.write_text("Von außen", encoding="utf-8")
+    yield 1.0
+    check(text(ed) == "Von außen" and win.get_visible_dialog() is None, "Fremde Änderung wird ohne Rückfrage neu geladen")
+
+    ed.buffer.insert_at_cursor("Ich ")
+    yield 1.6
+    check(read("b.md") == text(ed) and not ed.in_conflict, "Eigenes Speichern gilt nicht als fremde Änderung")
+
+    ed.buffer.insert_at_cursor("tippe")
+    mine = text(ed)
+    sheet_b.write_text("Fremd 1", encoding="utf-8")
+    check(not ed.flush(), "Speichern wird verweigert, wenn die Datei fremd geändert wurde")
+    check(read("b.md") == "Fremd 1", "Fremde Änderung wird nicht überschrieben")
+    check(ed.in_conflict and win.get_visible_dialog() is not None, "Konfliktdialog erscheint")
+    answer_dialog("mine")
+    copies = conflict_copies()
+    check(read("b.md") == mine and len(copies) == 1 and copies[0].read_text() == "Fremd 1", "Meine Fassung behalten: die andere liegt als Kopie daneben")
+    check(win._index_of(copies[0]) is not None, "Konfliktkopie erscheint in der Seitenleiste")
+    yield 1.0
+    check(not ed.in_conflict and win.get_visible_dialog() is None, "Nach der Entscheidung kein erneuter Konflikt")
+
+    ed.buffer.insert_at_cursor("!")
+    mine = text(ed)
+    sheet_b.write_text("Fremd 2", encoding="utf-8")  # bevor das Autosave greift
+    yield 0.6
+    check(ed.in_conflict and win.get_visible_dialog() is not None, "Konflikt wird auch ohne Speichern erkannt")
+    check(read("b.md") == "Fremd 2", "Autosave überschreibt die fremde Änderung nicht")
+    answer_dialog("theirs")
+    check(text(ed) == "Fremd 2" and read("b.md") == "Fremd 2", "Andere Fassung laden: Blatt zeigt sie")
+    check(any(p.read_text() == mine for p in conflict_copies()), "Andere Fassung laden: meine liegt als Kopie daneben")
+
+    sheet_b.unlink()
+    yield 1.0
+    check(ed.path is None and win._index_of(sheet_b) is None, "Außen gelöschtes Blatt schließt und verschwindet")
+
+    select(LIB / "a.md")
+    ed.buffer.insert_at_cursor("Rettung")
+    mine = text(ed)
+    (LIB / "a.md").unlink()
+    yield 1.0
+    check(read("a.md") == mine and ed.path == LIB / "a.md", "Außen gelöscht mit Eingabe: Fassung wird neu gespeichert")
+
+    (LIB / "Extern.md").write_text("x")
+    (LIB / "ExternGruppe").mkdir()
+    (LIB / "ExternGruppe" / "Innen.md").write_text("y")
+    yield 1.2
+    check(win._index_of(LIB / "Extern.md") is not None, "Neues Blatt von außen erscheint")
+    check(win._index_of(LIB / "ExternGruppe") is not None, "Neue Gruppe von außen erscheint")
+    (LIB / "ExternGruppe" / "Zwei.md").write_text("z")
+    yield 1.2
+    select(LIB / "ExternGruppe")
+    win.selection.get_selected_item().set_expanded(True)
+    check(win._index_of(LIB / "ExternGruppe" / "Zwei.md") is not None, "Auch neue Gruppen werden beobachtet")
+    check(ed.path == LIB / "a.md", "Offenes Blatt bleibt beim Aktualisieren offen")
+    select(LIB / "a.md")
+
     # Fenster: Seitenleiste, Vollbild, Tastenkürzel, Über
     shown = win.split.get_show_sidebar()
     win.lookup_action("toggle-sidebar").activate(None)
