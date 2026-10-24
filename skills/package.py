@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Packt einen Skill-Ordner als .skill-Datei (ZIP mit dem Ordner darin), z. B. zum Download auf der Webseite.
-Testfälle (evals/) und Zwischendateien kommen nicht mit hinein.
+"""Packs a skill folder as a .skill file (a ZIP containing the folder), e.g. for download on the website.
+Test cases (evals/) and intermediate files are left out.
 
-Aufruf: python3 skills/package.py skills/typecase-template [Zielordner, Standard: dist]"""
+Usage: python3 skills/package.py skills/typecase-template [target folder, default: dist]"""
 
 import sys
 import zipfile
@@ -13,7 +13,7 @@ SKIP_PARTS = {"__pycache__", "evals"}
 
 def package(skill: Path, target_dir: Path) -> Path:
     if not (skill / "SKILL.md").is_file():
-        raise SystemExit(f"{skill} enthält keine SKILL.md")
+        raise SystemExit(f"{skill} does not contain a SKILL.md")
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / f"{skill.name}.skill"
     with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as archive:

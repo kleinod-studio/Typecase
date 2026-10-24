@@ -4,7 +4,7 @@ from pathlib import Path
 
 @dataclass
 class Node:
-    """Ein Eintrag der Bibliothek: eine Gruppe (Ordner, mit children) oder ein Blatt (.md-Datei)."""
+    """An entry in the library: a group (folder, with children) or a sheet (.md file)."""
 
     name: str
     path: Path
@@ -16,8 +16,8 @@ class Node:
 
 
 def scan(root: Path) -> list[Node]:
-    """Liest einen Ordner ein: Gruppen zuerst, dann Blätter, jeweils alphabetisch.
-    Versteckte Einträge und verlinkte Ordner werden übersprungen."""
+    """Reads a folder: groups first, then sheets, each sorted alphabetically.
+    Hidden entries and symlinked folders are skipped."""
     groups: list[Node] = []
     sheets: list[Node] = []
     try:
@@ -40,7 +40,7 @@ def scan(root: Path) -> list[Node]:
 
 
 def validate_name(name: str) -> str:
-    """Gibt den bereinigten Namen zurück oder wirft ValueError, wenn er als Datei- oder Ordnername nicht taugt."""
+    """Returns the cleaned-up name, or raises ValueError if it is not usable as a file or folder name."""
     name = name.strip()
     if not name or name in (".", "..") or name.startswith(".") or "/" in name or "\0" in name:
         raise ValueError(name)
@@ -53,7 +53,7 @@ def sheet_filename(name: str) -> str:
 
 
 def unique_path(folder: Path, base: str, suffix: str = "") -> Path:
-    """Liefert einen noch freien Pfad: 'Base', dann 'Base 2', 'Base 3' …"""
+    """Returns a path that is still free: 'Base', then 'Base 2', 'Base 3' …"""
     candidate = folder / f"{base}{suffix}"
     number = 2
     while candidate.exists():
@@ -64,7 +64,7 @@ def unique_path(folder: Path, base: str, suffix: str = "") -> Path:
 
 def create_sheet(folder: Path, base: str) -> Path:
     path = unique_path(folder, base, ".md")
-    # "x" schlägt fehl, statt eine inzwischen entstandene Datei zu überschreiben.
+    # "x" fails instead of overwriting a file that has appeared in the meantime.
     with open(path, "x", encoding="utf-8"):
         pass
     return path
@@ -77,15 +77,15 @@ def create_group(folder: Path, base: str) -> Path:
 
 
 def rename(path: Path, new_name: str) -> Path:
-    """Benennt ein Blatt (Endung .md bleibt) oder eine Gruppe um. Wirft ValueError bei ungültigem Namen
-    und FileExistsError, wenn das Ziel schon existiert. Ein bestehendes Ziel wird nie überschrieben."""
+    """Renames a sheet (the .md extension stays) or a group. Raises ValueError for an invalid name
+    and FileExistsError if the target already exists. An existing target is never overwritten."""
     new_name = sheet_filename(new_name) if path.is_file() else validate_name(new_name)
     target = path.with_name(new_name)
     if target == path:
         return path
     if target.exists() and not _same_file(target, path):
         raise FileExistsError(str(target))
-    # Reine Groß-/Kleinschreibung auf Dateisystemen ohne Unterscheidung wird von rename() sauber erledigt.
+    # A case-only change on case-insensitive file systems is handled cleanly by rename().
     path.rename(target)
     return target
 
@@ -98,9 +98,9 @@ def _same_file(a: Path, b: Path) -> bool:
 
 
 def move(path: Path, folder: Path) -> Path:
-    """Verschiebt ein Blatt oder eine Gruppe in einen anderen Ordner. Wirft ValueError, wenn eine
-    Gruppe in sich selbst verschoben werden soll, und FileExistsError, wenn am Ziel schon etwas
-    gleichen Namens liegt. Ein bestehendes Ziel wird nie überschrieben."""
+    """Moves a sheet or a group into another folder. Raises ValueError if a group would be moved
+    into itself, and FileExistsError if something with the same name already exists at the
+    target. An existing target is never overwritten."""
     target = folder / path.name
     if target == path:
         return path
@@ -113,7 +113,7 @@ def move(path: Path, folder: Path) -> Path:
 
 
 def all_groups(nodes: list[Node]) -> list[Path]:
-    """Alle Gruppen (Ordner) der Bibliothek, in der Reihenfolge der Seitenleiste."""
+    """All groups (folders) of the library, in sidebar order."""
     groups: list[Path] = []
     for node in nodes:
         if node.is_group:

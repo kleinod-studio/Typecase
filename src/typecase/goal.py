@@ -1,4 +1,4 @@
-"""Schreibziel eines Blatts (Feld "goal" im Dateikopf: Anzahl Wörter), ohne GTK."""
+"""A sheet's writing goal (field "goal" in the front matter: number of words), without GTK."""
 
 from pathlib import Path
 
@@ -7,12 +7,12 @@ from .fileio import read_text
 from .textstats import count_words
 
 MAX_GOAL = 1_000_000
-DEFAULT_GOAL = 1000  # Vorschlag, wenn man ein Ziel einschaltet
+DEFAULT_GOAL = 1000  # suggested value when a goal is switched on
 
 
 def parse_goal(value) -> int | None:
-    """Wortziel aus dem Dateikopf; None, wenn keins gesetzt oder der Wert unlesbar ist.
-    Tausenderpunkte und -leerzeichen ("1.500", "1 500") werden toleriert."""
+    """Word goal from the front matter; None if none is set or the value is unreadable.
+    Thousands separators as dots and spaces ("1.500", "1 500") are tolerated."""
     if not isinstance(value, str):
         return None
     digits = value.strip().replace(".", "").replace(",", "").replace(" ", "").replace(" ", "")
@@ -23,21 +23,21 @@ def parse_goal(value) -> int | None:
 
 
 def fraction(words: int, goal: int | None) -> float:
-    """Anteil des Ziels zwischen 0 und 1 (darüber hinaus bleibt es bei 1)."""
+    """Fraction of the goal between 0 and 1 (beyond the goal it stays at 1)."""
     if not goal:
         return 0.0
     return max(0.0, min(1.0, words / goal))
 
 
 class GoalIndex:
-    """Liest Wortziel und Wortzahl der Blätter (für die Ringe in der Bibliothek) und merkt sie sich,
-    bis sich eine Datei ändert."""
+    """Reads the word goal and word count of sheets (for the rings in the library) and caches them
+    until a file changes."""
 
     def __init__(self):
         self._cache: dict[Path, tuple[float, int, tuple[int, int] | None]] = {}
 
     def progress_of(self, path: Path) -> tuple[int, int] | None:
-        """(Wörter, Ziel) oder None, wenn das Blatt kein Ziel hat."""
+        """(words, goal), or None if the sheet has no goal."""
         try:
             stat = path.stat()
             cached = self._cache.get(path)

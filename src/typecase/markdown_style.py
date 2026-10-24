@@ -1,8 +1,8 @@
-"""Erkennt Markdown-Auszeichnung zeilenweise, ohne GTK.
+"""Recognizes Markdown markup line by line, without GTK.
 
-Liefert für eine Zeile Bereiche (start, ende, tag), die der Editor mit Text-Tags gestaltet.
-Syntaxzeichen bekommen das Tag "syntax" und werden gedimmt; der Text dazwischen wird
-fett, kursiv, als Überschrift usw. gesetzt. Mehrzeilig ist nur der Codeblock (```)."""
+For a line it returns ranges (start, end, tag) that the editor styles with text tags.
+Syntax characters get the "syntax" tag and are dimmed; the text in between is set
+in bold, italic, as a heading and so on. Only the code block (```) spans multiple lines."""
 
 import re
 
@@ -20,19 +20,19 @@ _STRONG_EMPHASIS = re.compile(r"(\*\*\*|___)(?=\S)(.+?)(?<=\S)\1")
 _STRONG = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
 _EMPHASIS = re.compile(r"(?<![\w*])(\*|_)(?=[^\s*_])(.+?)(?<=[^\s*_])\1(?![\w*])")
 _STRIKE = re.compile(r"(~~)(?=\S)(.+?)(?<=\S)~~")
-_UNDERLINE = re.compile(r"(<u>)(.+?)(</u>)", re.IGNORECASE)  # Markdown kennt kein Unterstreichen; HTML-Behelf
+_UNDERLINE = re.compile(r"(<u>)(.+?)(</u>)", re.IGNORECASE)  # Markdown has no underline; HTML workaround
 
-_MASK = "\x00"  # verdeckt schon vergebene Zeichen vor den folgenden Mustern
+_MASK = "\x00"  # hides already matched characters from the following patterns
 
 
 def fence_language(line: str) -> str:
-    """Sprache hinter dem öffnenden Zaun ("```python" -> "python"), sonst ""."""
+    """Language after the opening fence ("```python" -> "python"), otherwise ""."""
     match = FENCE.match(line)
     return match.group(2).lower() if match else ""
 
 
 def line_spans(line: str, in_code_block: bool) -> list[Span]:
-    """Gestaltung einer Zeile. in_code_block: Zeile liegt zwischen zwei ```-Zäunen."""
+    """Styling of a line. in_code_block: the line lies between two ``` fences."""
     if FENCE.match(line):
         return [(0, len(line), "syntax")] if line else []
     if in_code_block:

@@ -5,9 +5,9 @@ from gi.repository import Adw, Gdk, GObject, Gtk, GtkSource
 
 
 class FindBar(Gtk.SearchBar):
-    """Suchen und Ersetzen im offenen Blatt (über GtkSourceView: Hervorhebung, Zählen, Ersetzen)."""
+    """Find and replace in the open sheet (via GtkSourceView: highlighting, counting, replacing)."""
 
-    __gsignals__ = {"replaced": (GObject.SignalFlags.RUN_FIRST, None, (int,))}  # Anzahl bei "Alle ersetzen"
+    __gsignals__ = {"replaced": (GObject.SignalFlags.RUN_FIRST, None, (int,))}  # count for "Replace All"
 
     def __init__(self, editor):
         super().__init__(show_close_button=True)
@@ -58,10 +58,10 @@ class FindBar(Gtk.SearchBar):
         self.connect_entry(self.entry)
         self.connect("notify::search-mode-enabled", self._on_mode_changed)
 
-    # --- Öffnen und Schließen ---------------------------------------------
+    # --- Opening and closing ---------------------------------------------
 
     def open(self, text: str | None = None, replace: bool = False, focus: bool = True):
-        """Öffnet die Leiste. Ohne Text wird eine einzeilige Markierung im Editor übernommen."""
+        """Opens the bar. Without text, a single-line selection in the editor is used."""
         if text is None and self.buffer.get_has_selection():
             start, end = self.buffer.get_selection_bounds()
             if start.get_line() == end.get_line():
@@ -83,12 +83,12 @@ class FindBar(Gtk.SearchBar):
             self.context.set_highlight(False)
             self.editor.focus_editor()
 
-    # --- Suchen -------------------------------------------------------------
+    # --- Finding ------------------------------------------------------------
 
     def _on_search_changed(self, entry):
         self.settings.set_search_text(entry.get_text() or None)
         if entry.get_text():
-            # Beim Weitertippen ab dem Anfang des aktuellen Treffers suchen, damit er stehen bleibt.
+            # While typing on, search from the start of the current match so that it stays put.
             bounds = self.buffer.get_selection_bounds()
             start = bounds[0] if bounds else self.buffer.get_iter_at_mark(self.buffer.get_insert())
             self._select(*self._forward(start))
@@ -126,10 +126,10 @@ class FindBar(Gtk.SearchBar):
         self._update_label()
         return found
 
-    # --- Ersetzen -----------------------------------------------------------
+    # --- Replacing ----------------------------------------------------------
 
     def replace(self):
-        """Ersetzt den markierten Treffer und springt zum nächsten."""
+        """Replaces the selected match and jumps to the next one."""
         bounds = self.buffer.get_selection_bounds()
         if bounds and self.context.get_occurrence_position(*bounds) > 0:
             self.context.replace(bounds[0], bounds[1], self.replace_entry.get_text(), -1)
@@ -143,7 +143,7 @@ class FindBar(Gtk.SearchBar):
         self._update_label()
         return count
 
-    # --- Anzeige ------------------------------------------------------------
+    # --- Display ------------------------------------------------------------
 
     def _on_mark_set(self, _buffer, _location, mark):
         if mark == self.buffer.get_insert() and self.get_search_mode():
@@ -152,7 +152,7 @@ class FindBar(Gtk.SearchBar):
     def _update_label(self):
         total = self.context.get_occurrences_count()
         searching = bool(self.settings.get_search_text())
-        if not searching or total < 0:  # < 0: wird noch gezählt
+        if not searching or total < 0:  # < 0: still counting
             self.label.set_text("")
             self.entry.remove_css_class("error")
             return

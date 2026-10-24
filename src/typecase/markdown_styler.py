@@ -6,7 +6,7 @@ from .markdown_style import FENCE, fence_language, line_spans
 
 _FENCE_LINES = re.compile(r"^[ \t]{0,3}(?:```|~~~).*$", re.MULTILINE)
 
-# Gängige Kurznamen hinter ``` auf die Sprach-IDs von GtkSourceView abbilden.
+# Map common short names after ``` to GtkSourceView's language IDs.
 _LANGUAGE_ALIASES = {
     "py": "python3",
     "python": "python3",
@@ -35,26 +35,26 @@ def _rgba(spec: str) -> Gdk.RGBA:
 
 
 class MarkdownStyler:
-    """Gestaltet Markdown im Puffer mit Text-Tags und hält sie beim Tippen aktuell.
+    """Styles Markdown in the buffer with text tags and keeps them up to date while typing.
 
-    Nach einer Änderung werden nur die betroffenen Zeilen neu gestaltet (im Leerlauf,
-    damit das Tippen nie wartet). Nur wenn ein Codeblock-Zaun (```) dazukommt oder
-    wegfällt, wird alles neu gestaltet, weil sich dann die Zeilen darunter ändern.
+    After a change only the affected lines are restyled (when idle, so that typing
+    never has to wait). Only when a code block fence (```) is added or removed is
+    everything restyled, because then the lines below it change.
 
-    Codeblöcke mit Sprachangabe (```python) werden mit den Sprachregeln und Farben von
-    GtkSourceView eingefärbt; code_blocks liefert dem Textfeld die Zeilen für den Rahmen."""
+    Code blocks with a language (```python) are highlighted with GtkSourceView's language
+    rules and colors; code_blocks gives the text view the lines for the frame."""
 
     def __init__(self, buffer):
         self.buffer = buffer
         self.tags = {}
-        # (Zeile öffnender Zaun, letzte Zeile, geschlossen?); ein offener Block reicht bis zum Textende
+        # (line of opening fence, last line, closed?); an open block extends to the end of the text
         self.code_blocks: list[tuple[int, int, bool]] = []
-        self.on_blocks_changed = None  # Rückruf, damit das Textfeld den Rahmen neu zeichnet
+        self.on_blocks_changed = None  # callback so the text view redraws the frame
 
         def tag(name, **props):
             self.tags[name] = buffer.create_tag(f"md-{name}", **props)
 
-        # Reihenfolge = Priorität: spätere Tags gewinnen (Syntax-Dimmen zuletzt).
+        # Order = priority: later tags win (syntax dimming last).
         tag("h1", scale=1.6, weight=Pango.Weight.BOLD)
         tag("h2", scale=1.35, weight=Pango.Weight.BOLD)
         tag("h3", scale=1.15, weight=Pango.Weight.BOLD)
@@ -71,7 +71,7 @@ class MarkdownStyler:
         tag("list-marker")
         tag("syntax")
 
-        self._source_tags: dict[tuple, object] = {}  # Farben aus GtkSourceView, je Stil ein Tag
+        self._source_tags: dict[tuple, object] = {}  # colors from GtkSourceView, one tag per style
         self._highlighter = GtkSource.Buffer()
         self._languages = GtkSource.LanguageManager.get_default()
 
@@ -94,7 +94,7 @@ class MarkdownStyler:
         self.tags["link"].props.foreground_rgba = _rgba(accent)
         self.tags["list-marker"].props.foreground_rgba = _rgba(accent)
         if self.buffer.get_char_count():
-            self.restyle_all()  # Syntaxfarben kommen aus dem (hellen/dunklen) Farbschema
+            self.restyle_all()  # syntax colors come from the (light/dark) color scheme
 
     def restyle_all(self):
         self._cancel_idle()
@@ -103,7 +103,7 @@ class MarkdownStyler:
         self._update_blocks(text)
         self._restyle_lines(0, self.buffer.get_line_count() - 1)
 
-    # --- Änderungen verfolgen -----------------------------------------------
+    # --- Tracking changes --------------------------------------------------
 
     def _on_insert(self, _buffer, location, text, _length):
         last = location.get_line()
@@ -146,7 +146,7 @@ class MarkdownStyler:
             self._idle = 0
 
     def _update_blocks(self, text: str):
-        """Merkt sich die Zeilen aller Codeblöcke (ein offener Block reicht bis zum Ende)."""
+        """Remembers the lines of all code blocks (an open block extends to the end)."""
         fences = []
         line, position = 0, 0
         for match in _FENCE_LINES.finditer(text):
@@ -162,9 +162,9 @@ class MarkdownStyler:
         if blocks != self.code_blocks:
             self.code_blocks = blocks
         if self.on_blocks_changed:
-            self.on_blocks_changed()  # auch bei gleichen Zeilen: Höhen können sich geändert haben
+            self.on_blocks_changed()  # even if the lines are the same: heights may have changed
 
-    # --- Gestalten -----------------------------------------------------------
+    # --- Styling -------------------------------------------------------------
 
     def _restyle_lines(self, first: int, last: int):
         buffer = self.buffer
@@ -193,7 +193,7 @@ class MarkdownStyler:
                 self._highlight_block(open_line, last_line, closed)
 
     def _highlight_block(self, open_line: int, last_line: int, closed: bool):
-        """Färbt den Inhalt eines Codeblocks über einen unsichtbaren GtkSourceView-Puffer ein."""
+        """Highlights the content of a code block via an invisible GtkSourceView buffer."""
         buffer = self.buffer
         language = self._language(fence_language(self._text(self._line_start(open_line), self._line_end(open_line))))
         content_last = last_line - 1 if closed else last_line
@@ -201,7 +201,7 @@ class MarkdownStyler:
             return
         start, end = self._line_start(open_line + 1), self._line_end(content_last)
         for tag in self._source_tags.values():
-            buffer.remove_tag(tag, start, end)  # alte Farben weg, auch wenn die Sprache entfernt wurde
+            buffer.remove_tag(tag, start, end)  # remove old colors, even if the language was removed
         if language is None:
             return
         code = self._text(start, end)
@@ -233,7 +233,7 @@ class MarkdownStyler:
         return self._languages.get_language(_LANGUAGE_ALIASES.get(name, name))
 
     def _source_tag(self, tags):
-        """Übersetzt die Stil-Tags des unsichtbaren Puffers in eigene Tags (Farbe, fett, kursiv)."""
+        """Translates the style tags of the invisible buffer into our own tags (color, bold, italic)."""
         foreground, bold, italic = None, False, False
         for tag in tags:
             if tag.props.foreground_set:

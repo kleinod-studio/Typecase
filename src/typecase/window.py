@@ -28,7 +28,7 @@ class LibraryItem(GObject.Object):
 
 
 def _signature(nodes: list[Node]) -> tuple:
-    """Struktur der Bibliothek zum Vergleichen: Pfade und ob Gruppe."""
+    """Structure of the library for comparison: paths and whether each is a group."""
     return tuple((node.path, node.is_group, _signature(node.children) if node.is_group else ()) for node in nodes)
 
 
@@ -36,7 +36,7 @@ _CSS_INSTALLED = False
 
 
 def _install_css():
-    """Aussehen der schwebenden Formatierungsleiste und Ziel-Karte; Farben aus dem libadwaita-Schema (hell/dunkel)."""
+    """Look of the floating formatting bar and goal card; colours from the libadwaita scheme (light/dark)."""
     global _CSS_INSTALLED
     if _CSS_INSTALLED:
         return
@@ -92,7 +92,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.maximize()
 
         self.library_path: Path | None = None
-        self._open_row = None  # Zeile des Blatts, das gerade im Editor offen ist
+        self._open_row = None  # row of the sheet currently open in the editor
         self._ignore_selection = False
         self._library_monitors: list[Gio.FileMonitor] = []
         self._tree_check_timer = 0
@@ -100,7 +100,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._search = LibrarySearch()
         self._keywords = KeywordIndex()
         self._goals = GoalIndex()
-        self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # Schreibziel-Ringe der Bibliothekszeilen
+        self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # writing-goal rings of the library rows
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
 
@@ -118,7 +118,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self._open_library(config.get_library_path(), restore=True)
 
-    # --- Aufbau -----------------------------------------------------------
+    # --- Layout -----------------------------------------------------------
 
     def _build_ui(self):
         self.split = Adw.OverlaySplitView(min_sidebar_width=260, max_sidebar_width=340)
@@ -126,7 +126,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.split.set_content(self._build_content())
         self.set_content(self.split)
 
-        # Schmale Fenster (GNOME-Muster): Seitenleisten legen sich über den Text, statt Platz zu nehmen.
+        # Narrow windows (GNOME pattern): sidebars overlay the text instead of taking up space.
         self.set_size_request(360, 360)
         for condition, split in [("max-width: 1000sp", self.inspector_split), ("max-width: 640sp", self.split)]:
             breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(condition))
@@ -212,16 +212,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.list_view = Gtk.ListView(
             model=self.selection,
             factory=factory,
-            # Kein single_click_activate: das würde schon beim Darüberfahren mit der Maus auswählen.
+            # No single_click_activate: that would already select when hovering with the mouse.
             css_classes=["navigation-sidebar"],
         )
         self.list_view.connect("activate", self._on_row_activated)
         tree_scroller = Gtk.ScrolledWindow(child=self.list_view, vexpand=True)
-        # Ablegen im leeren Bereich unter den Einträgen: in den Stammordner.
+        # Dropping in the empty area below the entries: into the root folder.
         root_drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
         root_drop.connect("drop", lambda _t, value, _x, _y: self._move(Path(value), self.library_path))
         tree_scroller.add_controller(root_drop)
-        # Dauerhaft an die Liste gehängt, damit "win.…"-Aktionen beim Klick auf einen Menüpunkt gefunden werden.
+        # Attached to the list permanently, so "win.…" actions are found when a menu item is clicked.
         self.row_menu.set_parent(self.list_view)
         self.connect("destroy", lambda _w: self.row_menu.unparent())
 
@@ -288,7 +288,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         view = Adw.ToolbarView()
         view.add_top_bar(header)
         view.add_top_bar(self.find_bar)
-        # Formatierungsleiste schwebt als Karte über dem Text – im Editor und im Fokus-Modus gleich.
+        # The formatting bar floats as a card over the text – the same in the editor and in focus mode.
         self.format_revealer = Gtk.Revealer(
             child=self._build_format_bar(),
             transition_type=Gtk.RevealerTransitionType.CROSSFADE,
@@ -298,7 +298,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             margin_start=12,
             margin_end=12,
         )
-        # Schreibziel als kleine Karte unten rechts, solange die Eigenschaften zu sind.
+        # Writing goal as a small card at the bottom right, while the properties pane is closed.
         self.goal_badge = GoalBadge()
         self.goal_revealer = Gtk.Revealer(child=self.goal_badge, transition_type=Gtk.RevealerTransitionType.CROSSFADE)
         editor_area = Gtk.Overlay(child=self.editor)
@@ -306,16 +306,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         editor_area.add_overlay(self.goal_revealer)
         editor_area.connect("get-child-position", self._place_goal_badge)
         view.set_content(editor_area)
-        self.editor.connect("metadata-changed", lambda _e: self._update_format_bar())  # Blatt geöffnet/geschlossen
+        self.editor.connect("metadata-changed", lambda _e: self._update_format_bar())  # sheet opened/closed
         self.content_view = view
 
-        # Seitenfenster rechts für die Meta-Informationen (GNOME-Muster: zweite Seitenleiste am Ende).
+        # Properties pane on the right for the metadata (GNOME pattern: second sidebar at the end).
         self.inspector = Inspector(self.editor)
         self.inspector_split = Adw.OverlaySplitView(
             sidebar_position=Gtk.PackType.END,
             show_sidebar=False,
-            # Festgehalten: sonst blendet libadwaita es ein, sobald das Fenster beim Start breit genug wird.
-            # So erscheint es nur, wenn man es selbst öffnet.
+            # Pinned: otherwise libadwaita reveals it as soon as the window becomes wide enough at startup.
+            # This way it only appears when the user opens it.
             pin_sidebar=True,
             min_sidebar_width=280,
             max_sidebar_width=360,
@@ -327,7 +327,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         self.inspector_split.connect("notify::show-sidebar", self._on_inspector_toggled)
 
-        # Im Fokus-Modus erscheint die Kopfzeile, wenn die Maus an den oberen Rand kommt.
+        # In focus mode, the header bar appears when the mouse reaches the top edge.
         motion = Gtk.EventControllerMotion()
         motion.connect("motion", self._on_content_motion)
         view.add_controller(motion)
@@ -336,7 +336,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         return Adw.NavigationPage(title="Typecase", child=self.toasts)
 
     def _build_format_bar(self) -> Gtk.Widget:
-        """Leiste unten im Editor: Markdown-Formatierungen per Klick, ohne die Syntax kennen zu müssen."""
+        """Bar at the bottom of the editor: Markdown formatting by click, without having to know the syntax."""
         bar = Gtk.Box(spacing=2, halign=Gtk.Align.CENTER)
 
         def button(kind, tooltip, icon=None, label=None):
@@ -373,7 +373,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("quote", _("Quote"), label="“ ”")
         button("codeblock", _("Code Block"), label="{ }")
         self.format_bar = bar
-        # Bei schmalem Fenster seitlich scrollbar, statt den Editor breiter zu machen.
+        # Scrollable sideways in a narrow window, instead of making the editor wider.
         _install_css()
         return Gtk.ScrolledWindow(
             css_classes=["format-bar"],
@@ -384,7 +384,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             propagate_natural_height=True,
         )
 
-    # --- Bibliothek -------------------------------------------------------
+    # --- Library ----------------------------------------------------------
 
     def _choose_library_folder(self):
         dialog = Gtk.FileDialog(title=_("Choose Library Folder"), modal=True)
@@ -396,12 +396,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         try:
             folder = dialog.select_folder_finish(result)
         except GLib.Error:
-            return  # Abgebrochen
+            return  # cancelled
         path = folder.get_path()
         if path is None:
             return
         if not self.editor.flush():
-            return  # Fehlermeldung kam schon über "save-failed"; das offene Blatt bleibt.
+            return  # error message already came via "save-failed"; the open sheet stays.
         config.set_library_path(Path(path))
         self._open_library(Path(path))
 
@@ -431,7 +431,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     @staticmethod
     def _restored_state(library: Path) -> tuple[set[Path], Path | None]:
-        """Aufgeklappte Gruppen und letztes Blatt aus der Konfiguration; unbrauchbare Einträge werden ignoriert."""
+        """Expanded groups and last sheet from the configuration; unusable entries are ignored."""
         data = config.load()
 
         def resolve(relative) -> Path | None:
@@ -445,7 +445,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         return expand, (last if last is not None and last.is_file() else None)
 
     def _save_state(self):
-        """Merkt Fenstergröße, aufgeklappte Gruppen und das offene Blatt für den nächsten Start."""
+        """Remembers window size, expanded groups and the open sheet for the next start."""
         values = {"window_maximized": self.is_maximized()}
         if not self.is_maximized() and not self.is_fullscreen() and self.get_width() > 0 and self.get_height() > 0:
             values.update(window_width=self.get_width(), window_height=self.get_height())
@@ -456,7 +456,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         try:
             config.update(**values)
         except OSError:
-            pass  # Der Zustand ist nur eine Annehmlichkeit; ein Fehler darf nichts blockieren.
+            pass  # The state is only a convenience; an error must not block anything.
 
     def _reload(
         self,
@@ -464,8 +464,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         renamed: tuple[Path, Path] | None = None,
         expand: set[Path] | None = None,
     ):
-        """Liest die Bibliothek neu ein und behält aufgeklappte Gruppen, das offene Blatt und die Auswahl.
-        renamed=(alt, neu) überträgt den Zustand von einem umbenannten Pfad auf den neuen."""
+        """Re-reads the library and keeps expanded groups, the open sheet and the selection.
+        renamed=(old, new) transfers the state from a renamed path to the new one."""
         expanded = self._expanded_paths() | (expand or set())
         if renamed is not None:
             old, new = renamed
@@ -478,16 +478,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self._ignore_selection = True
         nodes = scan(self.library_path)
-        self._watch_library(nodes)  # alle Ordner beobachten, auch die gerade ausgefilterten
+        self._watch_library(nodes)  # watch all folders, including those currently filtered out
         nodes = self._displayed(nodes)
         if self._keyword_filter:
-            expanded |= set(_group_paths(nodes))  # gefiltert: alles aufklappen, damit man die Treffer sieht
+            expanded |= set(_group_paths(nodes))  # filtered: expand everything so the matches are visible
         self._tree_signature = _signature(nodes)
         root = _make_store(nodes)
         self.tree_model = Gtk.TreeListModel.new(root, False, False, self._create_children)
         self.selection.set_model(self.tree_model)
         i = 0
-        while i < self.tree_model.get_n_items():  # Klappt auf; Kinder rutschen hinter ihre Gruppe nach.
+        while i < self.tree_model.get_n_items():  # Expands; children move in after their group.
             row = self.tree_model.get_item(i)
             node = row.get_item().node
             if node.is_group and node.path in expanded:
@@ -505,10 +505,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.list_view.scroll_to(select_index, Gtk.ListScrollFlags.NONE, None)
         self._update_actions()
 
-    # --- Bibliothek beobachten (Änderungen von außen) ----------------------
+    # --- Watching the library (external changes) --------------------------
 
     def _watch_library(self, nodes: list[Node]):
-        """Beobachtet den Stammordner und alle Gruppen; Gio beobachtet nicht rekursiv."""
+        """Watches the root folder and all groups; Gio does not watch recursively."""
         self._unwatch_library()
         folders = [self.library_path]
         stack = list(nodes)
@@ -536,7 +536,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _on_library_event(self, _monitor, file, other, _event):
         names = [f.get_basename() for f in (file, other) if f is not None]
         if names and all(name.startswith(".") for name in names):
-            return  # versteckte Dateien, z. B. unsere eigenen Temp-Dateien beim Speichern
+            return  # hidden files, e.g. our own temp files while saving
         if self._tree_check_timer:
             GLib.source_remove(self._tree_check_timer)
         self._tree_check_timer = GLib.timeout_add(300, self._check_tree)
@@ -544,13 +544,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _check_tree(self):
         self._tree_check_timer = 0
         if self.library_path is not None and _signature(self._displayed(scan(self.library_path))) != self._tree_signature:
-            self._reload()  # nur wenn sich Gruppen oder Blätter wirklich geändert haben
+            self._reload()  # only if groups or sheets have actually changed
         return GLib.SOURCE_REMOVE
 
-    # --- Schlagwort-Filter ----------------------------------------------------
+    # --- Keyword filter -------------------------------------------------------
 
     def _displayed(self, nodes: list[Node]) -> list[Node]:
-        """Was die Seitenleiste zeigt: alles, oder bei aktivem Filter nur passende Blätter samt ihren Gruppen."""
+        """What the sidebar shows: everything, or with an active filter only matching sheets plus their groups."""
         if not self._keyword_filter:
             return nodes
         return filter_nodes(nodes, lambda node: self._keywords.has(node.path, self._keyword_filter))
@@ -566,7 +566,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.filter_banner.set_revealed(True)
         else:
             self.filter_banner.set_revealed(False)
-            self.tree_model = None  # aufgeklappte Gruppen wie vor dem Filtern
+            self.tree_model = None  # expanded groups as before filtering
             self._reload(expand=self._expanded_before_filter)
             return
         self._reload()
@@ -626,23 +626,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
         dialog.add_response("mine", _("Keep My Version"))
         dialog.set_response_appearance("mine", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("mine")
-        dialog.set_close_response("mine")  # Escape behält die eigene Fassung; beide bleiben erhalten
+        dialog.set_close_response("mine")  # Escape keeps our own version; both are preserved
         dialog.connect("response", self._on_conflict_response)
         dialog.present(self)
 
     def _on_conflict_response(self, _dialog, response):
         if not self.editor.in_conflict:
-            return  # schon entschieden (der Dialog meldet sich beim Schließen ggf. ein zweites Mal)
+            return  # already decided (the dialog may report a second time when closing)
         try:
             copy = self.editor.resolve_conflict(keep_mine=response == "mine")
         except UnicodeDecodeError:
-            # Die fremde Fassung ist kein Text mehr; unsere liegt sicher in der Kopie.
+            # The external version is no longer text; ours is safe in the copy.
             self._show_sheet(None)
             self._reload()
             self._toast(_("The other version is not a UTF-8 text file. Your version was saved as a copy."))
             return
         except OSError as error:
-            # Noch nichts entschieden; erneut fragen, statt im Konflikt hängen zu bleiben.
+            # Nothing decided yet; ask again instead of getting stuck in the conflict.
             self._toast(_("Could not save: %s") % (error.strerror or error))
             self._ask_conflict(self.editor.path.stem)
             return
@@ -671,7 +671,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _create_children(item: LibraryItem):
         return _make_store(item.node.children) if item.node.is_group else None
 
-    # --- Blätter öffnen ---------------------------------------------------
+    # --- Opening sheets ---------------------------------------------------
 
     def _on_selection_changed(self, _selection, _pspec):
         self._update_actions()
@@ -690,7 +690,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
 
         if not self.editor.flush():
-            self._reselect(self._open_row)  # Wechsel verweigert, bisheriges Blatt bleibt offen.
+            self._reselect(self._open_row)  # Switch refused, the previous sheet stays open.
             return
         try:
             self.editor.open(node.path)
@@ -710,7 +710,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.editor.focus_editor()
 
     def _show_sheet(self, row):
-        """Übernimmt den Zustand nach dem Öffnen (row) oder Schließen (None) eines Blatts."""
+        """Applies the state after opening (row) or closing (None) a sheet."""
         if row is None:
             self.editor.close_sheet()
             self.content_title.set_title("Typecase")
@@ -742,7 +742,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
 
         def number(n):
-            return locale.format_string("%d", n, grouping=True)  # 1.234 statt 1234
+            return locale.format_string("%d", n, grouping=True)  # 1,234 instead of 1234
 
         goal = parse_goal(self.editor.metadata().get("goal"))
         if goal:
@@ -759,16 +759,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
 
     def _update_goal_badge(self, animate: bool = True):
-        """Ziel-Karte unten rechts: nur mit Schreibziel und solange die Eigenschaften (mit dem großen Ring) zu sind."""
+        """Goal card at the bottom right: only with a writing goal and while the properties pane (big ring) is closed."""
         goal = parse_goal(self.editor.metadata().get("goal")) if self.editor.path is not None else None
         show = goal is not None and not self.inspector_split.get_show_sidebar()
         if goal is not None:
             self.goal_badge.update(getattr(self, "_words", 0), goal, animate=animate and self.goal_revealer.get_child_revealed())
         self.goal_revealer.set_reveal_child(show)
-        self.goal_revealer.set_can_target(show)  # ausgeblendet keine unsichtbare Klickfläche über dem Text
+        self.goal_revealer.set_can_target(show)  # when hidden, no invisible click area over the text
 
     def _place_goal_badge(self, overlay, widget, rect):
-        """Unten rechts in die Ecke; wird es neben der Formatierungsleiste zu eng, weicht die Karte darüber aus."""
+        """Into the bottom right corner; if it gets too tight next to the formatting bar, the card moves above it."""
         if widget is not self.goal_revealer:
             return False
         width, height = overlay.get_width(), overlay.get_height()
@@ -808,7 +808,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.editor.close_sheet()
             self.close()
 
-    # --- Neu, Umbenennen, Löschen -----------------------------------------
+    # --- New, rename, delete ----------------------------------------------
 
     def _setup_actions(self):
         handlers = {
@@ -823,8 +823,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             action.connect("activate", lambda _a, _p, h=handler: h())
             self.add_action(action)
 
-        # An Eigenschaften gekoppelt: Menü zeigt ein Häkchen, und der Zustand bleibt stimmig,
-        # auch wenn der Fenstermanager das Vollbild selbst beendet.
+        # Bound to the properties pane: the menu shows a check mark, and the state stays consistent
+        # even if the window manager ends fullscreen by itself.
         self.add_action(Gio.PropertyAction.new("toggle-sidebar", self.split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("inspector", self.inspector_split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
@@ -832,7 +832,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         focus_action = Gio.SimpleAction.new_stateful("focus-mode", None, GLib.Variant.new_boolean(False))
         focus_action.connect("change-state", self._on_focus_mode_changed)
         self.add_action(focus_action)
-        self._before_focus = (True, False, False)  # Seitenleiste, Vollbild, Eigenschaften – zum Wiederherstellen
+        self._before_focus = (True, False, False)  # sidebar, fullscreen, properties pane – for restoring
         escape = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         escape.connect("key-pressed", self._on_window_key)
         self.add_controller(escape)
@@ -864,7 +864,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
         self.add_action(shortcuts)
 
-    # --- Volltextsuche ------------------------------------------------------
+    # --- Full-text search ---------------------------------------------------
 
     def _start_search(self):
         if self.library_path is None:
@@ -933,15 +933,15 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self._reload(select_path=hit.path)
             self._open_selected()
             if self.editor.path != hit.path:
-                return  # Öffnen fehlgeschlagen; die Meldung kam schon
+                return  # opening failed; the message was already shown
         if hit.offset >= 0:
             start, end = hit.snippet_match
-            self.find_bar.open(hit.snippet[start:end], focus=False)  # alle Fundstellen im Blatt hervorheben
+            self.find_bar.open(hit.snippet[start:end], focus=False)  # highlight all matches in the sheet
             self.editor.show_match(hit.offset, end - start)
         self.editor.focus_editor()
 
     def _on_inspector_toggled(self, split, _pspec):
-        """Springt der Cursor beim Einblenden in ein Feld, nichts markieren: Weitertippen soll nichts überschreiben."""
+        """If the cursor lands in a field when revealed, select nothing: continued typing must not overwrite anything."""
         self._update_goal_badge()
         if not split.get_show_sidebar():
             return
@@ -967,7 +967,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if self.focus_mode:
             self.content_view.set_reveal_top_bars(bar.get_search_mode())
 
-    # --- Fokus-Modus -------------------------------------------------------
+    # --- Focus mode --------------------------------------------------------
 
     @property
     def focus_mode(self) -> bool:
@@ -978,14 +978,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if on == self.focus_mode:
             return
         action.set_state(value)
-        self.apply_settings()  # der Fokus-Modus kann eigene Schrift, Größe und Stil haben
+        self.apply_settings()  # focus mode can have its own font, size and style
         if on:
             self._before_focus = (self.split.get_show_sidebar(), self.is_fullscreen(), self.inspector_split.get_show_sidebar())
-            # Festhalten: sonst blendet libadwaita Seitenleisten wieder ein, wenn das Vollbild das Fenster verbreitert.
+            # Pin: otherwise libadwaita reveals the sidebars again when fullscreen makes the window wider.
             self.split.set_pin_sidebar(True)
             self.split.set_show_sidebar(False)
             self.inspector_split.set_show_sidebar(False)
-            self.content_view.set_extend_content_to_top_edge(True)  # Kopfzeile legt sich über den Text
+            self.content_view.set_extend_content_to_top_edge(True)  # header bar overlays the text
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
             self.editor.focus_editor()
@@ -1003,7 +1003,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.format_revealer.set_reveal_child(self._format_bar_wanted() and self.editor.path is not None)
 
     def _format_bar_wanted(self) -> bool:
-        """Formatierungsleiste dauerhaft zeigen? Editor und Fokus-Modus haben je eine eigene Einstellung."""
+        """Show the formatting bar permanently? Editor and focus mode each have their own setting."""
         data = config.load()
         return data.get("focus_format_bar" if self.focus_mode else "format_bar") is not False
 
@@ -1014,7 +1014,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.content_view.set_reveal_top_bars(True)
         elif y > 120 and not self.find_bar.get_search_mode():
             self.content_view.set_reveal_top_bars(False)
-        # Verborgene Formatierungsleiste erscheint am unteren Rand, wie die Kopfzeile oben.
+        # A hidden formatting bar appears at the bottom edge, like the header bar at the top.
         if not self._format_bar_wanted():
             height = self.content_view.get_height()
             if y > height - 8:
@@ -1097,7 +1097,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         return row.get_item().node if row is not None else None
 
     def _target_folder(self) -> Path:
-        """Ausgewählte Gruppe, bei einem Blatt dessen Gruppe, sonst der Stammordner."""
+        """Selected group; for a sheet, its group; otherwise the root folder."""
         node = self._selected_node()
         if node is None:
             return self.library_path
@@ -1110,11 +1110,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         data = self.editor.metadata()
         defaults = config.sheet_defaults()
-        # Voreinstellungen gelten nur für Felder, die das Blatt nicht selbst setzt.
+        # Defaults apply only to fields that the sheet does not set itself.
         missing = {
             "author": None if data.get("author") else defaults["author"],
             "lang": None if data.get("lang") else defaults["lang"],
-            # $date$ in Vorlagen: das Datum des Exports, wenn das Blatt kein eigenes "date" hat
+            # $date$ in templates: the date of the export, if the sheet has no "date" of its own
             "date": None if data.get("date") else GLib.DateTime.new_now_local().format("%x"),
         }
         dialog = ExportDialog(self.editor.file_text(), self.editor.path, data.get("title") or None, missing, self._on_exported)
@@ -1136,10 +1136,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _on_new_sheet(self):
         if not self.editor.flush():
             return
-        self.set_keyword_filter(None)  # sonst wäre das neue Blatt (ohne Schlagwort) unsichtbar
+        self.set_keyword_filter(None)  # otherwise the new sheet (without a keyword) would be invisible
         try:
             path = create_sheet(self._target_folder(), _("Untitled"))
-            # Erstelldatum einmalig in den Dateikopf; so übersteht es Sync und Kopieren.
+            # Creation date written once into the front matter; that way it survives sync and copying.
             atomic_write_text(path, frontmatter.update(None, {"created": GLib.DateTime.new_now_local().format("%Y-%m-%dT%H:%M")}))
         except OSError as error:
             self._toast(_("Could not create the sheet: %s") % (error.strerror or error))
@@ -1156,7 +1156,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self._toast(_("Could not create the group: %s") % (error.strerror or error))
             return
         self._reload(select_path=path)
-        self._on_rename()  # Gleich nach einem Namen fragen.
+        self._on_rename()  # Ask for a name right away.
 
     def _on_rename(self):
         node = self._selected_node()
@@ -1225,12 +1225,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self._show_sheet(None)
         self._reload()
 
-    # --- Seitenleisten-Zeilen ---------------------------------------------
+    # --- Sidebar rows -----------------------------------------------------
 
     def _on_item_setup(self, _factory, list_item):
         icon = Gtk.Image()
         label = Gtk.Label(xalign=0, hexpand=True, ellipsize=3)  # 3 = Pango.EllipsizeMode.END
-        ring = ProgressRing(16, 3, visible=False, margin_end=6)  # Schreibziel des Blatts
+        ring = ProgressRing(16, 3, visible=False, margin_end=6)  # writing goal of the sheet
         ring.path = None
         self._row_rings.add(ring)
         box = Gtk.Box(spacing=8)
@@ -1254,7 +1254,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         expander.add_controller(right_click)
         list_item.set_child(expander)
 
-    # --- Verschieben (Ziehen und Ablegen, "Verschieben nach …") ---------------
+    # --- Moving (drag and drop, "Move to…") -----------------------------------
 
     def _on_drag_prepare(self, _source, _x, _y, list_item):
         row = list_item.get_item()
@@ -1267,15 +1267,15 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if row is None:
             return False
         node = row.get_item().node
-        # Auf eine Gruppe: hinein. Auf ein Blatt: in dessen Gruppe.
+        # Onto a group: into it. Onto a sheet: into its group.
         return self._move(Path(value), node.path if node.is_group else node.path.parent)
 
     def _inside_library(self, path: Path) -> bool:
         return self.library_path is not None and (path == self.library_path or self.library_path in path.parents)
 
     def _move(self, source: Path, folder: Path) -> bool:
-        """Verschiebt ein Blatt oder eine Gruppe innerhalb der Bibliothek. Fremde Ziehdaten
-        (z. B. Text aus dem Editor) werden ignoriert, weil sie kein Pfad in der Bibliothek sind."""
+        """Moves a sheet or a group within the library. Foreign drag data
+        (e.g. text from the editor) is ignored, because it is not a path in the library."""
         if not (self._inside_library(source) and source != self.library_path and self._inside_library(folder)):
             return False
         if not source.exists() or source.parent == folder:
@@ -1303,7 +1303,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         node = self._selected_node()
         if node is None:
             return
-        # Ziele: Stammordner und alle Gruppen außer der eigenen (und, bei Gruppen, ihren Untergruppen).
+        # Targets: root folder and all groups except its own (and, for groups, their subgroups).
         targets = [self.library_path] + [
             group
             for group in all_groups(scan(self.library_path))
@@ -1332,7 +1332,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         dialog.present(self)
 
     def _on_row_clicked(self, _gesture, _n_press, _x, _y, list_item):
-        """Nach einem Klick auf ein Blatt gleich weiterschreiben können (Pfeiltasten bleiben in der Liste)."""
+        """After clicking a sheet, allow writing right away (arrow keys stay in the list)."""
         row = list_item.get_item()
         if row is not None and not row.get_item().node.is_group:
             GLib.idle_add(lambda: self.editor.focus_editor() and False)
@@ -1343,7 +1343,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         self.selection.set_selected(position)
         if self.selection.get_selected() != position:
-            return  # Auswahl wurde verweigert (Speicherfehler), kein Menü für das falsche Blatt.
+            return  # selection was refused (save error), no menu for the wrong sheet.
         point = gesture.get_widget().translate_coordinates(self.list_view, x, y)
         if point is None:
             return
@@ -1368,7 +1368,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._update_row_ring(ring, animate=False)
 
     def _update_row_ring(self, ring: ProgressRing, animate: bool = True):
-        """Ring neben einem Blatt mit Schreibziel. Das offene Blatt zählt live (auch Ungesichertes)."""
+        """Ring next to a sheet with a writing goal. The open sheet counts live (including unsaved text)."""
         progress = None
         if ring.path is not None:
             if ring.path == self.editor.path:
@@ -1385,10 +1385,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
             )
             ring.show_progress(fraction(words, goal), words >= goal, animate)
 
-    # --- Darstellung ------------------------------------------------------
+    # --- Appearance -------------------------------------------------------
 
     def apply_settings(self):
-        """Wendet die gespeicherten Einstellungen an (beim Start und bei jeder Änderung im Dialog)."""
+        """Applies the saved settings (at startup and on every change in the dialog)."""
         current = config.effective_settings(self.focus_mode)
         self.editor.set_appearance(
             font_family=current["editor_font"],
@@ -1410,7 +1410,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             typewriter=self.focus_mode and data.get("focus_typewriter") is not False,
             dim_others=self.focus_mode and data.get("focus_dim") is not False,
         )
-        self.inspector.refresh()  # Voreinstellungen für Autor und Sprache können sich geändert haben
+        self.inspector.refresh()  # defaults for author and language may have changed
 
     def _apply_style_scheme(self):
         dark = Adw.StyleManager.get_default().get_dark()

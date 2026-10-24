@@ -8,7 +8,7 @@ from typecase.markdown_style import fence_language, line_spans
 
 
 def styled(line, in_code=False):
-    """Hilfsdarstellung: {tag: [Textstücke]}"""
+    """Helper representation: {tag: [text pieces]}"""
     result = {}
     for start, end, tag in line_spans(line, in_code):
         result.setdefault(tag, []).append(line[start:end])

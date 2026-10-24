@@ -4,11 +4,11 @@ _ITEM = re.compile(r"^(?P<indent>[ \t]*)(?P<marker>[-*+]|\d{1,9}[.)]|>)(?P<space
 
 
 def on_enter(line: str, column: int) -> tuple[str, str] | None:
-    """Entscheidet, was die Eingabetaste in einer Zeile mit Listenzeichen tut.
+    """Decides what the Enter key does in a line with a list marker.
 
-    Liefert ("continue", Präfix) für die neue Zeile, ("end", "") wenn der leere Listenpunkt
-    die Liste beendet, oder None, wenn die Zeile keine Liste ist oder der Cursor im
-    Listenzeichen steht (dann gilt der normale Zeilenumbruch)."""
+    Returns ("continue", prefix) for the new line, ("end", "") if the empty list item
+    ends the list, or None if the line is not a list item or the cursor is inside the
+    list marker (then the normal line break applies)."""
     match = _ITEM.match(line)
     if match is None or column < match.end():
         return None
@@ -22,15 +22,15 @@ def on_enter(line: str, column: int) -> tuple[str, str] | None:
     return ("continue", f"{match['indent']}{marker}{match['space']}{box}")
 
 
-# --- Nummerieren und Einrücken ----------------------------------------------
+# --- Numbering and indenting -----------------------------------------------
 
-INDENT = "    "  # eine Ebene; reicht nach CommonMark für "- " und "1. "
+INDENT = "    "  # one level; per CommonMark enough for "- " and "1. "
 _LIST_ITEM = re.compile(r"^(?P<indent>[ \t]*)(?:[-*+]|\d{1,9}[.)])[ \t]+")
 _NUMBERED = re.compile(r"^(?P<indent>[ \t]*)(?P<number>\d{1,9})(?P<delim>[.)])(?=[ \t])")
 
 
 def _width(line: str) -> int:
-    """Einrückung in Spalten (Tab = 4)."""
+    """Indentation in columns (tab = 4)."""
     width = 0
     for char in line:
         if char == " ":
@@ -52,7 +52,7 @@ def _set_number(line: str, number: int) -> str:
 
 
 def _previous_number(lines: list[str], index: int, width: int) -> int | None:
-    """Nummer des vorherigen Listenpunkts auf derselben Ebene, None wenn es keinen gibt."""
+    """Number of the previous list item on the same level, None if there is none."""
     for i in range(index - 1, -1, -1):
         line = lines[i]
         if _blank(line) or _width(line) < width:
@@ -64,11 +64,11 @@ def _previous_number(lines: list[str], index: int, width: int) -> int | None:
 
 
 def renumber(lines: list[str], index: int, restart: bool = False) -> list[str]:
-    """Nummeriert die nummerierte Liste fortlaufend, in der Zeile index steht.
+    """Renumbers consecutively the numbered list that contains line index.
 
-    Betrachtet wird nur die Ebene dieser Zeile; tiefer eingerückte Zeilen dazwischen
-    (Unterpunkte, Fortsetzungen) werden übersprungen. Die erste Nummer bleibt erhalten,
-    außer restart=True, dann beginnt die Liste bei 1."""
+    Only the level of this line is considered; more deeply indented lines in between
+    (sub-items, continuations) are skipped. The first number is kept,
+    unless restart=True, in which case the list starts at 1."""
     if not _NUMBERED.match(lines[index]):
         return lines
     width = _width(lines[index])
@@ -98,9 +98,9 @@ def renumber(lines: list[str], index: int, restart: bool = False) -> list[str]:
 
 
 def change_indent(lines: list[str], index: int, direction: int) -> list[str] | None:
-    """Rückt einen Listenpunkt um eine Ebene ein (direction=1) oder aus (-1) und nummeriert
-    beide betroffenen Ebenen neu. None, wenn die Zeile kein Listenpunkt ist oder nicht weiter
-    ausgerückt werden kann."""
+    """Indents a list item by one level (direction=1) or outdents it (-1) and renumbers
+    both affected levels. None if the line is not a list item or cannot be outdented
+    any further."""
     line = lines[index]
     item = _LIST_ITEM.match(line)
     if item is None:
@@ -126,7 +126,7 @@ def change_indent(lines: list[str], index: int, direction: int) -> list[str] | N
         out[index] = _set_number(out[index], previous + 1 if previous else 1)
         out = renumber(out, index)
 
-    # Die zurückgelassene Ebene: der nächste Punkt dort zählt ab jetzt richtig weiter.
+    # The level left behind: from now on the next item there continues counting correctly.
     for i in range(index + 1, len(out)):
         other = out[i]
         if _blank(other) or _width(other) < min(old_width, new_width):

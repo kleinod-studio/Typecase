@@ -9,12 +9,12 @@ from .goal import fraction
 
 
 def _number(n: int) -> str:
-    return locale.format_string("%d", n, grouping=True)  # 1.234 statt 1234
+    return locale.format_string("%d", n, grouping=True)  # 1,234 instead of 1234 (depending on locale)
 
 
 class ProgressRing(Gtk.Widget):
-    """Kreisförmige Fortschrittsanzeige. Farbe kommt aus dem Stil (CSS-Klassen accent/success),
-    folgt also Akzentfarbe sowie hellem und dunklem Modus."""
+    """Circular progress indicator. Its color comes from the style (CSS classes accent/success),
+    so it follows the accent color as well as light and dark mode."""
 
     __gtype_name__ = "TypecaseGoalRing"
 
@@ -33,7 +33,7 @@ class ProgressRing(Gtk.Widget):
         )
 
     def show_progress(self, value: float, reached: bool, animate: bool = True) -> None:
-        """Sanft zum neuen Stand gleiten (libadwaita lässt das weg, wenn Animationen abgeschaltet sind)."""
+        """Glide smoothly to the new value (libadwaita skips this when animations are turned off)."""
         self.set_css_classes(["success" if reached else "accent"])
         self._animation.pause()
         if animate and self.get_mapped():
@@ -61,16 +61,16 @@ class ProgressRing(Gtk.Widget):
         cr.arc(cx, cy, radius, 0, 2 * math.pi)
         cr.stroke()
         if self.value > 0:
-            cr.set_line_cap(1)  # rund
+            cr.set_line_cap(1)  # round
             cr.set_source_rgba(color.red, color.green, color.blue, color.alpha)
-            start = -math.pi / 2  # oben beginnen, im Uhrzeigersinn
+            start = -math.pi / 2  # start at the top, clockwise
             cr.arc(cx, cy, radius, start, start + 2 * math.pi * min(self.value, 1.0))
             cr.stroke()
 
 
 class GoalView(Gtk.Box):
-    """Ring mit geschriebenen Wörtern in der Mitte, darunter Prozent und was noch fehlt.
-    Ist das Ziel erreicht, wird der Ring grün."""
+    """Ring with the words written in the middle, below it the percentage and what is still missing.
+    Once the goal is reached, the ring turns green."""
 
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin_top=18, halign=Gtk.Align.CENTER)
@@ -105,8 +105,8 @@ class GoalView(Gtk.Box):
 
 
 class GoalBadge(Gtk.Button):
-    """Kleine schwebende Karte unten rechts im Editor, solange die Eigenschaften zu sind:
-    Mini-Ring und "742 / 1.500". Ein Klick öffnet die Eigenschaften."""
+    """Small floating card at the bottom right of the editor while the properties pane is closed:
+    mini ring and "742 / 1,500". A click opens the properties pane."""
 
     def __init__(self):
         super().__init__(css_classes=["goal-badge"], tooltip_text=_("Writing Goal"), action_name="win.inspector")

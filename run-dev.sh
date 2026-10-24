@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Startet Typecase direkt aus dem Quellordner, ohne Meson oder Flatpak (nur für die Entwicklung).
+# Starts Typecase straight from the source folder, without Meson or Flatpak (for development only).
 cd "$(dirname "$0")" || exit 1
 
-# Übersetzungen übersetzen (locale/ wird nicht eingecheckt)
+# Compile the translations (locale/ is not checked in)
 if command -v msgfmt >/dev/null; then
   for po in po/*.po; do
     lang=$(basename "$po" .po)

@@ -1,9 +1,9 @@
-"""Dateikopf (YAML-Frontmatter) einer Markdown-Datei lesen und ändern, ohne GTK.
+"""Reading and changing the front matter (YAML) of a Markdown file, without GTK.
 
-Grundsatz: Der Dateikopf gehört dem Nutzer. Typecase liest nur einfache Felder
-(Text, Liste) und ändert beim Schreiben ausschließlich die Zeilen der Felder, die sich
-geändert haben. Alles andere – fremde Felder, Kommentare, Formatierung – bleibt Zeichen
-für Zeichen erhalten."""
+Principle: the front matter belongs to the user. Typecase only reads simple fields
+(text, list) and, when writing, changes only the lines of the fields that have
+changed. Everything else – unknown fields, comments, formatting – is preserved character
+for character."""
 
 import re
 
@@ -15,13 +15,13 @@ _NEEDS_QUOTES = re.compile(r"""^[\s\-?:,\[\]{}#&*!|>'"%@`]|[:#]\s|\s$|^$|^(?:tru
 
 
 def split(text: str) -> tuple[str | None, str]:
-    """Trennt den Dateikopf ab. Liefert (Kopf samt ---Zeilen, Rest) oder (None, text)."""
+    """Splits off the front matter. Returns (header including --- lines, rest) or (None, text)."""
     opening = _OPEN.match(text)
     if not opening:
         return None, text
     closing = _CLOSE.search(text, opening.end())
     if not closing:
-        return None, text  # nicht geschlossen: als normalen Text behandeln
+        return None, text  # not closed: treat as normal text
     return text[: closing.end()], text[closing.end() :]
 
 
@@ -30,7 +30,7 @@ def join(header: str | None, body: str) -> str:
 
 
 def parse(header: str | None) -> dict:
-    """Einfache Felder des Kopfs: Text als str, Listen als list[str]. Unbekanntes wird überlesen."""
+    """Simple fields of the header: text as str, lists as list[str]. Anything unknown is skipped."""
     if not header:
         return {}
     result = {}
@@ -56,8 +56,8 @@ def parse(header: str | None) -> dict:
 
 
 def update(header: str | None, changes: dict) -> str | None:
-    """Setzt oder entfernt Felder (Wert None, "" oder [] entfernt). Andere Zeilen bleiben unverändert.
-    Liefert None, wenn danach kein Feld mehr übrig ist und der Kopf nur aus Typecase-Feldern bestand."""
+    """Sets or removes fields (a value of None, "" or [] removes). Other lines stay unchanged.
+    Returns None if no field is left afterwards and the header consisted only of Typecase fields."""
     newline = "\r\n" if header and "\r\n" in header else "\n"
     if header:
         opening = _OPEN.match(header).group(0)
@@ -79,7 +79,7 @@ def update(header: str | None, changes: dict) -> str | None:
     return opening + "".join(line.rstrip("\r") + newline for line in lines) + closing
 
 
-# --- intern -----------------------------------------------------------------
+# --- internal ---------------------------------------------------------------
 
 
 def _inner_lines(header: str) -> list[str]:
@@ -92,7 +92,7 @@ def _inner_lines(header: str) -> list[str]:
 
 
 def _field_span(lines: list[str], key: str) -> tuple[int | None, int | None]:
-    """Zeilenbereich eines Felds samt eingerückter Folgezeilen (Listenpunkte)."""
+    """Line range of a field including its indented continuation lines (list items)."""
     for i, line in enumerate(lines):
         match = _KEY.match(line.rstrip("\r"))
         if match and match.group(1) == key:

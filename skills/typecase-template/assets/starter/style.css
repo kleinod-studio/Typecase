@@ -1,4 +1,4 @@
-/* Vorlage "Text": schlichtes Textdokument. Gilt für HTML und PDF. */
+/* Template "Text": a plain text document. Applies to HTML and PDF. */
 
 :root {
   --text: #1f1f1f;
@@ -21,7 +21,7 @@ body {
   padding: 0 1.5em;
 }
 
-/* Im PDF bestimmt die Seite die Breite; die Ränder setzt der Druck. */
+/* In the PDF the page determines the width; printing sets the margins. */
 body.pdf {
   max-width: none;
   margin: 0;

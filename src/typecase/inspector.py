@@ -35,21 +35,21 @@ def _format_time(timestamp: float) -> str:
 
 
 def format_created(value: str) -> str:
-    """Erstelldatum aus dem Dateikopf zur Anzeige: mit Uhrzeit, wenn gespeichert; Unlesbares unverändert."""
+    """Creation date from the front matter for display: with time if stored; unreadable values unchanged."""
     try:
         moment = datetime.fromisoformat(value.strip())
     except ValueError:
         return value
-    if len(value.strip()) <= 10:  # nur Datum
+    if len(value.strip()) <= 10:  # date only
         return GLib.DateTime.new_local(moment.year, moment.month, moment.day, 0, 0, 0).format("%x")
     return _format_time(moment.timestamp())
 
 
 class Inspector(Adw.Bin):
-    """Seitenfenster rechts: Meta-Informationen des offenen Blatts (Dateikopf) bearbeiten.
+    """Properties pane on the right: edit the metadata of the open sheet (front matter).
 
-    Leere Felder werden aus dem Dateikopf entfernt. Autor und Sprache zeigen ihre Voreinstellung
-    aus den App-Einstellungen nur an; in die Datei kommt nur, was man selbst einträgt."""
+    Empty fields are removed from the front matter. Author and language only display their default
+    from the app preferences; only what you enter yourself goes into the file."""
 
     def __init__(self, editor):
         super().__init__()
@@ -62,7 +62,7 @@ class Inspector(Adw.Bin):
 
         page = Adw.PreferencesPage()
 
-        # Schreibziel: eigener Bereich mit Ring, der den Fortschritt zeigt (Feld "goal" im Dateikopf).
+        # Writing goal: its own section with a ring that shows progress (field "goal" in the front matter).
         goal_group = Adw.PreferencesGroup(title=_("Writing Goal"))
         self.goal_row = Adw.ExpanderRow(title=_("Word Goal"), show_enable_switch=True)
         self.goal_row.connect("notify::enable-expansion", lambda *_a: self._on_goal_changed())
@@ -97,7 +97,7 @@ class Inspector(Adw.Bin):
         sort_group.add(self.lang_row)
         page.add(sort_group)
 
-        # Reine Anzeigen: das Erstelldatum setzt Typecase beim Anlegen, "geändert" kommt aus der Datei.
+        # Display only: Typecase sets the creation date when creating a sheet; "modified" comes from the file.
         date_group = Adw.PreferencesGroup(title=_("Dates"))
         self.created_row = Adw.ActionRow(title=_("Created"), css_classes=["property"], subtitle_selectable=True)
         date_group.add(self.created_row)
@@ -112,7 +112,7 @@ class Inspector(Adw.Bin):
         self._choices: dict[str, list[str]] = {}
         self.refresh()
 
-    # --- Aufbau -------------------------------------------------------------
+    # --- Construction -------------------------------------------------------
 
     def _entry(self, group, title: str, key: str) -> Adw.EntryRow:
         row = Adw.EntryRow(title=title)
@@ -121,7 +121,7 @@ class Inspector(Adw.Bin):
         return row
 
     def _fill_choice(self, row: Adw.ComboRow, key: str, values: list[str], labels: list[str], current: str):
-        """Auswahlliste: erster Eintrag = nichts angegeben; unbekannte Werte aus der Datei bleiben wählbar."""
+        """Choice list: first entry = nothing specified; unknown values from the file remain selectable."""
         if current and current not in values:
             values, labels = values + [current], labels + [current]
         self._choices[key] = [""] + values
@@ -133,10 +133,10 @@ class Inspector(Adw.Bin):
             return _("Default (%s)") % language_name(config.sheet_defaults()["lang"])
         return _("None")
 
-    # --- Anzeigen -------------------------------------------------------------
+    # --- Displaying -----------------------------------------------------------
 
     def refresh(self):
-        """Felder aus dem Dateikopf des offenen Blatts übernehmen (ohne zurückzuschreiben)."""
+        """Load the fields from the open sheet's front matter (without writing back)."""
         self._loading = True
         data = self.editor.metadata() if self.editor.path else {}
         defaults = config.sheet_defaults()
@@ -156,7 +156,7 @@ class Inspector(Adw.Bin):
         goal = parse_goal(data.get("goal"))
         self.goal_row.set_enable_expansion(goal is not None)
         self.goal_row.set_expanded(goal is not None)
-        self.goal_spin.set_value(goal or DEFAULT_GOAL)  # Vorschlag fürs Einschalten
+        self.goal_spin.set_value(goal or DEFAULT_GOAL)  # suggested value for switching it on
         self._update_goal_view(animate=False)
         self._update_defaults_visibility()
         self._refresh_modified()
@@ -184,10 +184,10 @@ class Inspector(Adw.Bin):
             self.created_row.set_subtitle("—")
 
     def _update_defaults_visibility(self):
-        # Voreinstellungen nur zeigen, solange das Feld leer ist.
+        # Only show defaults while the field is empty.
         self.author_default.set_visible(not self.author_row.get_text())
 
-    # --- Ändern ---------------------------------------------------------------
+    # --- Changing -------------------------------------------------------------
 
     def _set(self, key: str, value):
         self._update_defaults_visibility()

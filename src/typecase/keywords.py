@@ -1,4 +1,4 @@
-"""Schlagwörter aus den Dateiköpfen sammeln und die Bibliothek danach filtern, ohne GTK."""
+"""Collecting keywords from the front matter and filtering the library by them, without GTK."""
 
 from pathlib import Path
 
@@ -8,7 +8,7 @@ from .library import Node
 
 
 class KeywordIndex:
-    """Liest die Schlagwörter (Feld "keywords") der Blätter und merkt sie sich, bis sich eine Datei ändert."""
+    """Reads the keywords (field "keywords") of sheets and caches them until a file changes."""
 
     def __init__(self):
         self._cache: dict[Path, tuple[float, int, list[str]]] = {}
@@ -29,8 +29,8 @@ class KeywordIndex:
         return keywords
 
     def summary(self, nodes: list[Node]) -> list[tuple[str, int]]:
-        """Alle Schlagwörter mit der Zahl ihrer Blätter, alphabetisch. Groß-/Kleinschreibung zählt
-        nicht; angezeigt wird die Schreibweise, die zuerst vorkommt."""
+        """All keywords with the number of their sheets, sorted alphabetically. Case does not
+        matter; the spelling that occurs first is the one shown."""
         counts: dict[str, list] = {}
         for sheet in sheets(nodes):
             for word in {w.casefold(): w for w in self.keywords_of(sheet.path)}.values():
@@ -52,7 +52,7 @@ def sheets(nodes: list[Node]):
 
 
 def filter_nodes(nodes: list[Node], keep) -> list[Node]:
-    """Nur Blätter, für die keep(blatt) gilt, und die Gruppen auf dem Weg dorthin."""
+    """Only sheets for which keep(sheet) holds, plus the groups on the way to them."""
     result = []
     for node in nodes:
         if node.is_group:

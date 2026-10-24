@@ -14,7 +14,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
 - **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
-- **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centred and the other paragraphs are dimmed. Focus mode has its own font settings.
+- **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode has its own font settings.
 - **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/vorlagen.md), in German for now).
 - **GNOME-native**: libadwaita look, light and dark style, fully usable with the keyboard. The UI is in English and German.
 

@@ -9,11 +9,11 @@ finish-args:
   - --socket=fallback-x11
   - --share=ipc
   - --device=dri
-  # Die Bibliothek ist ein frei wählbarer Ordner (auch Nextcloud/Syncthing). Bewusst kein --share=network.
+  # The library is a freely chosen folder (Nextcloud/Syncthing too). Deliberately no --share=network.
   - --filesystem=home
 
 modules:
-  # Export (PDF, DOCX, HTML). Offizielle, statisch gebaute Pandoc-Version; GPL-2.0-or-later.
+  # Export (PDF, DOCX, HTML). Official statically linked Pandoc build; GPL-2.0-or-later.
   - name: pandoc
     buildsystem: simple
     build-commands:

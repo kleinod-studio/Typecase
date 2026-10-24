@@ -35,7 +35,7 @@ class ExportTest(unittest.TestCase):
         pdf = export.pandoc_args("pdf", self.template, Path("/x/out.html"), None)
         self.assertEqual(pdf[pdf.index("--to") + 1], "html5")
         self.assertIn("pdf", pdf)
-        self.assertFalse(any(a.startswith("pagetitle=") for a in pdf), "mit Titel im Dateikopf kein Ersatztitel")
+        self.assertFalse(any(a.startswith("pagetitle=") for a in pdf), "no fallback title when the front matter has a title")
 
     def test_defaults_only_when_given(self):
         args = export.pandoc_args("docx", self.template, Path("/x/o.docx"), None, defaults={"author": "Anna", "lang": None})

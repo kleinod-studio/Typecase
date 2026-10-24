@@ -1,8 +1,8 @@
-"""Export eines Blatts über Pandoc, ohne GTK.
+"""Exporting a sheet via Pandoc, without GTK.
 
-DOCX und HTML erzeugt Pandoc direkt. Für PDF erzeugt Pandoc HTML, das der Editor anschließend
-mit WebKit in eine PDF-Datei druckt (HTML-Vorlage mit CSS, kein LaTeX nötig).
-Wie Vorlagen aufgebaut sind, steht in export_templates.py."""
+Pandoc produces DOCX and HTML directly. For PDF, Pandoc produces HTML, which the editor then
+prints to a PDF file with WebKit (HTML template with CSS, no LaTeX required).
+How templates are structured is described in export_templates.py."""
 
 import base64
 import mimetypes
@@ -15,7 +15,7 @@ from .export_templates import Template
 FORMATS = ("pdf", "docx", "html")
 EXTENSIONS = {"pdf": ".pdf", "docx": ".docx", "html": ".html"}
 
-# Markdown wie im Editor: jede Zeile bleibt eine eigene Zeile.
+# Markdown as in the editor: every line stays a line of its own.
 INPUT_FORMAT = "markdown+hard_line_breaks"
 
 _UNDERLINE = re.compile(r"<u>(.*?)</u>", re.DOTALL)
@@ -28,8 +28,8 @@ def pandoc_path() -> str | None:
 
 
 def prepare_markdown(text: str) -> str:
-    """Typecase-Eigenheiten in Pandoc-Markdown übersetzen: Unterstreichen ist bei uns <u>…</u>,
-    Pandoc kennt dafür [Text]{.underline} (rohes HTML ginge in DOCX verloren)."""
+    """Translate Typecase specifics into Pandoc Markdown: we write underline as <u>…</u>,
+    Pandoc uses [text]{.underline} for that (raw HTML would get lost in DOCX)."""
     return _UNDERLINE.sub(lambda m: "[" + m.group(1) + "]{.underline}", text)
 
 
@@ -41,10 +41,10 @@ def pandoc_args(
     header_file: Path | None = None,
     defaults: dict | None = None,
 ) -> list[str]:
-    """Befehlszeile für Pandoc; der Text kommt über die Standardeingabe.
-    fmt "pdf" erzeugt die HTML-Zwischenstufe für den PDF-Druck. header_file enthält das CSS
-    als <style>-Block, damit die HTML-Datei ohne Begleitdateien auskommt. defaults sind
-    Voreinstellungen (Autor, Sprache) für Felder, die der Dateikopf nicht selbst setzt."""
+    """Command line for Pandoc; the text is passed via standard input.
+    fmt "pdf" produces the intermediate HTML for PDF printing. header_file contains the CSS
+    as a <style> block, so the HTML file needs no accompanying files. defaults are
+    default values (author, language) for fields the front matter does not set itself."""
     args = [pandoc_path() or "pandoc", "--from", INPUT_FORMAT, "--output", str(output)]
     for key, value in (defaults or {}).items():
         if value:
@@ -56,19 +56,19 @@ def pandoc_args(
     else:
         args += ["--to", "html5", "--standalone", "--template", str(template.html)]
         if fallback_title:
-            # Fenstertitel der HTML-Seite, wenn der Dateikopf keinen Titel hat; im Text erscheint er nicht.
+            # Window title of the HTML page if the front matter has no title; it does not appear in the text.
             args += ["--metadata", "pagetitle=" + fallback_title]
         if header_file is not None:
             args += ["--include-in-header", str(header_file)]
         if fmt == "pdf":
-            args += ["--variable", "pdf"]  # die Vorlage kann Bildschirm- und Druckfassung unterscheiden
+            args += ["--variable", "pdf"]  # lets the template tell the screen and print versions apart
     return args
 
 
 def style_header(template: Template) -> str:
-    """CSS der Vorlage als <style>-Block zum Einbetten. Schriften und Bilder der Vorlage, auf die
-    das CSS mit url(…) verweist, werden mit eingebettet: So ist die HTML-Datei vollständig, und
-    der PDF-Druck findet sie auch, obwohl er vom Ordner des Blatts aus lädt."""
+    """The template's CSS as a <style> block for embedding. Fonts and images of the template that
+    the CSS references with url(…) are embedded too: that way the HTML file is self-contained, and
+    PDF printing finds them as well, even though it loads from the sheet's folder."""
     css = template.css.read_text(encoding="utf-8") if template.css.is_file() else ""
     css = _CSS_URL.sub(lambda match: _embed(template, match), css)
     return "<style>\n" + css.replace("</style", "<\\/style") + "\n</style>\n"
@@ -80,6 +80,6 @@ def _embed(template: Template, match: re.Match) -> str:
         return match.group(0)
     file = (template.path / reference).resolve()
     if template.path.resolve() not in file.parents or not file.is_file():
-        return match.group(0)  # außerhalb der Vorlage oder nicht vorhanden: unverändert lassen
+        return match.group(0)  # outside the template or missing: leave unchanged
     mime = mimetypes.guess_type(file.name)[0] or _FONT_TYPES.get(file.suffix.lower(), "application/octet-stream")
     return f"url('data:{mime};base64,{base64.b64encode(file.read_bytes()).decode('ascii')}')"

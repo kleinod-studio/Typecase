@@ -6,7 +6,7 @@ from gi.repository import GLib
 from .fileio import atomic_write_text
 
 CONFIG_PATH = Path(GLib.get_user_config_dir()) / "typecase" / "config.json"
-# Importierte Export-Vorlagen (entpackt); im Flatpak unter ~/.var/app/…/data
+# Imported export templates (unpacked); in the Flatpak under ~/.var/app/…/data
 TEMPLATES_DIR = Path(GLib.get_user_data_dir()) / "typecase" / "templates"
 
 
@@ -39,20 +39,20 @@ def update(**values) -> None:
 def set_library_path(path: Path) -> None:
     data = load()
     if data.get("library_path") != str(path):
-        data.pop("last_sheet", None)  # gilt nur für die bisherige Bibliothek
+        data.pop("last_sheet", None)  # only valid for the previous library
         data.pop("expanded_groups", None)
     data["library_path"] = str(path)
     save(data)
 
 
-# --- Einstellungen -------------------------------------------------------------
+# --- Settings ------------------------------------------------------------------
 
 LINE_SPACINGS = ("compact", "normal", "relaxed")
 COLOR_SCHEMES = ("system", "light", "dark")
 SETTINGS_DEFAULTS = {
-    "editor_font": None,  # None = Schrift der Oberfläche
+    "editor_font": None,  # None = interface font
     "editor_font_size": 15,
-    "line_width": 70,  # Zeichen pro Zeile im Textblock
+    "line_width": 70,  # characters per line in the text column
     "line_spacing": "normal",
     "color_scheme": "system",
 }
@@ -60,13 +60,13 @@ FONT_SIZE_RANGE = (8, 48)
 LINE_WIDTH_RANGE = (30, 200)
 
 
-PROFILES = ("editor", "focus")  # normaler Editor und Fokus-Modus
+PROFILES = ("editor", "focus")  # normal editor and focus mode
 _PREFIX = {"editor": "", "focus": "focus_"}
 
 
 def settings(profile: str = "editor") -> dict:
-    """Die Einstellungen eines Profils, geprüft: Ungültiges oder Fehlendes wird durch die Voreinstellung ersetzt.
-    Im Fokus-Profil sind das dessen eigene Werte, auch wenn es gerade die des Editors übernimmt."""
+    """A profile's settings, validated: anything invalid or missing is replaced by the default.
+    For the focus profile these are its own values, even while it is currently using the editor's."""
     data = load()
     prefix = _PREFIX[profile]
     result = dict(SETTINGS_DEFAULTS)
@@ -85,12 +85,12 @@ def settings(profile: str = "editor") -> dict:
 
 
 def focus_uses_editor_settings() -> bool:
-    """Übernimmt der Fokus-Modus die Einstellungen des Editors? (Voreinstellung: ja)"""
+    """Does focus mode use the editor's settings? (Default: yes)"""
     return load().get("focus_same_as_editor") is not False
 
 
 def effective_settings(focus_mode: bool) -> dict:
-    """Was gerade gelten soll: im Fokus-Modus dessen Profil, sofern es nicht die des Editors übernimmt."""
+    """What should apply right now: in focus mode its own profile, unless it uses the editor's."""
     if focus_mode and not focus_uses_editor_settings():
         return settings("focus")
     return settings("editor")
@@ -100,7 +100,7 @@ def update_profile(profile: str, values: dict) -> None:
     update(**{_PREFIX[profile] + key: value for key, value in values.items()})
 
 
-# --- Vorgaben für Meta-Informationen der Blätter ----------------------------------
+# --- Defaults for sheet metadata ------------------------------------------------
 
 LANGUAGES = ("de-DE", "de-AT", "de-CH", "en-US", "en-GB", "fr-FR", "es-ES", "it-IT", "nl-NL")
 
@@ -117,8 +117,8 @@ def _system_language() -> str:
 
 
 def sheet_defaults() -> dict:
-    """Voreinstellungen für Autor und Sprache. Sie gelten, solange ein Blatt nichts Eigenes angibt,
-    und werden nicht in die Dateien geschrieben."""
+    """Defaults for author and language. They apply as long as a sheet does not specify its own,
+    and are not written into the files."""
     data = load()
     author = data.get("default_author")
     lang = data.get("default_lang")

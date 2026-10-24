@@ -64,7 +64,7 @@ class TemplatesTest(unittest.TestCase):
         (folder / "template.json").write_text(self.info())
         (folder / "template.html").write_text(HTML)
         for file in folder.iterdir():
-            os.utime(file, (0, 0))  # wie im Flatpak
+            os.utime(file, (0, 0))  # as in the Flatpak
         from typecase.export_templates import read_folder
 
         pack(read_folder(folder, builtin=True), self.tmp / ("alt" + EXTENSION))
@@ -88,7 +88,7 @@ class TemplatesTest(unittest.TestCase):
             install(bad, self.user)
         newer = make_file(self.tmp / ("brief" + EXTENSION), {"template.json": self.info(description="neu"), "template.html": HTML})
         self.assertEqual(install(newer, self.user).description, "neu")
-        self.assertEqual(sorted(p.name for p in self.user.iterdir()), ["brief"], "keine Reste vom Import")
+        self.assertEqual(sorted(p.name for p in self.user.iterdir()), ["brief"], "no leftovers from the import")
 
     def test_folder_inside_zip_is_accepted(self):
         file = make_file(self.tmp / ("x" + EXTENSION), {"Brief/template.json": self.info(), "Brief/template.html": HTML})
@@ -96,15 +96,15 @@ class TemplatesTest(unittest.TestCase):
 
     def test_rejects_broken_files(self):
         cases = {
-            "kein zip": None,
-            "ohne json": {"template.html": HTML},
-            "ohne html": {"template.json": self.info()},
-            "ohne body": {"template.json": self.info(), "template.html": "<p>"},
-            "ohne name": {"template.json": json.dumps({"format": 1}), "template.html": HTML},
-            "zu neu": {"template.json": self.info(format=99), "template.html": HTML},
-            "kaputtes json": {"template.json": "{", "template.html": HTML},
-            "ausbruch": {"template.json": self.info(), "template.html": HTML, "../../boese.txt": "x"},
-            "absolut": {"template.json": self.info(), "template.html": HTML, "/tmp/boese.txt": "x"},
+            "not a zip": None,
+            "no json": {"template.html": HTML},
+            "no html": {"template.json": self.info()},
+            "no body": {"template.json": self.info(), "template.html": "<p>"},
+            "no name": {"template.json": json.dumps({"format": 1}), "template.html": HTML},
+            "too new": {"template.json": self.info(format=99), "template.html": HTML},
+            "broken json": {"template.json": "{", "template.html": HTML},
+            "escapes folder": {"template.json": self.info(), "template.html": HTML, "../../boese.txt": "x"},
+            "absolute path": {"template.json": self.info(), "template.html": HTML, "/tmp/boese.txt": "x"},
         }
         for label, files in cases.items():
             file = self.tmp / (label.replace(" ", "-") + EXTENSION)

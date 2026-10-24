@@ -27,7 +27,7 @@ These apply to every feature:
 ## Phase 2: Comfort ✅
 
 - [x] Live Markdown styling in the editor, with dimmed syntax characters and highlighted code blocks
-- [x] Focus mode: full screen with a centred text column, separate font settings, typewriter scrolling and dimmed surroundings
+- [x] Focus mode: full screen with a centered text column, separate font settings, typewriter scrolling and dimmed surroundings
 - [x] Full-text search across the library
 - [x] Find and replace in the current sheet
 - [x] Configurable font, size, line width and spacing

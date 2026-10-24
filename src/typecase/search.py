@@ -1,4 +1,4 @@
-"""Volltextsuche über die Bibliothek, ohne GTK."""
+"""Full-text search across the library, without GTK."""
 
 import re
 from dataclasses import dataclass
@@ -16,24 +16,24 @@ _WHITESPACE = re.compile(r"\s+")
 class Hit:
     path: Path
     name: str
-    group: str  # Gruppe relativ zur Bibliothek, "" für den Stammordner
-    count: int  # Treffer im Text
-    offset: int  # Zeichenposition des ersten Treffers im Text, -1 wenn nur der Name passt
-    snippet: str  # Textausschnitt um den ersten Treffer, einzeilig
-    snippet_match: tuple[int, int]  # Lage des Treffers im Ausschnitt
+    group: str  # group relative to the library, "" for the root folder
+    count: int  # matches in the text
+    offset: int  # character position of the first match in the text, -1 if only the name matches
+    snippet: str  # text excerpt around the first match, single line
+    snippet_match: tuple[int, int]  # position of the match within the excerpt
 
 
 class LibrarySearch:
-    """Durchsucht Blätter nach einem Begriff (ohne Rücksicht auf Groß-/Kleinschreibung).
+    """Searches sheets for a term (case-insensitively).
 
-    Dateiinhalte werden zwischengespeichert und nur neu gelesen, wenn sich die Datei
-    geändert hat; so bleibt die Suche auch bei 1.000 Blättern beim Tippen flüssig."""
+    File contents are cached and only re-read when the file has changed;
+    that way the search stays smooth while typing, even with 1,000 sheets."""
 
     def __init__(self):
         self._cache: dict[Path, tuple[float, int, str]] = {}
 
     def search(self, root: Path, query: str, overrides: dict[Path, str] | None = None) -> list[Hit]:
-        """overrides: Inhalte, die neuer sind als die Datei (das offene Blatt im Editor)."""
+        """overrides: contents that are newer than the file (the sheet open in the editor)."""
         query = query.strip()
         if not query:
             return []
@@ -80,7 +80,7 @@ def _sheets(nodes: list[Node]):
 
 
 def _snippet(text: str, start: int, end: int) -> tuple[str, tuple[int, int]]:
-    """Ausschnitt aus der Zeile des Treffers, Leerraum zusammengezogen, mit … an Schnittstellen."""
+    """Excerpt from the line of the match, whitespace collapsed, with … where it is cut off."""
     line_start = text.rfind("\n", 0, start) + 1
     line_end = text.find("\n", end)
     if line_end == -1:

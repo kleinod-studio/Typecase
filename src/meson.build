@@ -30,7 +30,7 @@ install_data(
   install_dir: pkgdatadir / 'typecase',
 )
 
-# Mitgelieferte Export-Vorlagen
+# Built-in export templates
 install_subdir('typecase/templates', install_dir: pkgdatadir / 'typecase')
 
 launcher = configuration_data()

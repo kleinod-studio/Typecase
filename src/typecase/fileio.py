@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 def atomic_write_text(path: Path, text: str) -> None:
-    """Schreibt erst in eine temporäre Datei im selben Ordner und benennt sie dann um,
-    damit nie eine halb geschriebene Datei übrig bleibt.
+    """Writes to a temporary file in the same folder first and then renames it,
+    so that a half-written file is never left behind.
 
-    Zeilenenden bleiben unverändert, Dateirechte bleiben erhalten, und ein Link auf
-    die Datei bleibt ein Link (geschrieben wird in das Ziel)."""
+    Line endings stay unchanged, file permissions are preserved, and a symlink to
+    the file stays a symlink (the write goes to its target)."""
     target = Path(os.path.realpath(path))
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
@@ -32,8 +32,8 @@ def atomic_write_text(path: Path, text: str) -> None:
 
 
 def read_text(path: Path) -> str:
-    """Liest eine UTF-8-Datei, ohne Zeilenenden umzuwandeln. Wirft UnicodeDecodeError bei
-    anderen Kodierungen, damit eine Datei nie beschädigt zurückgeschrieben wird."""
+    """Reads a UTF-8 file without converting line endings. Raises UnicodeDecodeError for
+    other encodings, so that a file is never written back corrupted."""
     return path.read_bytes().decode("utf-8")
 
 

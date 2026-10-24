@@ -16,12 +16,12 @@ from gi.repository import Adw, Gio, Gtk, GtkSource
 from .window import TypecaseWindow
 
 APP_ID = "studio.kleinod.Typecase"
-VERSION = "0.1.0"  # muss zu meson.build passen
+VERSION = "0.1.0"  # must match meson.build
 GETTEXT_DOMAIN = "typecase"
 
 
 def _setup_translations(localedir: str | None = None):
-    """Bindet die Übersetzungen: installiert vom Startprogramm vorgegeben, sonst ./locale im Quellordner (run-dev.sh)."""
+    """Binds the translations: when installed, given by the launcher; otherwise ./locale in the source folder (run-dev.sh)."""
     if localedir is None:
         source_locale = Path(__file__).resolve().parents[2] / "locale"
         localedir = str(source_locale) if source_locale.is_dir() else None
@@ -35,13 +35,13 @@ def _setup_translations(localedir: str | None = None):
 
 
 def _fall_back_to_utf8():
-    """Die Sprache des Systems fehlt (im Flatpak, wenn dessen Sprachdaten nicht installiert sind).
-    Dann nicht im reinen ASCII-"C" laufen, sonst scheitern Umlaute und der PDF-Druck (WebKit),
-    sondern in C.UTF-8; die Übersetzungen richten sich weiter nach der gewünschten Sprache."""
+    """The system locale is missing (in the Flatpak, when its locale data is not installed).
+    Then don't run in plain ASCII "C", or umlauts and PDF printing (WebKit) fail, but in
+    C.UTF-8 instead; the translations still follow the requested language."""
     wanted = os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG", "")
     if wanted and not os.environ.get("LANGUAGE"):
         os.environ["LANGUAGE"] = wanted.split(".")[0]
-    os.environ["LC_ALL"] = "C.UTF-8"  # gilt auch für GTK und die Hilfsprogramme, die wir starten
+    os.environ["LC_ALL"] = "C.UTF-8"  # also applies to GTK and the helper programs we launch
     try:
         locale.setlocale(locale.LC_ALL, "C.UTF-8")
     except locale.Error:
@@ -61,7 +61,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.search", ["<Primary><Shift>f"])
         self.set_accels_for_action("win.find", ["<Primary>f"])
         self.set_accels_for_action("win.replace", ["<Primary>h"])
-        # F9 ist GNOME-Standard; unter Omarchy belegt das System F9 (Diktieren), daher zusätzlich Strg+Umschalt+L.
+        # F9 is the GNOME default; on Omarchy the system uses F9 (dictation), hence Ctrl+Shift+L as well.
         self.set_accels_for_action("win.toggle-sidebar", ["F9", "<Primary><Shift>l"])
         self.set_accels_for_action("win.fullscreen", ["F11"])
         self.set_accels_for_action("win.focus-mode", ["<Primary><Shift>Return"])
@@ -88,7 +88,7 @@ class TypecaseApplication(Adw.Application):
             self.add_action(action)
 
     def _on_quit(self, _action, _param):
-        # Über close() statt quit(): jedes Fenster sichert zuerst und darf das Beenden verweigern.
+        # Via close() instead of quit(): each window saves first and may refuse to quit.
         for window in list(self.get_windows()):
             window.close()
 

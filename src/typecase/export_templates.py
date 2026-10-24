@@ -1,20 +1,20 @@
-"""Export-Vorlagen: lesen, als Datei packen und importieren, ohne GTK.
+"""Export templates: reading, packing as a file and importing, without GTK.
 
-Eine Vorlage ist eine einzelne Datei mit der Endung .typecase-template. Technisch ist das ein
-ZIP-Archiv (wie eine .docx-Datei) mit:
+A template is a single file with the extension .typecase-template. Technically it is a
+ZIP archive (like a .docx file) containing:
 
-- template.json   Beschreibung (Pflicht), z. B. {"format": 1, "name": "Brief", "description": "…"}
-                  Name und Beschreibung dürfen auch je Sprache angegeben werden:
+- template.json   description (required), e.g. {"format": 1, "name": "Letter", "description": "…"}
+                  Name and description may also be given per language:
                   {"name": {"en": "Letter", "de": "Brief"}}
-- template.html   Pandoc-HTML-Vorlage für HTML und PDF (Pflicht, enthält $body$)
-- style.css       Aussehen für HTML und PDF (optional)
-- reference.docx  Formatvorlagen für Word (optional; sonst Pandocs Standard)
-- weitere Dateien, z. B. Schriften oder ein Logo, auf die style.css mit url(…) verweist
+- template.html   Pandoc HTML template for HTML and PDF (required, contains $body$)
+- style.css       appearance for HTML and PDF (optional)
+- reference.docx  styles for Word (optional; otherwise Pandoc's default)
+- further files, e.g. fonts or a logo, that style.css references with url(…)
 
-Für das PDF kann template.json Papier und Ränder festlegen (sonst Papier nach Sprache, 25 mm):
+For PDF, template.json can set paper and margins (otherwise paper by language, 25 mm):
   "pdf": {"paper": "a4", "margins_mm": {"top": 25, "right": 50, "bottom": 25, "left": 25}}
 
-Importierte Vorlagen liegen entpackt im Datenordner der App; die mitgelieferten im Code."""
+Imported templates are stored unpacked in the app's data folder; the built-in ones live in the code."""
 
 import json
 import os
@@ -33,16 +33,16 @@ BUILTIN_DIR = Path(__file__).resolve().parent / "templates"
 PAPER_SIZES = {"a4": "iso_a4", "a5": "iso_a5", "a3": "iso_a3", "letter": "na_letter", "legal": "na_legal"}
 DEFAULT_MARGIN_MM = 25
 MAX_FILES = 200
-MAX_TOTAL_BYTES = 50 * 1024 * 1024  # entpackt
+MAX_TOTAL_BYTES = 50 * 1024 * 1024  # unpacked
 
 
 class TemplateError(Exception):
-    """Vorlage ist unbrauchbar; die Meldung ist für den Nutzer gedacht."""
+    """The template is unusable; the message is meant for the user."""
 
 
 @dataclass(frozen=True)
 class Template:
-    id: str  # Ordnername, z. B. "text"
+    id: str  # folder name, e.g. "text"
     path: Path
     builtin: bool
     info: dict
@@ -70,14 +70,14 @@ class Template:
 
     @property
     def pdf_paper(self) -> str | None:
-        """GTK-Papiername (z. B. "iso_a4") oder None für das Papier der Systemsprache."""
+        """GTK paper name (e.g. "iso_a4"), or None for the paper of the system language."""
         pdf = self.info.get("pdf")
         paper = pdf.get("paper") if isinstance(pdf, dict) else None
         return PAPER_SIZES.get(paper.casefold()) if isinstance(paper, str) else None
 
     @property
     def pdf_margins_mm(self) -> dict[str, float]:
-        """Seitenränder in Millimetern; Fehlendes oder Unsinniges wird zu 25 mm."""
+        """Page margins in millimeters; missing or nonsensical values become 25 mm."""
         pdf = self.info.get("pdf")
         given = pdf.get("margins_mm") if isinstance(pdf, dict) else None
         given = given if isinstance(given, dict) else {}
@@ -90,7 +90,7 @@ class Template:
 
 
 def localized(value) -> str:
-    """Text aus template.json in der Sprache der Oberfläche (sonst Englisch, sonst den ersten)."""
+    """Text from template.json in the interface language (otherwise English, otherwise the first one)."""
     if isinstance(value, str):
         return value.strip()
     if not isinstance(value, dict) or not value:
@@ -111,11 +111,11 @@ def _ui_languages() -> list[str]:
     return []
 
 
-# --- Lesen ---------------------------------------------------------------------
+# --- Reading -------------------------------------------------------------------
 
 
 def read_folder(folder: Path, builtin: bool) -> Template:
-    """Prüft einen entpackten Vorlagenordner und liest seine Beschreibung."""
+    """Checks an unpacked template folder and reads its description."""
     info_file = folder / "template.json"
     if not info_file.is_file():
         raise TemplateError(_("The template description (template.json) is missing."))
@@ -139,7 +139,7 @@ def read_folder(folder: Path, builtin: bool) -> Template:
 
 
 def available(user_dir: Path | None) -> list[Template]:
-    """Mitgelieferte und importierte Vorlagen. Kaputte Ordner werden übergangen."""
+    """Built-in and imported templates. Broken folders are skipped."""
     found = []
     for base, builtin in ((BUILTIN_DIR, True), (user_dir, False)):
         if base is None or not base.is_dir():
@@ -155,15 +155,15 @@ def available(user_dir: Path | None) -> list[Template]:
     return builtins + others
 
 
-# --- Packen --------------------------------------------------------------------
+# --- Packing -------------------------------------------------------------------
 
 
 def pack(template: Template, destination: Path) -> None:
-    """Speichert eine Vorlage als .typecase-template-Datei (z. B. als Ausgangspunkt für eine eigene).
-    Erst in eine temporäre Datei daneben, dann umbenennen."""
+    """Saves a template as a .typecase-template file (e.g. as a starting point for your own).
+    Writes to a temporary file next to it first, then renames it."""
     temporary = destination.with_name(f".{destination.name}.typecase-tmp")
     try:
-        # strict_timestamps=False: Dateien im Flatpak sind auf 1970 datiert, ZIP kennt erst 1980.
+        # strict_timestamps=False: files in the Flatpak are dated 1970, but ZIP only starts at 1980.
         with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as archive:
             for file in sorted(template.path.rglob("*")):
                 if file.is_file() and not file.is_symlink():
@@ -173,12 +173,12 @@ def pack(template: Template, destination: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
-# --- Importieren -----------------------------------------------------------------
+# --- Importing -------------------------------------------------------------------
 
 
 def peek(file: Path) -> Template:
-    """Entpackt zur Probe in einen temporären Ordner und prüft die Vorlage, ohne etwas zu installieren.
-    Der Aufrufer bekommt die Beschreibung (z. B. für eine Rückfrage beim Ersetzen)."""
+    """Test-unpacks into a temporary folder and checks the template without installing anything.
+    The caller gets the description (e.g. to ask for confirmation before replacing)."""
     with tempfile.TemporaryDirectory(prefix="typecase-template-") as work:
         folder = Path(work) / "template"
         _extract(file, folder)
@@ -187,8 +187,8 @@ def peek(file: Path) -> Template:
 
 
 def install(file: Path, user_dir: Path) -> Template:
-    """Importiert eine .typecase-template-Datei nach user_dir/<id>. Eine vorhandene Vorlage mit
-    derselben Kennung wird ersetzt – erst, wenn die neue vollständig entpackt und geprüft ist."""
+    """Imports a .typecase-template file into user_dir/<id>. An existing template with the
+    same ID is replaced – but only once the new one is fully unpacked and checked."""
     user_dir.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=".import-", dir=user_dir))
     try:
@@ -206,7 +206,7 @@ def install(file: Path, user_dir: Path) -> Template:
 
 
 def template_id(file: Path, info: dict) -> str:
-    """Kennung (Ordnername) aus dem Dateinamen; mitgelieferte Kennungen bleiben ihnen vorbehalten."""
+    """ID (folder name) from the file name; the IDs of built-in templates are reserved for them."""
     stem = file.name[: -len(EXTENSION)] if file.name.endswith(EXTENSION) else file.stem
     slug = re.sub(r"[^a-z0-9]+", "-", stem.casefold()).strip("-") or re.sub(
         r"[^a-z0-9]+", "-", localized(info.get("name")).casefold()
@@ -216,7 +216,7 @@ def template_id(file: Path, info: dict) -> str:
 
 
 def _extract(file: Path, folder: Path) -> None:
-    """Entpackt mit Schutz: nichts außerhalb des Zielordners, keine Verknüpfungen, Größe begrenzt."""
+    """Unpacks safely: nothing outside the target folder, no symlinks, limited size."""
     try:
         archive = zipfile.ZipFile(file)
     except (zipfile.BadZipFile, OSError):
@@ -225,7 +225,7 @@ def _extract(file: Path, folder: Path) -> None:
         members = archive.infolist()
         if len(members) > MAX_FILES or sum(m.file_size for m in members) > MAX_TOTAL_BYTES:
             raise TemplateError(_("The template is too large."))
-        # Liegt alles in einem gemeinsamen Ordner (beim Packen mit einem Dateimanager üblich), diesen abziehen.
+        # If everything is inside one common folder (usual when zipping with a file manager), strip it.
         names = [m.filename for m in members if not m.is_dir()]
         prefix = ""
         if names and "template.json" not in names:

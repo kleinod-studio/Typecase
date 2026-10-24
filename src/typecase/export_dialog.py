@@ -13,7 +13,7 @@ def format_name(fmt: str) -> str:
 
 
 class ExportDialog(Adw.Dialog):
-    """Format und Vorlage wählen, dann Speicherort. Das Ergebnis meldet on_done(Pfad oder None, Fehlertext)."""
+    """Choose format and template, then the location. The result is reported via on_done(path or None, error text)."""
 
     def __init__(self, text: str, sheet_path: Path, title: str | None, defaults: dict, on_done):
         super().__init__(title=_("Export"), content_width=420)
@@ -71,7 +71,7 @@ class ExportDialog(Adw.Dialog):
         try:
             file = dialog.save_finish(result)
         except GLib.Error:
-            return  # abgebrochen
+            return  # canceled
         output = Path(file.get_path())
         config.update(export_folder=str(output.parent))
         self.export_button.set_sensitive(False)
@@ -85,8 +85,8 @@ class ExportDialog(Adw.Dialog):
 
 
 def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done):
-    """Exportiert im Hintergrund. Geschrieben wird erst in eine temporäre Datei; erst wenn alles
-    geklappt hat, ersetzt sie das Ziel. Ein Fehler hinterlässt also nie eine halbe Datei."""
+    """Exports in the background. Output goes to a temporary file first; only once everything has
+    worked does it replace the target. So an error never leaves a half-written file behind."""
     if export.pandoc_path() is None:
         on_done(None, _("Pandoc is not installed."))
         return
@@ -100,7 +100,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
     header.write_text(export.style_header(template), encoding="utf-8")
     pandoc_output = work / ("document.html" if fmt == "pdf" else "document" + export.EXTENSIONS[fmt])
     args = export.pandoc_args(fmt, template, pandoc_output, None if title else sheet_path.stem, header, defaults)
-    # Relative Bildpfade im Text beziehen sich auf den Ordner des Blatts.
+    # Relative image paths in the text refer to the sheet's folder.
     launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
     launcher.set_cwd(str(sheet_path.parent))
     try:
@@ -127,7 +127,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
 
 
 def _move_into_place(source: Path, output: Path, done):
-    """Erst neben das Ziel kopieren, dann umbenennen: so entsteht das Ziel in einem Schritt."""
+    """Copy next to the target first, then rename: that way the target appears in a single step."""
     try:
         temporary = output.with_name(f".{output.name}.typecase-tmp")
         shutil.copyfile(source, temporary)
@@ -154,7 +154,7 @@ def pdf_available() -> bool:
 
 
 def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, done):
-    """Lädt das HTML in eine unsichtbare WebKit-Ansicht und druckt es ohne Dialog in eine PDF-Datei."""
+    """Loads the HTML into an invisible WebKit view and prints it to a PDF file without a dialog."""
     WebKit = _webkit()
     if WebKit is None:
         done(None, _("PDF export needs WebKitGTK 6.0."))
@@ -162,19 +162,19 @@ def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, d
 
     view = WebKit.WebView()
     settings = view.get_settings()
-    settings.set_enable_javascript(False)  # nur Text und CSS; nichts aus dem Dokument ausführen
+    settings.set_enable_javascript(False)  # text and CSS only; run nothing from the document
     pdf = work / "document.pdf"
-    holder = {"view": view}  # bis zum Ende festhalten, sonst räumt Python die Ansicht weg
+    holder = {"view": view}  # keep a reference until the end, otherwise Python garbage-collects the view
 
     def on_load(web_view, event):
         if event != WebKit.LoadEvent.FINISHED:
             return
         print_settings = Gtk.PrintSettings()
-        # Der Datei-"Drucker" heißt so, wie GTK ihn in der Sprache der Oberfläche nennt.
+        # The file "printer" is named whatever GTK calls it in the interface language.
         print_settings.set_printer(GLib.dgettext("gtk40", "Print to File"))
         print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_FILE_FORMAT, "pdf")
         print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_URI, Gio.File.new_for_path(str(pdf)).get_uri())
-        # Papier und Ränder bestimmt die Vorlage; ohne Angabe Papier nach Systemsprache, 25 mm Rand.
+        # The template sets paper and margins; if unspecified, paper by system language and 25 mm margins.
         page_setup = Gtk.PageSetup()
         page_setup.set_paper_size(Gtk.PaperSize.new(template.pdf_paper or Gtk.PaperSize.get_default()))
         margins = template.pdf_margins_mm
@@ -191,7 +191,7 @@ def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, d
             failed = holder.get("failed")
             holder.clear()
             if failed:
-                return  # schon gemeldet
+                return  # already reported
             if pdf.is_file():
                 _move_into_place(pdf, output, done)
             else:

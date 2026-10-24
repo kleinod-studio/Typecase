@@ -13,7 +13,7 @@ def _system_font_family() -> str:
 
 
 class _ProfilePage(Adw.PreferencesPage):
-    """Eine Rubrik mit Schrift, Textblock und Stil für ein Profil (Editor oder Fokus-Modus)."""
+    """A page with font, text block and style for one profile (editor or focus mode)."""
 
     def __init__(self, profile: str, title: str, icon_name: str, on_change, intro: Adw.PreferencesGroup | None = None):
         super().__init__(title=title, icon_name=icon_name, name=profile)
@@ -23,9 +23,9 @@ class _ProfilePage(Adw.PreferencesPage):
         current = config.settings(profile)
         self.groups: list[Adw.PreferencesGroup] = []
         if intro is not None:
-            self.add(intro)  # steht über den übrigen Gruppen
+            self.add(intro)  # sits above the other groups
 
-        # Schrift
+        # Font
         font_group = self._group(_("Font"))
         self.system_font = Adw.SwitchRow(
             title=_("Use System Font"),
@@ -39,7 +39,7 @@ class _ProfilePage(Adw.PreferencesPage):
             level=Gtk.FontLevel.FAMILY,
             valign=Gtk.Align.CENTER,
         )
-        # Nur die Familie zeigen (Größe hat eine eigene Zeile); ohne eigene Schrift die des Systems.
+        # Only show the family (size has its own row); without a custom font, the system font.
         family = current["editor_font"] or _system_font_family()
         self.font_button.set_font_desc(Pango.FontDescription.from_string(family))
         font_row = Adw.ActionRow(title=_("Font"))
@@ -57,7 +57,7 @@ class _ProfilePage(Adw.PreferencesPage):
         self.font_size.set_value(current["editor_font_size"])
         font_group.add(self.font_size)
 
-        # Textblock
+        # Text block
         text_group = self._group(_("Text Block"))
         low, high = config.LINE_WIDTH_RANGE
         self.line_width = Adw.SpinRow.new_with_range(low, high, 5)
@@ -73,7 +73,7 @@ class _ProfilePage(Adw.PreferencesPage):
         )
         text_group.add(self.line_spacing)
 
-        # Darstellung
+        # Appearance
         look_group = self._group(_("Appearance"))
         self.color_scheme = Adw.ComboRow(
             title=_("Style"),
@@ -135,7 +135,7 @@ class _ProfilePage(Adw.PreferencesPage):
 
 
 class _SheetsPage(Adw.PreferencesPage):
-    """Voreinstellungen für die Meta-Informationen der Blätter (nicht in die Dateien geschrieben)."""
+    """Defaults for sheet metadata (not written into the files)."""
 
     def __init__(self, apply):
         super().__init__(title=_("Sheets"), icon_name="document-properties-symbolic", name="sheets")
@@ -165,7 +165,7 @@ class _SheetsPage(Adw.PreferencesPage):
 
 
 class _TemplatesPage(Adw.PreferencesPage):
-    """Export-Vorlagen: importieren (.typecase-template), als Datei speichern, entfernen."""
+    """Export templates: import (.typecase-template), save as a file, remove."""
 
     def __init__(self, toast):
         super().__init__(title=_("Templates"), icon_name="folder-templates-symbolic", name="templates")
@@ -205,7 +205,7 @@ class _TemplatesPage(Adw.PreferencesPage):
             self.group.add(row)
             self._rows.append(row)
 
-    # --- Importieren ------------------------------------------------------------
+    # --- Importing --------------------------------------------------------------
 
     def _file_filter(self) -> Gio.ListStore:
         file_filter = Gtk.FileFilter(name=_("Typecase Templates"))
@@ -222,7 +222,7 @@ class _TemplatesPage(Adw.PreferencesPage):
         try:
             path = Path(dialog.open_finish(result).get_path())
         except GLib.Error:
-            return  # abgebrochen
+            return  # canceled
         try:
             candidate = export_templates.peek(path)
         except export_templates.TemplateError as error:
@@ -251,7 +251,7 @@ class _TemplatesPage(Adw.PreferencesPage):
         self.refresh()
         self._toast(_("Template “%s” imported") % template.title)
 
-    # --- Speichern und Entfernen ----------------------------------------------
+    # --- Saving and removing -------------------------------------------------
 
     def _choose_save(self, template):
         dialog = Gtk.FileDialog(title=_("Save Template"), initial_name=template.title + export_templates.EXTENSION)
@@ -270,7 +270,7 @@ class _TemplatesPage(Adw.PreferencesPage):
         self._toast(_("Saved “%s”") % path.name)
 
     def _remove(self, template):
-        # In den Papierkorb, nicht endgültig: versehentlich Entferntes lässt sich zurückholen.
+        # Into the trash, not permanently: something removed by accident can be restored.
         try:
             Gio.File.new_for_path(str(template.path)).trash(None)
         except GLib.Error as error:
@@ -286,10 +286,10 @@ class _TemplatesPage(Adw.PreferencesPage):
 
 
 class PreferencesDialog(Adw.PreferencesDialog):
-    """Einstellungen im GNOME-Stil: Änderungen wirken sofort und werden gleich gespeichert.
+    """Preferences in GNOME style: changes take effect immediately and are saved right away.
 
-    Zwei Rubriken: der normale Editor und der Fokus-Modus. Der Fokus-Modus übernimmt
-    zunächst die Einstellungen des Editors; erst wenn das abgeschaltet ist, gelten seine eigenen."""
+    Two pages: the normal editor and focus mode. Focus mode initially uses the editor's
+    settings; only when that is switched off do its own settings apply."""
 
     def __init__(self, apply):
         super().__init__(title=_("Preferences"))
@@ -339,7 +339,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         tools.add(self.underline_caret)
         self.editor_page.add(tools)
 
-        # Eigene Werkzeug-Einstellung im Fokus-Modus (unabhängig von "Einstellungen des Editors übernehmen").
+        # Separate tool settings in focus mode (independent of "Use Editor Settings").
         focus_tools = Adw.PreferencesGroup(title=_("Tools"))
         self.focus_format_bar = Adw.SwitchRow(
             title=_("Show Formatting Bar"),

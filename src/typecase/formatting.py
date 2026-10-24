@@ -1,11 +1,11 @@
-"""Markdown-Formatierungen ein- und ausschalten, ohne GTK.
+"""Toggling Markdown formatting on and off, without GTK.
 
-Alle Funktionen bekommen Text und Markierung (Zeichenpositionen) und liefern den neuen Text
-samt neuer Markierung. Das ist leicht zu testen; der Editor überträgt nur das Ergebnis."""
+All functions take text and a selection (character positions) and return the new text
+along with the new selection. That is easy to test; the editor merely applies the result."""
 
 import re
 
-# Inline: (Zeichen vorne, Zeichen hinten)
+# Inline: (characters before, characters after)
 BOLD = ("**", "**")
 ITALIC = ("*", "*")
 STRIKE = ("~~", "~~")
@@ -15,13 +15,13 @@ UNDERLINE = ("<u>", "</u>")
 _WORD_CHAR = re.compile(r"[\w'’-]")
 _LINE_PREFIX = re.compile(r"^(?P<indent>[ \t]*)(?P<prefix>#{1,6}[ \t]+|[-*+][ \t]+|\d{1,9}[.)][ \t]+|>[ \t]?)?")
 
-Result = tuple[str, int, int]  # neuer Text, Markierung Anfang, Markierung Ende
+Result = tuple[str, int, int]  # new text, selection start, selection end
 
 
 def toggle_inline(text: str, start: int, end: int, markers: tuple[str, str]) -> Result:
-    """Umschließt die Markierung mit Zeichen oder entfernt sie, wenn sie schon da sind.
-    Ohne Markierung gilt das Wort unter dem Cursor; mitten im Leerraum werden die Zeichen
-    eingefügt und der Cursor steht dazwischen."""
+    """Wraps the selection in markers, or removes them if they are already there.
+    Without a selection the word under the cursor is used; in the middle of whitespace the markers
+    are inserted and the cursor is placed between them."""
     opening, closing = markers
     if start == end:
         start, end = _word_at(text, start)
@@ -29,12 +29,12 @@ def toggle_inline(text: str, start: int, end: int, markers: tuple[str, str]) -> 
             return text[:start] + opening + closing + text[end:], start + len(opening), start + len(opening)
 
     selected = text[start:end]
-    # Markierung enthält die Zeichen selbst ("**fett**" markiert)
+    # The selection includes the markers themselves ("**bold**" selected)
     if len(selected) >= len(opening) + len(closing) and selected.startswith(opening) and selected.endswith(closing):
         if _is_wrapped(selected, 0 + len(opening), len(selected) - len(closing), markers):
             inner = selected[len(opening) : len(selected) - len(closing)]
             return text[:start] + inner + text[end:], start, start + len(inner)
-    # Zeichen stehen direkt um die Markierung
+    # The markers sit directly around the selection
     if _is_wrapped(text, start, end, markers):
         new = text[: start - len(opening)] + selected + text[end + len(closing) :]
         return new, start - len(opening), end - len(opening)
@@ -42,8 +42,8 @@ def toggle_inline(text: str, start: int, end: int, markers: tuple[str, str]) -> 
 
 
 def _is_wrapped(text: str, start: int, end: int, markers: tuple[str, str]) -> bool:
-    """Stehen die Zeichen unmittelbar vor und nach dem Bereich? Bei * und ** wird gezählt,
-    damit Kursiv nicht mit Fett verwechselt wird (***beides*** ist beides)."""
+    """Are the markers immediately before and after the range? For * and ** the stars are counted,
+    so that italic is not mistaken for bold (***both*** is both)."""
     opening, closing = markers
     if markers in (BOLD, ITALIC):
         before = len(text[:start]) - len(text[:start].rstrip("*"))
@@ -63,12 +63,12 @@ def _word_at(text: str, position: int) -> tuple[int, int]:
     return start, end
 
 
-# --- Absätze ---------------------------------------------------------------
+# --- Paragraphs ------------------------------------------------------------
 
 
 def toggle_lines(lines: list[str], first: int, last: int, kind: str) -> list[str]:
-    """Absatzformat für die Zeilen first..last: "h1"–"h6", "paragraph" (nur Text), "bullet",
-    "numbered" oder "quote". Haben schon alle Zeilen das Format, wird es entfernt."""
+    """Paragraph format for lines first..last: "h1"–"h6", "paragraph" (plain text), "bullet",
+    "numbered" or "quote". If all lines already have that format, it is removed."""
     out = list(lines)
     targets = [i for i in range(first, last + 1) if lines[i].strip() or first == last]
     wanted = _prefix_for(kind, 1)
@@ -104,12 +104,12 @@ def _current_kind(line: str) -> str:
     return "paragraph"
 
 
-# --- Einfügen -----------------------------------------------------------------
+# --- Inserting ----------------------------------------------------------------
 
 
 def insert_link(text: str, start: int, end: int, placeholder_text: str, placeholder_url: str) -> Result:
-    """Macht die Markierung zum Linktext und markiert danach die Adresse zum Überschreiben.
-    Ist die Markierung selbst eine Adresse, wird sie zur Adresse und der Linktext markiert."""
+    """Turns the selection into link text and then selects the URL so it can be typed over.
+    If the selection is itself a URL, it becomes the URL and the link text is selected."""
     selected = text[start:end]
     if re.match(r"^(https?://|www\.)\S+$", selected):
         link = f"[{placeholder_text}]({selected})"
@@ -123,7 +123,7 @@ def insert_link(text: str, start: int, end: int, placeholder_text: str, placehol
 
 
 def insert_code_block(text: str, start: int, end: int) -> Result:
-    """Umschließt die markierten Zeilen mit ```; ohne Markierung ein leerer Block, Cursor darin."""
+    """Wraps the selected lines in ```; without a selection, an empty block with the cursor inside."""
     line_start = text.rfind("\n", 0, start) + 1
     line_end = text.find("\n", end)
     if line_end == -1:
