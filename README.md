@@ -4,7 +4,7 @@ A calm, native Markdown writing app for Linux, inspired by Ulysses. Built with G
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 
-> **Status:** early development. Typecase is usable day to day, but not yet released or on Flathub. Expect changes.
+> **Status:** early development. Typecase is usable day to day, but not yet released or on Flathub. Expect changes. See the [roadmap](ROADMAP.md) for what is done and what comes next.
 
 ## Features
 
@@ -64,7 +64,7 @@ Project layout:
 - `data/`: desktop file, AppStream metainfo, icon
 - `po/`: translations (gettext, English source strings)
 - `skills/typecase-template/`: a Claude skill that builds export templates from a description; `python3 skills/package.py skills/typecase-template` packs it into `dist/typecase-template.skill`
-- `docs/`: requirements (`Lastenheft.md`) and the template guide (`vorlagen.md`), both in German
+- `docs/`: the template guide (`vorlagen.md`, in German for now)
 
 ## Translations
 

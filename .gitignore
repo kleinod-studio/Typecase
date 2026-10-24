@@ -12,5 +12,6 @@ build-dir/
 dist/
 skills/*-workspace/
 
-# Arbeitsanweisungen für Claude, nur lokal
+# Arbeitsunterlagen, nur lokal (Anweisungen für Claude, Lastenheft)
 CLAUDE.md
+docs/Lastenheft.md
