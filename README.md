@@ -1,6 +1,6 @@
 # Typecase
 
-A calm, native Markdown writing app for Linux, inspired by Ulysses. Built with GTK 4, libadwaita and Python.
+A calm, native Markdown writing app for Linux. Built with GTK 4, libadwaita and Python.
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 

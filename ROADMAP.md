@@ -34,7 +34,7 @@ These apply to every feature:
 - [x] Move sheets and groups by drag and drop
 - [ ] Rendered Markdown preview (on hold; live styling covers most of it)
 
-## Phase 3: Features from Ulysses 🚧
+## Phase 3: Organizing and publishing 🚧
 
 - [x] Writing goals per sheet (word count) with progress rings
 - [x] Keywords on sheets and filtering by keyword
