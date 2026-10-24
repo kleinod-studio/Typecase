@@ -73,7 +73,7 @@ Phase 3 ergänzt, was Ulysses von einem reinen Editor unterscheidet. Jeder Punkt
 | P3-04 | Eigene Themes für Editor und Vorschau | Kann |
 | P3-05 | Blätter pro Gruppe zu einem Text zusammenfügen und exportieren | Kann |
 | P3-06 | Notizen und Anhänge je Blatt | Kann |
-| P3-07 | Export-Vorlagen: Vor dem Export wählt man eine Vorlage, zum Beispiel für Lektorat, Brief oder Essay. Vorlagen liegen in einem Ordner der Bibliothek, einige Standardvorlagen werden mitgeliefert. Technik: Pandoc-Referenzdokument für DOCX, HTML-Template mit CSS für HTML und PDF | Soll |
+| P3-07 | Export-Vorlagen: Vor dem Export wählt man eine Vorlage, zum Beispiel für Lektorat, Brief oder Essay. Eine Vorlage ist eine einzelne Datei (`.typecase-template`, ZIP mit Beschreibung, HTML-Template, CSS und optional DOCX-Referenzdokument), die man in den Einstellungen importiert; einige Standardvorlagen werden mitgeliefert und lassen sich als Ausgangspunkt für eigene als Datei speichern. Technik: Pandoc-Referenzdokument für DOCX, HTML-Template mit CSS für HTML und PDF | Soll |
 | P3-08 | Platzhalter in Vorlagen (Titel, Autor, Datum) werden aus den Metadaten des Blatts gefüllt | Kann |
 
 ## 6. Nicht-Ziele

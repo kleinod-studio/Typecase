@@ -21,6 +21,7 @@ LIB.mkdir()
 (LIB / "a.md").write_text("Alpha", encoding="utf-8")
 (LIB / "b.md").write_text("Beta", encoding="utf-8")
 os.environ["XDG_CONFIG_HOME"] = str(TMP / "cfg")
+os.environ["XDG_DATA_HOME"] = str(TMP / "data")  # importierte Vorlagen
 (TMP / "cfg" / "typecase").mkdir(parents=True)
 (TMP / "cfg" / "typecase" / "config.json").write_text(f'{{"library_path": "{LIB}"}}')
 
@@ -598,9 +599,17 @@ def steps(win, app):
     ed.flush()
     check(parse(split(meta.read_text())[0]).get("goal") == "8", "Geändertes Wortziel wird gespeichert")
     check(win.content_title.get_subtitle().startswith("4 of 8 words"), "Kopfzeile nennt das Ziel")
-    meta_rings = [r for r in win._row_rings if r.path == meta]
-    yield from wait_until(lambda: meta_rings and abs(meta_rings[0].value - 0.5) < 0.01)  # der Ring gleitet hin
-    check(meta_rings and meta_rings[0].get_visible() and abs(meta_rings[0].value - 0.5) < 0.01, "Bibliothek zeigt neben dem Blatt einen Ring mit dem Fortschritt")
+    meta_rings = [r for r in win._row_rings if r.path == meta and r.get_mapped()]
+
+    def ring_target(ring):
+        # Ziel der Animation: im Hintergrund pausiert der Bildtakt des Fensters, dann gleitet der Ring nicht weiter.
+        animation = ring._animation
+        return animation.get_value_to() if animation.get_state() == Adw.AnimationState.PLAYING else ring.value
+
+    check(
+        len(meta_rings) == 1 and meta_rings[0].get_visible() and abs(ring_target(meta_rings[0]) - 0.5) < 0.01,
+        "Bibliothek zeigt neben dem Blatt einen Ring mit dem Fortschritt",
+    )
     check(not any(r.get_visible() for r in win._row_rings if r.path is not None and r.path != meta), "Blätter ohne Ziel haben keinen Ring")
     check(inspector.goal_view.get_visible() and "50%" in inspector.goal_view.status_label.get_label(), "Ring zeigt den Fortschritt")
     check(not win.goal_revealer.get_reveal_child(), "Ziel-Karte fehlt, solange die Eigenschaften offen sind")
@@ -633,7 +642,7 @@ def steps(win, app):
     ed.flush()
 
     # Export
-    from typecase import export
+    from typecase import export, export_templates
     from typecase.export_dialog import ExportDialog, pdf_available, run_export
 
     check(win.lookup_action("export").get_enabled(), "Export ist mit offenem Blatt möglich")
@@ -647,7 +656,7 @@ def steps(win, app):
         results = {}
         for fmt in export.FORMATS:
             run_export(
-                "---\ntitle: Der Drache\n---\nEs war eine <u>Höhle</u>.\n", fmt, export.templates()[0],
+                "---\ntitle: Der Drache\n---\nEs war eine <u>Höhle</u>.\n", fmt, export_templates.available(None)[0],
                 TMP / ("export" + export.EXTENSIONS[fmt]), meta, "Der Drache", {"lang": "de-DE"},
                 lambda path, error, fmt=fmt: results.__setitem__(fmt, (path, error)),
             )
@@ -660,6 +669,33 @@ def steps(win, app):
         check((TMP / "export.docx").read_bytes()[:2] == b"PK", "DOCX wird erzeugt")
         check("Der Drache" in (TMP / "export.html").read_text(encoding="utf-8"), "HTML enthält den Titel")
         check(not [p for p in TMP.iterdir() if "typecase-tmp" in p.name], "Keine halben Export-Dateien übrig")
+
+    # Eigene Vorlagen: als Datei speichern, importieren, im Export-Dialog wählen, entfernen
+    from typecase import config as tc_config
+    from typecase.preferences import PreferencesDialog
+
+    check(tc_config.TEMPLATES_DIR.is_relative_to(TMP), "Test benutzt einen eigenen Vorlagenordner")
+    prefs = PreferencesDialog(win.apply_settings)
+    page = prefs.templates_page
+    check(len(page._rows) == 1, "Einstellungen zeigen die mitgelieferte Vorlage")
+    template_file = TMP / ("Mein Brief" + export_templates.EXTENSION)
+    export_templates.pack(export_templates.available(None)[0], template_file)
+    check(template_file.is_file(), "Vorlage lässt sich als Datei speichern")
+    page._install(template_file)
+    check(len(page._rows) == 2 and (tc_config.TEMPLATES_DIR / "mein-brief").is_dir(), "Importierte Vorlage erscheint in den Einstellungen")
+    win.lookup_action("export").activate(None)
+    dialog = win.get_visible_dialog()
+    check(dialog.template_row.get_model().get_n_items() == 2, "Export-Dialog bietet die importierte Vorlage an")
+    dialog.template_row.set_selected(1)
+    chosen = dialog._templates[1]
+    dialog.force_close()
+    if export.pandoc_path() is not None:
+        results = {}
+        run_export("Text.\n", "html", chosen, TMP / "eigen.html", meta, None, {}, lambda path, error: results.__setitem__("html", error))
+        yield from wait_until(lambda: "html" in results, timeout=15)
+        check(results.get("html") is None and (TMP / "eigen.html").is_file(), "Export mit importierter Vorlage")
+    page._remove(chosen)
+    check(len(page._rows) == 1 and not (tc_config.TEMPLATES_DIR / "mein-brief").exists(), "Entfernte Vorlage landet im Papierkorb")
 
     from typecase import config as cfg
 

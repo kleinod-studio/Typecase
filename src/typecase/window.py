@@ -1,4 +1,5 @@
 import locale
+import weakref
 from gettext import gettext as _
 from gettext import ngettext
 from pathlib import Path
@@ -99,7 +100,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._search = LibrarySearch()
         self._keywords = KeywordIndex()
         self._goals = GoalIndex()
-        self._row_rings: list[ProgressRing] = []  # Schreibziel-Ringe der Bibliothekszeilen (werden wiederverwendet)
+        self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # Schreibziel-Ringe der Bibliothekszeilen
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
 
@@ -1229,7 +1230,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         label = Gtk.Label(xalign=0, hexpand=True, ellipsize=3)  # 3 = Pango.EllipsizeMode.END
         ring = ProgressRing(16, 3, visible=False, margin_end=6)  # Schreibziel des Blatts
         ring.path = None
-        self._row_rings.append(ring)
+        self._row_rings.add(ring)
         box = Gtk.Box(spacing=8)
         box.append(icon)
         box.append(label)

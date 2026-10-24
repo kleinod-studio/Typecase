@@ -6,6 +6,8 @@ from gi.repository import GLib
 from .fileio import atomic_write_text
 
 CONFIG_PATH = Path(GLib.get_user_config_dir()) / "typecase" / "config.json"
+# Importierte Export-Vorlagen (entpackt); im Flatpak unter ~/.var/app/…/data
+TEMPLATES_DIR = Path(GLib.get_user_data_dir()) / "typecase" / "templates"
 
 
 def load() -> dict:

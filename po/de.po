@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-24 17:11+0200\n"
+"POT-Creation-Date: 2026-10-24 17:52+0200\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,42 +23,83 @@ msgstr "Word-Dokument (DOCX)"
 msgid "Web Page (HTML)"
 msgstr "Webseite (HTML)"
 
-#: src/typecase/export_dialog.py:19 src/typecase/sheet_editor.py:376
-msgid "Text"
-msgstr "Text"
-
-#: src/typecase/export_dialog.py:26 src/typecase/export_dialog.py:65
+#: src/typecase/export_dialog.py:22 src/typecase/export_dialog.py:66
 #: src/typecase/window.py:1048
 msgid "Export"
 msgstr "Exportieren"
 
-#: src/typecase/export_dialog.py:37
+#: src/typecase/export_dialog.py:33
 msgid "Format"
 msgstr "Format"
 
-#: src/typecase/export_dialog.py:42
+#: src/typecase/export_dialog.py:38
 msgid "Template"
 msgstr "Vorlage"
 
-#: src/typecase/export_dialog.py:47 src/typecase/window.py:262
+#: src/typecase/export_dialog.py:39
+msgid "Import more templates in the preferences"
+msgstr "Weitere Vorlagen lassen sich in den Einstellungen importieren"
+
+#: src/typecase/export_dialog.py:48 src/typecase/window.py:262
 msgid "Export…"
 msgstr "Exportieren …"
 
-#: src/typecase/export_dialog.py:92
+#: src/typecase/export_dialog.py:94
 msgid "Pandoc is not installed."
 msgstr "Pandoc ist nicht installiert."
 
-#: src/typecase/export_dialog.py:120
+#: src/typecase/export_dialog.py:122
 msgid "Pandoc could not convert the text."
 msgstr "Pandoc konnte den Text nicht umwandeln."
 
-#: src/typecase/export_dialog.py:150
+#: src/typecase/export_dialog.py:163
 msgid "PDF export needs WebKitGTK 6.0."
 msgstr "Für den PDF-Export wird WebKitGTK 6.0 benötigt."
 
-#: src/typecase/export_dialog.py:184
+#: src/typecase/export_dialog.py:197
 msgid "The PDF could not be created."
 msgstr "Das PDF konnte nicht erstellt werden."
+
+#: src/typecase/export_templates.py:96
+msgid "The template description (template.json) is missing."
+msgstr "Die Beschreibung der Vorlage (template.json) fehlt."
+
+#: src/typecase/export_templates.py:100
+msgid "The template description (template.json) cannot be read."
+msgstr "Die Beschreibung der Vorlage (template.json) ist nicht lesbar."
+
+#: src/typecase/export_templates.py:102
+msgid "The template has no name."
+msgstr "Die Vorlage hat keinen Namen."
+
+#: src/typecase/export_templates.py:104
+msgid "This template needs a newer version of Typecase."
+msgstr "Diese Vorlage braucht eine neuere Version von Typecase."
+
+#: src/typecase/export_templates.py:107
+msgid "The HTML template (template.html) is missing."
+msgstr "Die HTML-Vorlage (template.html) fehlt."
+
+#: src/typecase/export_templates.py:110
+msgid ""
+"The HTML template does not contain $body$, so the text would be missing."
+msgstr "Die HTML-Vorlage enthält kein $body$, der Text würde also fehlen."
+
+#: src/typecase/export_templates.py:112
+msgid "The HTML template (template.html) cannot be read."
+msgstr "Die HTML-Vorlage (template.html) ist nicht lesbar."
+
+#: src/typecase/export_templates.py:197
+msgid "This is not a Typecase template file."
+msgstr "Das ist keine Typecase-Vorlagendatei."
+
+#: src/typecase/export_templates.py:201
+msgid "The template is too large."
+msgstr "Die Vorlage ist zu groß."
+
+#: src/typecase/export_templates.py:218
+msgid "The template contains files outside of its folder."
+msgstr "Die Vorlage enthält Dateien außerhalb ihres Ordners."
 
 #: src/typecase/find_bar.py:21 src/typecase/window.py:1057
 msgid "Find"
@@ -73,6 +114,7 @@ msgid "Next Match"
 msgstr "Nächster Treffer"
 
 #: src/typecase/find_bar.py:36 src/typecase/find_bar.py:40
+#: src/typecase/preferences.py:240
 msgid "Replace"
 msgstr "Ersetzen"
 
@@ -196,7 +238,7 @@ msgstr "Titel"
 msgid "Subtitle"
 msgstr "Untertitel"
 
-#: src/typecase/inspector.py:83 src/typecase/preferences.py:147
+#: src/typecase/inspector.py:83 src/typecase/preferences.py:149
 msgid "Author"
 msgstr "Autor"
 
@@ -212,7 +254,7 @@ msgstr "Schlagwörter, durch Kommas getrennt"
 msgid "Status"
 msgstr "Status"
 
-#: src/typecase/inspector.py:95 src/typecase/preferences.py:153
+#: src/typecase/inspector.py:95 src/typecase/preferences.py:155
 msgid "Language"
 msgstr "Sprache"
 
@@ -251,91 +293,91 @@ msgstr "%s (laut Dateisystem)"
 msgid "Calm Markdown writing"
 msgstr "Ruhiges Schreiben in Markdown"
 
-#: src/typecase/preferences.py:27 src/typecase/preferences.py:43
+#: src/typecase/preferences.py:29 src/typecase/preferences.py:45
 msgid "Font"
 msgstr "Schrift"
 
-#: src/typecase/preferences.py:29
+#: src/typecase/preferences.py:31
 msgid "Use System Font"
 msgstr "Systemschrift verwenden"
 
-#: src/typecase/preferences.py:30
+#: src/typecase/preferences.py:32
 msgid "The same font as the rest of the desktop"
 msgstr "Dieselbe Schrift wie der übrige Desktop"
 
-#: src/typecase/preferences.py:36
+#: src/typecase/preferences.py:38
 msgid "Choose Font"
 msgstr "Schrift wählen"
 
-#: src/typecase/preferences.py:53
+#: src/typecase/preferences.py:55
 msgid "Font Size"
 msgstr "Schriftgröße"
 
-#: src/typecase/preferences.py:54
+#: src/typecase/preferences.py:56
 msgid "In points"
 msgstr "In Punkt"
 
-#: src/typecase/preferences.py:59
+#: src/typecase/preferences.py:61
 msgid "Text Block"
 msgstr "Textblock"
 
-#: src/typecase/preferences.py:62
+#: src/typecase/preferences.py:64
 msgid "Line Width"
 msgstr "Zeilenbreite"
 
-#: src/typecase/preferences.py:63
+#: src/typecase/preferences.py:65
 msgid "Maximum characters per line; the text stays centered"
 msgstr "Höchstens so viele Zeichen pro Zeile; der Text bleibt mittig"
 
-#: src/typecase/preferences.py:68
+#: src/typecase/preferences.py:70
 msgid "Line Spacing"
 msgstr "Zeilenabstand"
 
-#: src/typecase/preferences.py:69
+#: src/typecase/preferences.py:71
 msgid "Compact"
 msgstr "Eng"
 
-#: src/typecase/preferences.py:69
+#: src/typecase/preferences.py:71
 msgid "Normal"
 msgstr "Normal"
 
-#: src/typecase/preferences.py:69
+#: src/typecase/preferences.py:71
 msgid "Relaxed"
 msgstr "Weit"
 
-#: src/typecase/preferences.py:75
+#: src/typecase/preferences.py:77
 msgid "Appearance"
 msgstr "Darstellung"
 
-#: src/typecase/preferences.py:77
+#: src/typecase/preferences.py:79
 msgid "Style"
 msgstr "Stil"
 
-#: src/typecase/preferences.py:78
+#: src/typecase/preferences.py:80
 msgid "Follow System"
 msgstr "System folgen"
 
-#: src/typecase/preferences.py:78
+#: src/typecase/preferences.py:80
 msgid "Light"
 msgstr "Hell"
 
-#: src/typecase/preferences.py:78
+#: src/typecase/preferences.py:80
 msgid "Dark"
 msgstr "Dunkel"
 
-#: src/typecase/preferences.py:84
+#: src/typecase/preferences.py:86
 msgid "Restore Defaults"
 msgstr "Voreinstellungen wiederherstellen"
 
-#: src/typecase/preferences.py:139
+#: src/typecase/preferences.py:141
 msgid "Sheets"
 msgstr "Blätter"
 
-#: src/typecase/preferences.py:143
+#: src/typecase/preferences.py:145
 msgid "Defaults"
 msgstr "Voreinstellungen"
 
-#: src/typecase/preferences.py:144
+#: src/typecase/preferences.py:146
 msgid ""
 "Used for every sheet that does not set its own value, for example when "
 "exporting. They are not written into your files."
@@ -343,12 +385,100 @@ msgstr ""
 "Gelten für jedes Blatt, das keinen eigenen Wert angibt, zum Beispiel beim "
 "Export. Sie werden nicht in deine Dateien geschrieben."
 
-#: src/typecase/preferences.py:172 src/typecase/window.py:269
+#: src/typecase/preferences.py:171
+msgid "Templates"
+msgstr "Vorlagen"
+
+#: src/typecase/preferences.py:174
+msgid "Export Templates"
+msgstr "Export-Vorlagen"
+
+#: src/typecase/preferences.py:176
+msgid ""
+"Choose a template when exporting. To build your own, save a template as a "
+"file and use it as a starting point."
+msgstr "Die Vorlage wählst du beim Exportieren. Für eine eigene speicherst du eine Vorlage als Datei und nimmst sie als Ausgangspunkt."
+
+#: src/typecase/preferences.py:179
+msgid "Import…"
+msgstr "Importieren …"
+
+#: src/typecase/preferences.py:193
+msgid "Built-in"
+msgstr "Mitgeliefert"
+
+#: src/typecase/preferences.py:195
+msgid "Save as File…"
+msgstr "Als Datei speichern …"
+
+#: src/typecase/preferences.py:201
+msgid "Remove"
+msgstr "Entfernen"
+
+#: src/typecase/preferences.py:211
+msgid "Typecase Templates"
+msgstr "Typecase-Vorlagen"
+
+#: src/typecase/preferences.py:218
+msgid "Import Template"
+msgstr "Vorlage importieren"
+
+#: src/typecase/preferences.py:229 src/typecase/preferences.py:249
+msgid "Template Not Imported"
+msgstr "Vorlage nicht importiert"
+
+#: src/typecase/preferences.py:236
+msgid "Replace Template?"
+msgstr "Vorlage ersetzen?"
+
+#: src/typecase/preferences.py:237
+#, python-format
+msgid ""
+"A template “%s” is already installed. It will be replaced by the new file."
+msgstr "Eine Vorlage „%s“ ist schon installiert. Sie wird durch die neue Datei ersetzt."
+
+#: src/typecase/preferences.py:239 src/typecase/window.py:1165
+#: src/typecase/window.py:1204 src/typecase/window.py:1321
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/typecase/preferences.py:252
+#, python-format
+msgid "Template “%s” imported"
+msgstr "Vorlage „%s“ importiert"
+
+#: src/typecase/preferences.py:257
+msgid "Save Template"
+msgstr "Vorlage speichern"
+
+#: src/typecase/preferences.py:268
+msgid "Template Not Saved"
+msgstr "Vorlage nicht gespeichert"
+
+#: src/typecase/preferences.py:270
+#, python-format
+msgid "Saved “%s”"
+msgstr "„%s“ gespeichert"
+
+#: src/typecase/preferences.py:277
+msgid "Template Not Removed"
+msgstr "Vorlage nicht entfernt"
+
+#: src/typecase/preferences.py:280
+#, python-format
+msgid "Template “%s” moved to the trash"
+msgstr "Vorlage „%s“ in den Papierkorb verschoben"
+
+#: src/typecase/preferences.py:284 src/typecase/window.py:1123
+msgid "Close"
+msgstr "Schließen"
+
+#: src/typecase/preferences.py:295 src/typecase/window.py:269
 #: src/typecase/window.py:1070
 msgid "Preferences"
 msgstr "Einstellungen"
 
-#: src/typecase/preferences.py:176
+#: src/typecase/preferences.py:299
 msgid ""
 "Focus mode hides the sidebar and toolbars and shows only your text, full "
 "screen."
@@ -356,69 +486,69 @@ msgstr ""
 "Der Fokus-Modus blendet Seitenleiste und Leisten aus und zeigt nur deinen "
 "Text im Vollbild."
 
-#: src/typecase/preferences.py:179
+#: src/typecase/preferences.py:302
 msgid "Use Editor Settings"
 msgstr "Einstellungen des Editors übernehmen"
 
-#: src/typecase/preferences.py:180
+#: src/typecase/preferences.py:303
 msgid "Switch off to give focus mode its own font, size and style"
 msgstr ""
 "Ausschalten, um dem Fokus-Modus eigene Schrift, Größe und Stil zu geben"
 
-#: src/typecase/preferences.py:185 src/typecase/window.py:1043
+#: src/typecase/preferences.py:308 src/typecase/window.py:1043
 msgid "Editor"
 msgstr "Editor"
 
-#: src/typecase/preferences.py:186 src/typecase/window.py:264
+#: src/typecase/preferences.py:309 src/typecase/window.py:264
 #: src/typecase/window.py:1065
 msgid "Focus Mode"
 msgstr "Fokus-Modus"
 
-#: src/typecase/preferences.py:198 src/typecase/preferences.py:218
+#: src/typecase/preferences.py:323 src/typecase/preferences.py:343
 msgid "Tools"
 msgstr "Werkzeuge"
 
-#: src/typecase/preferences.py:200
+#: src/typecase/preferences.py:325
 msgid "Formatting Bar"
 msgstr "Formatierungsleiste"
 
-#: src/typecase/preferences.py:201
+#: src/typecase/preferences.py:326
 msgid "Buttons below the text for bold, lists, headings and more"
 msgstr "Knöpfe unter dem Text für Fett, Listen, Überschriften und mehr"
 
-#: src/typecase/preferences.py:207
+#: src/typecase/preferences.py:332
 msgid "Underline Cursor"
 msgstr "Unterstrich als Schreibmarke"
 
-#: src/typecase/preferences.py:208
+#: src/typecase/preferences.py:333
 msgid ""
 "Show the text cursor as a line below the character instead of a vertical bar"
 msgstr ""
 "Die Schreibmarke als Strich unter dem Zeichen statt als senkrechten Strich "
 "zeigen"
 
-#: src/typecase/preferences.py:220
+#: src/typecase/preferences.py:345
 msgid "Show Formatting Bar"
 msgstr "Formatierungsleiste anzeigen"
 
-#: src/typecase/preferences.py:221
+#: src/typecase/preferences.py:346
 msgid "When off, it appears when you move the pointer to the bottom edge"
 msgstr ""
 "Wenn aus, erscheint sie, sobald der Mauszeiger an den unteren Rand kommt"
 
-#: src/typecase/preferences.py:227
+#: src/typecase/preferences.py:352
 msgid "Typewriter Scrolling"
 msgstr "Schreibmaschinen-Modus"
 
-#: src/typecase/preferences.py:227
+#: src/typecase/preferences.py:352
 msgid "Keep the line you are writing in the middle of the screen"
 msgstr "Die Zeile, in der du schreibst, bleibt in der Bildschirmmitte"
 
-#: src/typecase/preferences.py:228
+#: src/typecase/preferences.py:353
 msgid "Dim Surroundings"
 msgstr "Umgebung abblenden"
 
-#: src/typecase/preferences.py:228
+#: src/typecase/preferences.py:353
 msgid "Fade everything except the paragraph you are writing"
 msgstr "Alles außer dem Absatz, in dem du schreibst, wird blasser"
 
@@ -429,6 +559,10 @@ msgstr "Kein Blatt geöffnet"
 #: src/typecase/sheet_editor.py:243
 msgid "Select a sheet in the library to start writing."
 msgstr "Wähle ein Blatt in der Bibliothek, um zu schreiben."
+
+#: src/typecase/sheet_editor.py:376
+msgid "Text"
+msgstr "Text"
 
 #: src/typecase/sheet_editor.py:499
 #, python-format
@@ -763,10 +897,6 @@ msgstr "Beenden"
 msgid "Export Failed"
 msgstr "Export fehlgeschlagen"
 
-#: src/typecase/window.py:1123
-msgid "Close"
-msgstr "Schließen"
-
 #: src/typecase/window.py:1126
 #, python-format
 msgid "Exported “%s”"
@@ -797,11 +927,6 @@ msgstr "Gruppe umbenennen"
 #: src/typecase/window.py:1163
 msgid "Rename Sheet"
 msgstr "Blatt umbenennen"
-
-#: src/typecase/window.py:1165 src/typecase/window.py:1204
-#: src/typecase/window.py:1321
-msgid "Cancel"
-msgstr "Abbrechen"
 
 #: src/typecase/window.py:1181
 msgid "This name is not allowed."

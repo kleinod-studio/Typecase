@@ -4,12 +4,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase import export
+from typecase import export, export_templates
 
 
 class ExportTest(unittest.TestCase):
     def setUp(self):
-        self.template = next(t for t in export.templates() if t.name == "text")
+        self.template = next(t for t in export_templates.available(None) if t.id == "text")
 
     def test_builtin_text_template(self):
         self.assertTrue(self.template.html.is_file() and self.template.css.is_file())

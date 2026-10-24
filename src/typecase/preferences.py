@@ -1,8 +1,10 @@
 from gettext import gettext as _
 
-from gi.repository import Adw, GObject, Gtk, Pango
+from pathlib import Path
 
-from . import config
+from gi.repository import Adw, Gio, GLib, GObject, Gtk, Pango
+
+from . import config, export_templates
 
 
 def _system_font_family() -> str:
@@ -162,6 +164,127 @@ class _SheetsPage(Adw.PreferencesPage):
         self._apply()
 
 
+class _TemplatesPage(Adw.PreferencesPage):
+    """Export-Vorlagen: importieren (.typecase-template), als Datei speichern, entfernen."""
+
+    def __init__(self, toast):
+        super().__init__(title=_("Templates"), icon_name="folder-templates-symbolic", name="templates")
+        self._toast = toast
+        self.group = Adw.PreferencesGroup(
+            title=_("Export Templates"),
+            description=_(
+                "Choose a template when exporting. To build your own, save a template as a file and use it as a starting point."
+            ),
+        )
+        self.import_button = Gtk.Button(label=_("Import…"), css_classes=["flat"], valign=Gtk.Align.CENTER)
+        self.import_button.connect("clicked", lambda _b: self._choose_import())
+        self.group.set_header_suffix(self.import_button)
+        self.add(self.group)
+        self._rows: list[Gtk.Widget] = []
+        self.refresh()
+
+    def refresh(self):
+        for row in self._rows:
+            self.group.remove(row)
+        self._rows = []
+        for template in export_templates.available(config.TEMPLATES_DIR):
+            row = Adw.ActionRow(title=template.title, subtitle=template.description or "")
+            if template.builtin:
+                row.add_suffix(Gtk.Label(label=_("Built-in"), css_classes=["dim-label", "caption"], valign=Gtk.Align.CENTER))
+            save = Gtk.Button(
+                icon_name="document-save-symbolic", tooltip_text=_("Save as File…"), css_classes=["flat"], valign=Gtk.Align.CENTER
+            )
+            save.connect("clicked", lambda _b, t=template: self._choose_save(t))
+            row.add_suffix(save)
+            if not template.builtin:
+                remove = Gtk.Button(
+                    icon_name="user-trash-symbolic", tooltip_text=_("Remove"), css_classes=["flat"], valign=Gtk.Align.CENTER
+                )
+                remove.connect("clicked", lambda _b, t=template: self._remove(t))
+                row.add_suffix(remove)
+            self.group.add(row)
+            self._rows.append(row)
+
+    # --- Importieren ------------------------------------------------------------
+
+    def _file_filter(self) -> Gio.ListStore:
+        file_filter = Gtk.FileFilter(name=_("Typecase Templates"))
+        file_filter.add_suffix(export_templates.EXTENSION.lstrip("."))
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(file_filter)
+        return filters
+
+    def _choose_import(self):
+        dialog = Gtk.FileDialog(title=_("Import Template"), filters=self._file_filter())
+        dialog.open(self.get_root(), None, self._on_import_chosen)
+
+    def _on_import_chosen(self, dialog, result):
+        try:
+            path = Path(dialog.open_finish(result).get_path())
+        except GLib.Error:
+            return  # abgebrochen
+        try:
+            candidate = export_templates.peek(path)
+        except export_templates.TemplateError as error:
+            self._error(_("Template Not Imported"), str(error))
+            return
+        existing = {t.id: t for t in export_templates.available(config.TEMPLATES_DIR) if not t.builtin}
+        if candidate.id not in existing:
+            self._install(path)
+            return
+        alert = Adw.AlertDialog(
+            heading=_("Replace Template?"),
+            body=_("A template “%s” is already installed. It will be replaced by the new file.") % existing[candidate.id].title,
+        )
+        alert.add_response("cancel", _("Cancel"))
+        alert.add_response("replace", _("Replace"))
+        alert.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
+        alert.connect("response", lambda _a, response: response == "replace" and self._install(path))
+        alert.present(self)
+
+    def _install(self, path: Path):
+        try:
+            template = export_templates.install(path, config.TEMPLATES_DIR)
+        except (export_templates.TemplateError, OSError) as error:
+            self._error(_("Template Not Imported"), str(error))
+            return
+        self.refresh()
+        self._toast(_("Template “%s” imported") % template.title)
+
+    # --- Speichern und Entfernen ----------------------------------------------
+
+    def _choose_save(self, template):
+        dialog = Gtk.FileDialog(title=_("Save Template"), initial_name=template.title + export_templates.EXTENSION)
+        dialog.save(self.get_root(), None, lambda d, r: self._on_save_chosen(d, r, template))
+
+    def _on_save_chosen(self, dialog, result, template):
+        try:
+            path = Path(dialog.save_finish(result).get_path())
+        except GLib.Error:
+            return
+        try:
+            export_templates.pack(template, path)
+        except OSError as error:
+            self._error(_("Template Not Saved"), error.strerror or str(error))
+            return
+        self._toast(_("Saved “%s”") % path.name)
+
+    def _remove(self, template):
+        # In den Papierkorb, nicht endgültig: versehentlich Entferntes lässt sich zurückholen.
+        try:
+            Gio.File.new_for_path(str(template.path)).trash(None)
+        except GLib.Error as error:
+            self._error(_("Template Not Removed"), error.message)
+            return
+        self.refresh()
+        self._toast(_("Template “%s” moved to the trash") % template.title)
+
+    def _error(self, heading: str, body: str):
+        alert = Adw.AlertDialog(heading=heading, body=body)
+        alert.add_response("close", _("Close"))
+        alert.present(self)
+
+
 class PreferencesDialog(Adw.PreferencesDialog):
     """Einstellungen im GNOME-Stil: Änderungen wirken sofort und werden gleich gespeichert.
 
@@ -188,6 +311,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self.add(self.editor_page)
         self.add(self.focus_page)
         self.add(self.sheets_page)
+        self.templates_page = _TemplatesPage(lambda text: self.add_toast(Adw.Toast(title=text)))
+        self.add(self.templates_page)
 
         for group in self.focus_page.groups:
             self.focus_same.bind_property(

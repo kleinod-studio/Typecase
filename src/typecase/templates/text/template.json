@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "name": {"en": "Text", "de": "Text"},
+  "description": {"en": "A plain, calm text document", "de": "Ein schlichtes, ruhiges Textdokument"},
+  "author": "Typecase",
+  "version": "1.0"
+}

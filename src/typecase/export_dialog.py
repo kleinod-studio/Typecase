@@ -6,17 +6,13 @@ from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from . import config, export
+from . import config, export, export_templates
 
 PAGE_MARGIN_MM = 25
 
 
 def format_name(fmt: str) -> str:
     return {"pdf": _("PDF"), "docx": _("Word Document (DOCX)"), "html": _("Web Page (HTML)")}[fmt]
-
-
-def template_name(template: export.Template) -> str:
-    return {"text": _("Text")}.get(template.name, template.name)
 
 
 class ExportDialog(Adw.Dialog):
@@ -29,7 +25,7 @@ class ExportDialog(Adw.Dialog):
         self._title = title
         self._defaults = defaults
         self._on_done = on_done
-        self._templates = export.templates()
+        self._templates = export_templates.available(config.TEMPLATES_DIR)
         saved = config.load()
 
         page = Adw.PreferencesPage()
@@ -39,8 +35,13 @@ class ExportDialog(Adw.Dialog):
         self.format_row.set_selected(export.FORMATS.index(last) if last in export.FORMATS else 0)
         group.add(self.format_row)
         self.template_row = Adw.ComboRow(
-            title=_("Template"), model=Gtk.StringList.new([template_name(t) for t in self._templates])
+            title=_("Template"),
+            subtitle=_("Import more templates in the preferences"),
+            model=Gtk.StringList.new([t.title for t in self._templates]),
         )
+        ids = [t.id for t in self._templates]
+        if saved.get("export_template") in ids:
+            self.template_row.set_selected(ids.index(saved["export_template"]))
         group.add(self.template_row)
         page.add(group)
 
@@ -78,6 +79,7 @@ class ExportDialog(Adw.Dialog):
         config.update(export_folder=str(output.parent))
         self.export_button.set_sensitive(False)
         template = self._templates[self.template_row.get_selected()]
+        config.update(export_template=template.id)
         run_export(self._text, self.fmt, template, output, self._sheet_path, self._title, self._defaults, self._finished)
 
     def _finished(self, output: Path | None, error: str | None):

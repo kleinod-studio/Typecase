@@ -8,6 +8,7 @@ install_data(
     'typecase/config.py',
     'typecase/export.py',
     'typecase/export_dialog.py',
+    'typecase/export_templates.py',
     'typecase/fileio.py',
     'typecase/find_bar.py',
     'typecase/formatting.py',
