@@ -18,6 +18,16 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/templates.md)).
 - **GNOME-native**: libadwaita look, light and dark style, fully usable with the keyboard. The UI is in English and German.
 
+## Install
+
+Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
+
+```bash
+flatpak install --user Typecase-0.9.0-x86_64.flatpak
+```
+
+Bundles don't update by themselves; install the next release the same way. Typecase will come to Flathub with version 1.0.
+
 ## Install from source (Flatpak)
 
 You need `flatpak-builder` and the GNOME 51 runtime:
