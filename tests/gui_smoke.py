@@ -573,6 +573,13 @@ def steps(win, app):
     inspector = win.inspector
     win.lookup_action("inspector").activate(None)
     check(win.inspector_split.get_show_sidebar(), "Properties pane can be shown")
+    pages = [page.get_name() for page in inspector.stack.get_pages()]
+    check(pages == ["details", "goal"], f"Properties pane has the tabs Details and Goal ({pages})")
+    inspector.stack.set_visible_child_name("goal")
+    from typecase import config as cfg_tabs
+
+    check(cfg_tabs.load().get("inspector_page") == "goal", "The last open tab is remembered")
+    inspector.stack.set_visible_child_name("details")
     inspector.author_row.set_text("Anna")
     inspector.keywords_row.set_text("Roman, Entwurf ,")
     inspector.status_row.set_selected(1)

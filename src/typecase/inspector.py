@@ -60,10 +60,12 @@ class Inspector(Adw.Bin):
         editor.connect("counts-changed", self._on_counts_changed)
         self._words = 0
 
-        page = Adw.PreferencesPage()
+        # Two tabs (more can follow, e.g. notes): the sheet's details and its writing goal.
+        details_page = Adw.PreferencesPage()
+        goal_page = Adw.PreferencesPage()
 
         # Writing goal: its own section with a ring that shows progress (field "goal" in the front matter).
-        goal_group = Adw.PreferencesGroup(title=_("Writing Goal"))
+        goal_group = Adw.PreferencesGroup()  # the tab already names it
         self.goal_row = Adw.ExpanderRow(title=_("Word Goal"), show_enable_switch=True)
         self.goal_row.connect("notify::enable-expansion", lambda *_a: self._on_goal_changed())
         self.goal_spin = Adw.SpinRow(
@@ -75,15 +77,15 @@ class Inspector(Adw.Bin):
         goal_group.add(self.goal_row)
         self.goal_view = GoalView()
         goal_group.add(self.goal_view)
-        page.add(goal_group)
+        goal_page.add(goal_group)
 
-        text_group = Adw.PreferencesGroup()
+        text_group = Adw.PreferencesGroup(title=_("Document"))
         self.title_row = self._entry(text_group, _("Title"), "title")
         self.subtitle_row = self._entry(text_group, _("Subtitle"), "subtitle")
         self.author_row = self._entry(text_group, _("Author"), "author")
         self.author_default = Gtk.Label(css_classes=["dim-label"], ellipsize=3, max_width_chars=14)
         self.author_row.add_suffix(self.author_default)
-        page.add(text_group)
+        details_page.add(text_group)
 
         sort_group = Adw.PreferencesGroup(title=_("Organize"))
         self.keywords_row = Adw.EntryRow(title=_("Keywords, separated by commas"))
@@ -95,7 +97,7 @@ class Inspector(Adw.Bin):
         self.lang_row = Adw.ComboRow(title=_("Language"))
         self.lang_row.connect("notify::selected", lambda *_a: self._on_choice(self.lang_row, "lang"))
         sort_group.add(self.lang_row)
-        page.add(sort_group)
+        details_page.add(sort_group)
 
         # Display only: Typecase sets the creation date when creating a sheet; "modified" comes from the file.
         date_group = Adw.PreferencesGroup(title=_("Dates"))
@@ -103,11 +105,28 @@ class Inspector(Adw.Bin):
         date_group.add(self.created_row)
         self.modified_row = Adw.ActionRow(title=_("Last Modified"), css_classes=["property"], subtitle_selectable=True)
         date_group.add(self.modified_row)
-        page.add(date_group)
+        details_page.add(date_group)
+
+        self.stack = Adw.ViewStack()
+        self.stack.add_titled_with_icon(details_page, "details", _("Details"), "document-properties-symbolic")
+        self.stack.add_titled_with_icon(goal_page, "goal", _("Goal"), "emoji-flags-symbolic")
+        saved_page = config.load().get("inspector_page")
+        if saved_page in ("details", "goal"):
+            self.stack.set_visible_child_name(saved_page)
+        self.stack.connect("notify::visible-child-name", lambda st, _p: config.update(inspector_page=st.get_visible_child_name()))
+        switcher = Adw.InlineViewSwitcher(
+            stack=self.stack,
+            display_mode=Adw.InlineViewSwitcherDisplayMode.BOTH,
+            homogeneous=True,
+            margin_start=12,
+            margin_end=12,
+            margin_bottom=6,
+        )
 
         header = Adw.HeaderBar(title_widget=Adw.WindowTitle(title=_("Properties")))
-        view = Adw.ToolbarView(content=page)
+        view = Adw.ToolbarView(content=self.stack)
         view.add_top_bar(header)
+        view.add_top_bar(switcher)
         self.set_child(view)
         self._choices: dict[str, list[str]] = {}
         self.refresh()

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-24 22:57+0200\n"
+"POT-Creation-Date: 2026-10-25 00:31+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -172,7 +172,7 @@ msgid_plural "%(count)s words to go"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/goal_ring.py:112 src/typecase/inspector.py:66
+#: src/typecase/goal_ring.py:112
 msgid "Writing Goal"
 msgstr ""
 
@@ -229,69 +229,81 @@ msgstr ""
 msgid "Final"
 msgstr ""
 
-#: src/typecase/inspector.py:67
+#: src/typecase/inspector.py:69
 msgid "Word Goal"
 msgstr ""
 
-#: src/typecase/inspector.py:70
+#: src/typecase/inspector.py:72
 msgid "Words"
 msgstr ""
 
-#: src/typecase/inspector.py:81
+#: src/typecase/inspector.py:82
+msgid "Document"
+msgstr ""
+
+#: src/typecase/inspector.py:83
 msgid "Title"
 msgstr ""
 
-#: src/typecase/inspector.py:82
+#: src/typecase/inspector.py:84
 msgid "Subtitle"
 msgstr ""
 
-#: src/typecase/inspector.py:83 src/typecase/preferences.py:149
+#: src/typecase/inspector.py:85 src/typecase/preferences.py:149
 msgid "Author"
 msgstr ""
 
-#: src/typecase/inspector.py:88
+#: src/typecase/inspector.py:90
 msgid "Organize"
 msgstr ""
 
-#: src/typecase/inspector.py:89
+#: src/typecase/inspector.py:91
 msgid "Keywords, separated by commas"
 msgstr ""
 
-#: src/typecase/inspector.py:92
+#: src/typecase/inspector.py:94
 msgid "Status"
 msgstr ""
 
-#: src/typecase/inspector.py:95 src/typecase/preferences.py:155
+#: src/typecase/inspector.py:97 src/typecase/preferences.py:155
 msgid "Language"
 msgstr ""
 
-#: src/typecase/inspector.py:101
+#: src/typecase/inspector.py:103
 msgid "Dates"
 msgstr ""
 
-#: src/typecase/inspector.py:102
+#: src/typecase/inspector.py:104
 msgid "Created"
 msgstr ""
 
-#: src/typecase/inspector.py:104
+#: src/typecase/inspector.py:106
 msgid "Last Modified"
 msgstr ""
 
-#: src/typecase/inspector.py:108 src/typecase/window.py:268
+#: src/typecase/inspector.py:111
+msgid "Details"
+msgstr ""
+
+#: src/typecase/inspector.py:112
+msgid "Goal"
+msgstr ""
+
+#: src/typecase/inspector.py:126 src/typecase/window.py:268
 #: src/typecase/window.py:327 src/typecase/window.py:1070
 msgid "Properties"
 msgstr ""
 
-#: src/typecase/inspector.py:133
+#: src/typecase/inspector.py:152
 #, python-format
 msgid "Default (%s)"
 msgstr ""
 
-#: src/typecase/inspector.py:134
+#: src/typecase/inspector.py:153
 msgid "None"
 msgstr ""
 
-#: src/typecase/inspector.py:182
+#: src/typecase/inspector.py:201
 #, python-format
 msgid "%s (according to the file system)"
 msgstr ""
