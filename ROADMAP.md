@@ -56,6 +56,15 @@ These apply to every feature:
 - [ ] Version 1.0 and publishing on Flathub
 - [x] A project website with documentation and downloads: [kleinod.studio/typecase](https://kleinod.studio/typecase/)
 
+## Later
+
+Ideas for after 1.0:
+
+- [ ] Custom icons and colors for sheets and groups in the library
+- [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
+- [ ] Tables in Markdown, styled in the editor
+- [ ] Publish texts to WordPress and other platforms (opt-in: only this feature would connect to the internet, and only when you publish)
+
 ## Non-goals
 
 Typecase stays a local writing place. Anything that needs an account, a server or a file format of its own is out of scope:
