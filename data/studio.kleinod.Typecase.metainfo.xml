@@ -27,7 +27,29 @@
     <color type="primary" scheme_preference="dark">#2A2550</color>
   </branding>
   <content_rating type="oars-1.1"/>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://kleinod.studio/assets/typecase/screenshot-light.png</image>
+      <caption>A sheet in the editor, with the library and writing goals</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://kleinod.studio/assets/typecase/screenshot-dark.png</image>
+      <caption>Dark style</caption>
+    </screenshot>
+  </screenshots>
   <releases>
-    <release version="0.1.0" date="2026-10-23"/>
+    <release version="0.9.0" date="2026-10-25">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.9.0</url>
+      <description>
+        <p>First public release.</p>
+        <ul>
+          <li>Library of plain Markdown files in a folder of your choice, with groups, drag and drop, search and keywords</li>
+          <li>Live Markdown styling, formatting bar, find and replace</li>
+          <li>Focus mode with typewriter scrolling and dimmed surroundings</li>
+          <li>Sheet properties, writing goals and progress rings</li>
+          <li>Export to PDF, Word and HTML with importable templates</li>
+        </ul>
+      </description>
+    </release>
   </releases>
 </component>

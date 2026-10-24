@@ -50,10 +50,11 @@ These apply to every feature:
 ## Next
 
 - [ ] Manual ordering of sheets within a group (today the order is alphabetical)
-- [ ] English version of the template guide
+- [x] English version of the template guide
 - [ ] Testing on Fedora (GNOME), Linux Mint (Cinnamon) and Kubuntu (KDE)
-- [ ] Screenshots, a first release and publishing on Flathub
-- [ ] A project website with documentation and downloads
+- [x] Screenshots and a first public release (0.9.0)
+- [ ] Version 1.0 and publishing on Flathub
+- [x] A project website with documentation and downloads: [kleinod.studio/typecase](https://kleinod.studio/typecase/)
 
 ## Non-goals
 

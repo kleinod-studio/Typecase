@@ -4,7 +4,7 @@ A calm, native Markdown writing app for Linux, inspired by Ulysses. Built with G
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 
-> **Status:** early development. Typecase is usable day to day, but not yet released or on Flathub. Expect changes. See the [roadmap](ROADMAP.md) for what is done and what comes next.
+> **Status:** 0.9.0, the first public release. Typecase is usable day to day; 1.0 will come together with the release on Flathub. Expect changes. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
 
 ## Features
 
@@ -15,7 +15,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
 - **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode has its own font settings.
-- **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/vorlagen.md), in German for now).
+- **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/templates.md)).
 - **GNOME-native**: libadwaita look, light and dark style, fully usable with the keyboard. The UI is in English and German.
 
 ## Install from source (Flatpak)
@@ -64,7 +64,7 @@ Project layout:
 - `data/`: desktop file, AppStream metainfo, icon
 - `po/`: translations (gettext, English source strings)
 - `skills/typecase-template/`: a Claude skill that builds export templates from a description; `python3 skills/package.py skills/typecase-template` packs it into `dist/typecase-template.skill`
-- `docs/`: the template guide (`vorlagen.md`, in German for now)
+- `docs/`: the template guide (`templates.md`; German: `vorlagen.md`)
 
 ## Translations
 
