@@ -120,6 +120,16 @@ class TemplatesTest(unittest.TestCase):
         self.assertFalse((self.tmp.parent / "boese.txt").exists())
         self.assertEqual([p.name for p in self.user.iterdir()] if self.user.exists() else [], [])
 
+    def test_pdf_page(self):
+        from typecase.export_templates import Template
+
+        plain = Template("x", self.tmp, False, {"name": "X"})
+        self.assertIsNone(plain.pdf_paper)
+        self.assertEqual(plain.pdf_margins_mm, {"top": 25.0, "right": 25.0, "bottom": 25.0, "left": 25.0})
+        custom = Template("y", self.tmp, False, {"pdf": {"paper": "A5", "margins_mm": {"right": 50, "left": "viel", "top": 300}}})
+        self.assertEqual(custom.pdf_paper, "iso_a5")
+        self.assertEqual(custom.pdf_margins_mm, {"top": 25.0, "right": 50.0, "bottom": 25.0, "left": 25.0})
+
     def test_localized(self):
         self.assertEqual(localized({"en": "Letter", "de": "Brief"}), "Brief")
         os.environ["LANGUAGE"] = "fr_FR"

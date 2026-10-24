@@ -9,3 +9,5 @@ repo/
 .venv/
 locale/
 build-dir/
+dist/
+skills/*-workspace/

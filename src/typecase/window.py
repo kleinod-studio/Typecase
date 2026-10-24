@@ -1114,6 +1114,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         missing = {
             "author": None if data.get("author") else defaults["author"],
             "lang": None if data.get("lang") else defaults["lang"],
+            # $date$ in Vorlagen: das Datum des Exports, wenn das Blatt kein eigenes "date" hat
+            "date": None if data.get("date") else GLib.DateTime.new_now_local().format("%x"),
         }
         dialog = ExportDialog(self.editor.file_text(), self.editor.path, data.get("title") or None, missing, self._on_exported)
         dialog.present(self)

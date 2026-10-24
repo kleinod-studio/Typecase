@@ -11,6 +11,9 @@ ZIP-Archiv (wie eine .docx-Datei) mit:
 - reference.docx  Formatvorlagen für Word (optional; sonst Pandocs Standard)
 - weitere Dateien, z. B. Schriften oder ein Logo, auf die style.css mit url(…) verweist
 
+Für das PDF kann template.json Papier und Ränder festlegen (sonst Papier nach Sprache, 25 mm):
+  "pdf": {"paper": "a4", "margins_mm": {"top": 25, "right": 50, "bottom": 25, "left": 25}}
+
 Importierte Vorlagen liegen entpackt im Datenordner der App; die mitgelieferten im Code."""
 
 import json
@@ -27,6 +30,8 @@ EXTENSION = ".typecase-template"
 FORMAT_VERSION = 1
 BUILTIN_DIR = Path(__file__).resolve().parent / "templates"
 
+PAPER_SIZES = {"a4": "iso_a4", "a5": "iso_a5", "a3": "iso_a3", "letter": "na_letter", "legal": "na_legal"}
+DEFAULT_MARGIN_MM = 25
 MAX_FILES = 200
 MAX_TOTAL_BYTES = 50 * 1024 * 1024  # entpackt
 
@@ -62,6 +67,26 @@ class Template:
     def reference_docx(self) -> Path | None:
         docx = self.path / "reference.docx"
         return docx if docx.is_file() else None
+
+    @property
+    def pdf_paper(self) -> str | None:
+        """GTK-Papiername (z. B. "iso_a4") oder None für das Papier der Systemsprache."""
+        pdf = self.info.get("pdf")
+        paper = pdf.get("paper") if isinstance(pdf, dict) else None
+        return PAPER_SIZES.get(paper.casefold()) if isinstance(paper, str) else None
+
+    @property
+    def pdf_margins_mm(self) -> dict[str, float]:
+        """Seitenränder in Millimetern; Fehlendes oder Unsinniges wird zu 25 mm."""
+        pdf = self.info.get("pdf")
+        given = pdf.get("margins_mm") if isinstance(pdf, dict) else None
+        given = given if isinstance(given, dict) else {}
+        margins = {}
+        for side in ("top", "right", "bottom", "left"):
+            value = given.get(side)
+            ok = isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value <= 100
+            margins[side] = float(value) if ok else float(DEFAULT_MARGIN_MM)
+        return margins
 
 
 def localized(value) -> str:

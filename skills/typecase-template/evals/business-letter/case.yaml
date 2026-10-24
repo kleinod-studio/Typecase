@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: business-letter
+expected_outcome: |
+  A .typecase-template file that Typecase imports, A4 with DIN 5008 margins (left 25 mm, right 20 mm), the sender block, the date top right and a sans-serif font.

@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "name": {"en": "My Template", "de": "Meine Vorlage"},
+  "description": {"en": "Describe in one line what this template is for", "de": "In einer Zeile, wofür die Vorlage gedacht ist"},
+  "author": "",
+  "version": "1.0",
+  "pdf": {
+    "paper": "a4",
+    "margins_mm": {"top": 25, "right": 25, "bottom": 25, "left": 25}
+  }
+}

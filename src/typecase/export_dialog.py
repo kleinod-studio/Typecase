@@ -8,9 +8,6 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from . import config, export, export_templates
 
-PAGE_MARGIN_MM = 25
-
-
 def format_name(fmt: str) -> str:
     return {"pdf": _("PDF"), "docx": _("Word Document (DOCX)"), "html": _("Web Page (HTML)")}[fmt]
 
@@ -122,7 +119,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
             done(None, (stderr or "").strip() or _("Pandoc could not convert the text."))
             return
         if fmt == "pdf":
-            _print_pdf(pandoc_output, sheet_path.parent, output, work, done)
+            _print_pdf(pandoc_output, sheet_path.parent, output, work, template, done)
         else:
             _move_into_place(pandoc_output, output, done)
 
@@ -156,7 +153,7 @@ def pdf_available() -> bool:
     return _webkit() is not None
 
 
-def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, done):
+def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, done):
     """Lädt das HTML in eine unsichtbare WebKit-Ansicht und druckt es ohne Dialog in eine PDF-Datei."""
     WebKit = _webkit()
     if WebKit is None:
@@ -177,10 +174,14 @@ def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, done):
         print_settings.set_printer(GLib.dgettext("gtk40", "Print to File"))
         print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_FILE_FORMAT, "pdf")
         print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_URI, Gio.File.new_for_path(str(pdf)).get_uri())
+        # Papier und Ränder bestimmt die Vorlage; ohne Angabe Papier nach Systemsprache, 25 mm Rand.
         page_setup = Gtk.PageSetup()
-        page_setup.set_paper_size(Gtk.PaperSize.new(Gtk.PaperSize.get_default()))
-        for setter in (page_setup.set_top_margin, page_setup.set_bottom_margin, page_setup.set_left_margin, page_setup.set_right_margin):
-            setter(PAGE_MARGIN_MM, Gtk.Unit.MM)
+        page_setup.set_paper_size(Gtk.PaperSize.new(template.pdf_paper or Gtk.PaperSize.get_default()))
+        margins = template.pdf_margins_mm
+        page_setup.set_top_margin(margins["top"], Gtk.Unit.MM)
+        page_setup.set_right_margin(margins["right"], Gtk.Unit.MM)
+        page_setup.set_bottom_margin(margins["bottom"], Gtk.Unit.MM)
+        page_setup.set_left_margin(margins["left"], Gtk.Unit.MM)
         operation = WebKit.PrintOperation.new(web_view)
         operation.set_print_settings(print_settings)
         operation.set_page_setup(page_setup)

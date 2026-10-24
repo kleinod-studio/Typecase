@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: lektorat-manuscript
+expected_outcome: |
+  A .typecase-template file that Typecase imports, with double spacing, a wide right margin and chapters on new pages in both PDF (CSS + template.json) and Word (reference.docx).

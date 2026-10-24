@@ -40,6 +40,16 @@ Den Oberflächentest gegen das installierte Flatpak laufen lassen (eigener Testo
 flatpak run --env=TYPECASE_CODE=/app/share/typecase --env=LANGUAGE=en --command=python3 studio.kleinod.Typecase tests/gui_smoke.py
 ```
 
+## Export-Vorlagen
+
+Wie eigene Vorlagen (`.typecase-template`) aufgebaut sind, steht in [docs/vorlagen.md](docs/vorlagen.md). Der Claude-Skill, der solche Vorlagen baut, liegt in `skills/typecase-template/`; als herunterladbare Datei packen:
+
+```bash
+python3 skills/package.py skills/typecase-template
+```
+
+Das Ergebnis liegt in `dist/typecase-template.skill`.
+
 ## Lizenz
 
 GPL-3.0-or-later, siehe [LICENSE](LICENSE).
