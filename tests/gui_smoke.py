@@ -29,7 +29,14 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
-from typecase.main import TypecaseApplication  # noqa: E402
+from typecase.main import TypecaseApplication, _fall_back_to_utf8  # noqa: E402
+
+try:  # wie beim echten Start: ohne passende Sprachdaten (Flatpak) in C.UTF-8 statt ASCII
+    import locale
+
+    locale.setlocale(locale.LC_ALL, "")
+except locale.Error:
+    _fall_back_to_utf8()
 
 failures = []
 checked = []
@@ -624,6 +631,35 @@ def steps(win, app):
     check(not win.content_title.get_subtitle().startswith("9 of"), "Kopfzeile ohne Ziel")
     ed.buffer.set_text("Es war einmal.\nEnde.")
     ed.flush()
+
+    # Export
+    from typecase import export
+    from typecase.export_dialog import ExportDialog, pdf_available, run_export
+
+    check(win.lookup_action("export").get_enabled(), "Export ist mit offenem Blatt möglich")
+    win.lookup_action("export").activate(None)
+    dialog = win.get_visible_dialog()
+    check(isinstance(dialog, ExportDialog) and dialog.template_row.get_model().get_n_items() >= 1, "Export-Dialog bietet Format und Vorlage an")
+    dialog.force_close()
+    if export.pandoc_path() is None:
+        print("      (Pandoc fehlt hier – Export-Dateien werden nur im Flatpak geprüft)")
+    else:
+        results = {}
+        for fmt in export.FORMATS:
+            run_export(
+                "---\ntitle: Der Drache\n---\nEs war eine <u>Höhle</u>.\n", fmt, export.templates()[0],
+                TMP / ("export" + export.EXTENSIONS[fmt]), meta, "Der Drache", {"lang": "de-DE"},
+                lambda path, error, fmt=fmt: results.__setitem__(fmt, (path, error)),
+            )
+        yield from wait_until(lambda: len(results) == 3, timeout=30)
+        check(results["docx"][1] is None and results["html"][1] is None, f"Export ohne Fehler: {results}")
+        if pdf_available():
+            check(results["pdf"][1] is None and (TMP / "export.pdf").read_bytes()[:4] == b"%PDF", "PDF wird erzeugt")
+        else:
+            check(results["pdf"][1] == "PDF export needs WebKitGTK 6.0." and not (TMP / "export.pdf").exists(), "Ohne WebKit verständliche Meldung statt PDF")
+        check((TMP / "export.docx").read_bytes()[:2] == b"PK", "DOCX wird erzeugt")
+        check("Der Drache" in (TMP / "export.html").read_text(encoding="utf-8"), "HTML enthält den Titel")
+        check(not [p for p in TMP.iterdir() if "typecase-tmp" in p.name], "Keine halben Export-Dateien übrig")
 
     from typecase import config as cfg
 

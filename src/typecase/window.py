@@ -7,6 +7,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
 from . import frontmatter
+from .export_dialog import ExportDialog
 from .find_bar import FindBar
 from .fileio import atomic_write_text
 from .goal import GoalIndex, fraction, parse_goal
@@ -257,6 +258,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         header.pack_start(self.sidebar_button)
 
+        file_section = Gio.Menu()
+        file_section.append(_("Export…"), "win.export")
         view_section = Gio.Menu()
         view_section.append(_("Focus Mode"), "win.focus-mode")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
@@ -267,6 +270,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         help_section.append(_("Keyboard Shortcuts"), "win.show-shortcuts")
         help_section.append(_("About Typecase"), "app.about")
         main_menu = Gio.Menu()
+        main_menu.append_section(None, file_section)
         main_menu.append_section(None, view_section)
         main_menu.append_section(None, help_section)
         header.pack_end(
@@ -837,6 +841,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
             action.connect("activate", lambda _a, _p, r=replace: self._find_in_sheet(r))
             self.add_action(action)
 
+        export_action = Gio.SimpleAction.new("export", None)
+        export_action.connect("activate", lambda _a, _p: self._export())
+        export_action.set_enabled(False)
+        self.editor.connect("metadata-changed", lambda e: export_action.set_enabled(e.path is not None))
+        self.add_action(export_action)
+
         format_action = Gio.SimpleAction.new("format", GLib.VariantType.new("s"))
         format_action.connect("activate", lambda _a, kind: self.editor.apply_format(kind.get_string()))
         self.add_action(format_action)
@@ -1035,6 +1045,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Undo"), "<Primary>z"),
                     (_("Redo"), "<Primary><Shift>z"),
                     (_("New Line Without List Marker"), "<Shift>Return"),
+                    (_("Export"), "<Primary>e"),
                     (_("Bold"), "<Primary>b"),
                     (_("Italic"), "<Primary>i"),
                     (_("Underline"), "<Primary>u"),
@@ -1090,6 +1101,31 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if node is None:
             return self.library_path
         return node.path if node.is_group else node.path.parent
+
+    # --- Export -------------------------------------------------------------
+
+    def _export(self):
+        if self.editor.path is None:
+            return
+        data = self.editor.metadata()
+        defaults = config.sheet_defaults()
+        # Voreinstellungen gelten nur für Felder, die das Blatt nicht selbst setzt.
+        missing = {
+            "author": None if data.get("author") else defaults["author"],
+            "lang": None if data.get("lang") else defaults["lang"],
+        }
+        dialog = ExportDialog(self.editor.file_text(), self.editor.path, data.get("title") or None, missing, self._on_exported)
+        dialog.present(self)
+
+    def _on_exported(self, output: Path | None, error: str | None):
+        if error is not None:
+            alert = Adw.AlertDialog(heading=_("Export Failed"), body=error)
+            alert.add_response("close", _("Close"))
+            alert.present(self)
+            return
+        toast = Adw.Toast(title=_("Exported “%s”") % output.name, button_label=_("Open"))
+        toast.connect("button-clicked", lambda _t: Gtk.FileLauncher(file=Gio.File.new_for_path(str(output))).launch(self, None, None))
+        self.toasts.add_toast(toast)
 
     def _toast(self, text: str):
         self.toasts.add_toast(Adw.Toast(title=text))

@@ -6,6 +6,8 @@ install_data(
     'typecase/__main__.py',
     'typecase/main.py',
     'typecase/config.py',
+    'typecase/export.py',
+    'typecase/export_dialog.py',
     'typecase/fileio.py',
     'typecase/find_bar.py',
     'typecase/formatting.py',
@@ -26,6 +28,9 @@ install_data(
   ],
   install_dir: pkgdatadir / 'typecase',
 )
+
+# Mitgelieferte Export-Vorlagen
+install_subdir('typecase/templates', install_dir: pkgdatadir / 'typecase')
 
 launcher = configuration_data()
 launcher.set('pkgdatadir', pkgdatadir)

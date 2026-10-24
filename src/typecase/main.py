@@ -1,5 +1,6 @@
 import gettext
 import locale
+import os
 from pathlib import Path
 
 import gi
@@ -27,10 +28,24 @@ def _setup_translations(localedir: str | None = None):
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error:
-        pass  # Unbekannte Locale: Texte bleiben englisch.
+        _fall_back_to_utf8()
     for module in (gettext, locale):
         module.bindtextdomain(GETTEXT_DOMAIN, localedir)
     gettext.textdomain(GETTEXT_DOMAIN)
+
+
+def _fall_back_to_utf8():
+    """Die Sprache des Systems fehlt (im Flatpak, wenn dessen Sprachdaten nicht installiert sind).
+    Dann nicht im reinen ASCII-"C" laufen, sonst scheitern Umlaute und der PDF-Druck (WebKit),
+    sondern in C.UTF-8; die Übersetzungen richten sich weiter nach der gewünschten Sprache."""
+    wanted = os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG", "")
+    if wanted and not os.environ.get("LANGUAGE"):
+        os.environ["LANGUAGE"] = wanted.split(".")[0]
+    os.environ["LC_ALL"] = "C.UTF-8"  # gilt auch für GTK und die Hilfsprogramme, die wir starten
+    try:
+        locale.setlocale(locale.LC_ALL, "C.UTF-8")
+    except locale.Error:
+        pass
 
 
 class TypecaseApplication(Adw.Application):
@@ -54,6 +69,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("app.quit", ["<Primary>q"])
         self.set_accels_for_action("win.preferences", ["<Primary>comma"])
         self.set_accels_for_action("win.inspector", ["<Alt>Return"])
+        self.set_accels_for_action("win.export", ["<Primary>e"])
         for kind, keys in [
             ("bold", ["<Primary>b"]),
             ("italic", ["<Primary>i"]),

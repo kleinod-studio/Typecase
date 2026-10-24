@@ -694,6 +694,10 @@ class SheetEditor(Gtk.Stack):
 
     # --- intern -----------------------------------------------------------
 
+    def file_text(self) -> str:
+        """Vollständiger Inhalt wie in der Datei (Dateikopf und Text), auch wenn noch nicht gesichert."""
+        return self._file_text()
+
     def _file_text(self) -> str:
         return frontmatter.join(self._header, self._buffer_text())
 

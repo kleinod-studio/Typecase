@@ -6,7 +6,7 @@ Status: frühe Entwicklung (Phase 1). Die Anforderungen stehen im Lastenheft.
 
 ## Entwickeln
 
-Benötigt Python, PyGObject, GTK 4, libadwaita und GtkSourceView 5.
+Benötigt Python, PyGObject, GTK 4, libadwaita und GtkSourceView 5. Für den Export zusätzlich Pandoc und (für PDF) WebKitGTK 6.0; im Flatpak ist beides enthalten.
 
 ```bash
 ./run-dev.sh

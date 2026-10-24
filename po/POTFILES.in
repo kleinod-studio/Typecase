@@ -1,3 +1,4 @@
+src/typecase/export_dialog.py
 src/typecase/find_bar.py
 src/typecase/goal_ring.py
 src/typecase/inspector.py

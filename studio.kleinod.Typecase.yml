@@ -13,6 +13,21 @@ finish-args:
   - --filesystem=home
 
 modules:
+  # Export (PDF, DOCX, HTML). Offizielle, statisch gebaute Pandoc-Version; GPL-2.0-or-later.
+  - name: pandoc
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bin/pandoc /app/bin/pandoc
+    sources:
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-arm64.tar.gz
+        sha256: 445d96fd08801fe636cab1158b4f017ee320ac3b7446328b4fe2f902117b19b9
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-amd64.tar.gz
+        sha256: d0c90410e90204c9ca83b8539fac5c7aed01fd537207e4585849f8abc5df20b8
+
   - name: typecase
     buildsystem: meson
     sources:
