@@ -1,4 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect x="12" y="12" width="104" height="104" rx="24" fill="#3584e4"/>
-  <text x="64" y="86" font-family="sans-serif" font-size="68" font-weight="700" text-anchor="middle" fill="#ffffff">T</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Typecase">
+
+  
+  <rect x="34" y="12" width="70" height="92" rx="7" fill="#C9C4E6"/>
+  <rect x="35" y="11" width="68" height="88" rx="6" fill="#E6E3F5" stroke="#C9C4E6" stroke-width="2"/>
+  
+  <rect x="22" y="22" width="72" height="94" rx="7" fill="#B6B0DA"/>
+  <rect x="23" y="19" width="70" height="92" rx="6" fill="#FFFFFF" stroke="#CFCAE8" stroke-width="2"/>
+  
+  <rect x="33" y="32" width="40" height="7" rx="3.5" fill="#2A2550"/>
+  <rect x="33" y="48" width="50" height="4" rx="2" fill="#9A95BF"/>
+  <rect x="33" y="58" width="46" height="4" rx="2" fill="#9A95BF"/>
+  <rect x="33" y="68" width="50" height="4" rx="2" fill="#9A95BF"/>
+  <rect x="33" y="78" width="30" height="4" rx="2" fill="#9A95BF"/>
+  
+  <rect x="66" y="75" width="3" height="10" rx="1.5" fill="#4B3F9E"/>
+<g transform="translate(72 78) scale(0.75)">
+  <polygon points="8,24 20,10 44,10 56,24 32,56" fill="#4B3F9E" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="20,10 44,10 38,24 26,24" fill="#6D60C7"/>
+  <polygon points="8,24 20,10 26,24" fill="#5A4DB3"/>
+  <polygon points="56,24 44,10 38,24" fill="#5A4DB3"/>
+  <polygon points="26,24 38,24 32,56" fill="#3B3083"/>
+</g>
 </svg>
