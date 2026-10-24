@@ -11,3 +11,6 @@ locale/
 build-dir/
 dist/
 skills/*-workspace/
+
+# Arbeitsanweisungen für Claude, nur lokal
+CLAUDE.md
