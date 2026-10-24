@@ -42,6 +42,15 @@ class ExportTest(unittest.TestCase):
         self.assertIn("author=Anna", args)
         self.assertFalse(any(a.startswith("lang=") for a in args))
 
+    def test_export_date(self):
+        import datetime
+
+        day = datetime.date(2026, 10, 24)
+        self.assertEqual(export.export_date(day, "C.UTF-8", "de_DE"), "24.10.2026")
+        self.assertEqual(export.export_date(day, "C.UTF-8", "en_US.UTF-8"), "10/24/2026")
+        self.assertEqual(export.export_date(day, "C.UTF-8", "en_GB"), "24/10/2026")
+        self.assertEqual(export.export_date(day, "C", "fr_FR"), "2026-10-24")
+
     def test_style_header(self):
         header = export.style_header(self.template)
         self.assertTrue(header.startswith("<style>") and header.rstrip().endswith("</style>"))

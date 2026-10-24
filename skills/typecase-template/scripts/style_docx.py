@@ -145,6 +145,14 @@ def edit_styles(root: ET.Element, args) -> None:
             set_font(properties, args.heading_font)
         if args.heading_color:
             set_color(properties, args.heading_color)
+        if args.heading_bold is not None:
+            # Pandoc's heading styles are not bold; w:b with val="0" switches bold off explicitly.
+            bold = child(properties, "b", after("b", RPR_ORDER))
+            bold.attrib.clear()
+            if not args.heading_bold:
+                bold.set(w("val"), "0")
+        if args.heading_align:
+            child(ppr(heading), "jc", after("jc", PPR_ORDER)).set(w("val"), "center" if args.heading_align == "center" else "left")
         if level <= len(heading_sizes):
             set_size(properties, heading_sizes[level - 1])
         if args.chapter_page_break and level == 1:
@@ -267,6 +275,9 @@ def main() -> int:
     parser.add_argument("--heading-font", help="font family for headings, title and subtitle")
     parser.add_argument("--heading-color", help='heading colour as hex without "#", e.g. 000000')
     parser.add_argument("--heading-sizes", help='sizes of heading 1,2,3,... in points, e.g. "18,14,12"')
+    parser.add_argument("--heading-align", choices=("left", "center"), help="alignment of all headings")
+    parser.add_argument("--heading-bold", action=argparse.BooleanOptionalAction, default=None,
+                        help="make headings bold (--no-heading-bold for regular weight)")
     parser.add_argument("--line-spacing", type=float, help="1 = single, 1.5, 2 = double")
     parser.add_argument("--paragraph-spacing", type=float, help="space after each paragraph in points (0 for none)")
     parser.add_argument("--first-line-indent", type=float, help="first-line indent of body paragraphs in cm")

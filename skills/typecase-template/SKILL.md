@@ -46,13 +46,30 @@ Then edit:
 
 ### 3. Make the Word part
 
-Create `reference.docx` from Pandoc's default with the bundled script, mirroring the CSS decisions so Word and PDF match:
+Users compare the PDF and the Word file side by side, so they must look like the same document. Pandoc's default Word styles are *not* neutral — headings are blue, left-aligned and not bold, the title is centred — so every visual decision you made in the CSS has to be repeated explicitly for Word. Go through this list and pass the matching option for each:
+
+| Decided in style.css | style_docx.py option |
+| --- | --- |
+| body font, size | `--body-font`, `--body-size` |
+| line height | `--line-spacing` (CSS `line-height: 1.5` → `1.5`) |
+| paragraph spacing vs. first-line indent | `--paragraph-spacing`, `--first-line-indent` (cm) |
+| text alignment | `--align left/justify` |
+| heading font, sizes (h1, h2, h3 in pt) | `--heading-font`, `--heading-sizes "16,14,12"` |
+| heading weight, colour, alignment | `--heading-bold`/`--no-heading-bold`, `--heading-color 000000`, `--heading-align center/left` |
+| title alignment | `--title-align` |
+| chapters on new pages | `--chapter-page-break` |
+| paper and margins (from template.json) | `--paper`, `--margins top,right,bottom,left` |
+
+Always set `--heading-color`, `--heading-bold`/`--no-heading-bold` and `--heading-align`, even when the CSS just uses black, bold, left-aligned headings — otherwise Word shows Pandoc's blue defaults.
+
+Create `reference.docx` from Pandoc's default with the bundled script:
 
 ```bash
 python3 <skill-dir>/scripts/style_docx.py <skill-dir>/assets/reference.docx my-template/reference.docx \
-    --body-font "Liberation Serif" --body-size 12 --heading-font "Liberation Sans" \
-    --line-spacing 2 --paragraph-spacing 0 --first-line-indent 1.25 \
-    --chapter-page-break --paper a4 --margins 25,50,25,25
+    --body-font "Liberation Serif" --body-size 12 --line-spacing 2 --paragraph-spacing 0 \
+    --first-line-indent 1.25 --align left \
+    --heading-font "Liberation Serif" --heading-sizes 16,14,12 --heading-bold --heading-color 000000 \
+    --heading-align left --chapter-page-break --paper a4 --margins 25,50,25,25
 ```
 
 Run it with `--help` for all options — it also adds page numbers (`--page-numbers center`) and a small letterhead in the Word header (`--header-lines "Name|Street|City" --header-first-page-only`), so there is no need to hand-edit the DOCX XML. If the user only cares about PDF/HTML you may skip this step; Word exports then use Pandoc's defaults.

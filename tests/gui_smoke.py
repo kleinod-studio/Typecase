@@ -856,10 +856,12 @@ def steps(win, app):
     win.lookup_action("toggle-sidebar").activate(None)
     check(win.split.get_show_sidebar() == shown, "F9 action shows it again")
     check(ed.path and ed.path.name == "a.md", "Checkpoint after sidebar: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
+    # Relative to the current state: in a narrow (tiled) window the sidebar starts collapsed.
+    shown = win.split.get_show_sidebar()
     win.sidebar_button.emit("clicked")  # like a click
-    check(not win.split.get_show_sidebar() and not win.sidebar_button.get_active(), "Button hides the sidebar")
+    check(win.split.get_show_sidebar() != shown and win.sidebar_button.get_active() == (not shown), "Button toggles the sidebar")
     win.sidebar_button.emit("clicked")
-    check(win.split.get_show_sidebar() and win.sidebar_button.get_active(), "Button shows it again")
+    check(win.split.get_show_sidebar() == shown and win.sidebar_button.get_active() == shown, "Button toggles it back")
     win.lookup_action("fullscreen").activate(None)
     yield 1.5  # the window manager needs a moment
     check(win.is_fullscreen(), "F11 action turns fullscreen on")

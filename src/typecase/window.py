@@ -7,6 +7,7 @@ from pathlib import Path
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
 
 from . import config
+from . import export
 from . import frontmatter
 from .export_dialog import ExportDialog
 from .find_bar import FindBar
@@ -1115,7 +1116,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "author": None if data.get("author") else defaults["author"],
             "lang": None if data.get("lang") else defaults["lang"],
             # $date$ in templates: the date of the export, if the sheet has no "date" of its own
-            "date": None if data.get("date") else GLib.DateTime.new_now_local().format("%x"),
+            "date": None if data.get("date") else export.export_date(),
         }
         dialog = ExportDialog(self.editor.file_text(), self.editor.path, data.get("title") or None, missing, self._on_exported)
         dialog.present(self)

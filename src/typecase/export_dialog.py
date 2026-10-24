@@ -90,6 +90,10 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
     if export.pandoc_path() is None:
         on_done(None, _("Pandoc is not installed."))
         return
+    if fmt == "docx":
+        # Pandoc writes a "date" as its own paragraph under the title in Word files. The export date
+        # is only meant for HTML templates that ask for $date$; a date set in the sheet stays.
+        defaults = {key: value for key, value in defaults.items() if key != "date"}
     work = Path(tempfile.mkdtemp(prefix="typecase-export-"))
 
     def done(path, error):

@@ -5,7 +5,10 @@ prints to a PDF file with WebKit (HTML template with CSS, no LaTeX required).
 How templates are structured is described in export_templates.py."""
 
 import base64
+import datetime
+import locale
 import mimetypes
+import os
 import re
 import shutil
 from pathlib import Path
@@ -21,6 +24,27 @@ INPUT_FORMAT = "markdown+hard_line_breaks"
 _UNDERLINE = re.compile(r"<u>(.*?)</u>", re.DOTALL)
 _FONT_TYPES = {".woff2": "font/woff2", ".woff": "font/woff", ".otf": "font/otf", ".ttf": "font/ttf"}
 _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
+
+
+def export_date(today: datetime.date | None = None, time_locale: str | None = None, language: str | None = None) -> str:
+    """Today's date for $date$ in templates, written the way the user's language writes dates.
+    Without the system's locale data (a Flatpak whose locale extension lacks the language runs in
+    C.UTF-8), %x would give "10/24/26"; then fall back to a format chosen by the UI language."""
+    today = today or datetime.date.today()
+    if time_locale is None:
+        time_locale = locale.setlocale(locale.LC_TIME)
+    if not time_locale.startswith(("C", "POSIX")):
+        return today.strftime("%x")
+    if language is None:
+        language = os.environ.get("LANGUAGE") or os.environ.get("LANG") or ""
+    language = language.split(":")[0].split(".")[0]
+    if language.startswith("de"):
+        return today.strftime("%d.%m.%Y")
+    if language in ("en_US", "en"):
+        return today.strftime("%m/%d/%Y")
+    if language.startswith("en"):
+        return today.strftime("%d/%m/%Y")
+    return today.isoformat()
 
 
 def pandoc_path() -> str | None:
