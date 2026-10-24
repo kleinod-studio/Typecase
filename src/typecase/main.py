@@ -18,6 +18,8 @@ from .window import TypecaseWindow
 APP_ID = "studio.kleinod.Typecase"
 VERSION = "0.1.0"  # must match meson.build
 GETTEXT_DOMAIN = "typecase"
+WEBSITE = "https://kleinod.studio/typecase"
+REPOSITORY = "https://github.com/kleinod-studio/Typecase"
 
 
 def _setup_translations(localedir: str | None = None):
@@ -97,9 +99,23 @@ class TypecaseApplication(Adw.Application):
             application_name="Typecase",
             application_icon=APP_ID,
             version=VERSION,
-            developer_name="Sascha Wuebbena",
+            developer_name="kleinod.studio",
             comments=_("Calm Markdown writing"),
+            website=WEBSITE,
+            issue_url=REPOSITORY + "/issues",
+            copyright="© 2026 Sascha Wübbena (kleinod.studio)",
             license_type=Gtk.License.GPL_3_0,
+            # Translators: put your name here (one per line) so it appears in the about dialog.
+            translator_credits=_("translator-credits"),
+        )
+        about.add_link(_("Source Code"), REPOSITORY)
+        about.add_link("kleinod.studio", "https://kleinod.studio")
+        # Bundled in the Flatpak for exporting; its licence requires a notice.
+        about.add_legal_section(
+            "Pandoc",
+            "© 2006–2026 John MacFarlane and contributors",
+            Gtk.License.GPL_2_0,
+            None,
         )
         windows = self.get_windows()
         about.present(self.props.active_window or (windows[0] if windows else None))

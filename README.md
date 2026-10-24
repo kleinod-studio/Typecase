@@ -76,4 +76,8 @@ Typecase has no telemetry and makes no network connections. The Flatpak has no n
 
 ## License
 
-GPL-3.0-or-later, see [LICENSE](LICENSE).
+Copyright © 2026 Sascha Wübbena ([kleinod.studio](https://kleinod.studio)).
+
+Typecase is free software, licensed under the GNU General Public License, version 3 or later (GPL-3.0-or-later). See [LICENSE](LICENSE).
+
+The Flatpak bundles [Pandoc](https://pandoc.org) (GPL-2.0-or-later) for exporting.

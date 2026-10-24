@@ -1,14 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Sascha Wübbena (kleinod.studio) -->
 <component type="desktop-application">
   <id>studio.kleinod.Typecase</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>Typecase</name>
   <summary>Calm Markdown writing</summary>
+  <developer id="studio.kleinod">
+    <name>kleinod.studio</name>
+  </developer>
   <description>
-    <p>Typecase is a quiet writing app for Markdown. Your texts live in a library of groups and sheets, stored as plain .md files in a folder of your choice.</p>
+    <p>Typecase is a quiet writing app for Markdown. Your texts live in a library of groups and sheets, stored as plain .md files in a folder of your choice — no database, no account, no network access.</p>
+    <ul>
+      <li>Markdown styled as you type, with a formatting bar for those who don't want to learn the syntax</li>
+      <li>Focus mode with typewriter scrolling</li>
+      <li>Keywords, sheet properties and writing goals with progress rings</li>
+      <li>Export to PDF, Word and HTML with importable templates</li>
+    </ul>
   </description>
   <launchable type="desktop-id">studio.kleinod.Typecase.desktop</launchable>
+  <url type="homepage">https://kleinod.studio/typecase</url>
+  <url type="bugtracker">https://github.com/kleinod-studio/Typecase/issues</url>
+  <url type="vcs-browser">https://github.com/kleinod-studio/Typecase</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#ECEAF7</color>
+    <color type="primary" scheme_preference="dark">#2A2550</color>
+  </branding>
   <content_rating type="oars-1.1"/>
   <releases>
     <release version="0.1.0" date="2026-10-23"/>
