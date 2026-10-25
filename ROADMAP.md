@@ -43,13 +43,14 @@ These apply to every feature:
 - [x] Export to PDF, DOCX and HTML via Pandoc
 - [x] Export templates as single `.typecase-template` files, imported in the preferences, with a [Claude skill](skills/typecase-template/) that builds them from a description
 - [x] Template placeholders (title, author, date, any front-matter field)
-- [ ] Combine the sheets of a group into one text and export it
+- [x] Combine the sheets of a group (subgroups included) into one text and export it, optionally with every subgroup on a new page
+- [x] Group view: select a group to read and edit all of its sheets as one continuous text, while each sheet is still saved to its own file
 - [ ] Notes and attachments per sheet
 - [ ] Custom editor themes
 
 ## Next
 
-- [ ] Manual ordering of sheets within a group (today the order is alphabetical)
+- [x] Manual ordering of sheets and groups (drag between rows, or Alt+Up and Alt+Down)
 - [ ] Spell checking while you type, offline, in the sheet's language; switched on and off with one click or a shortcut, so it never gets in the way of your flow
 - [x] English version of the template guide
 - [ ] Testing on Fedora (GNOME), Linux Mint (Cinnamon) and Kubuntu (KDE)

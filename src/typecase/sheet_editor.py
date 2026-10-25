@@ -225,8 +225,15 @@ class SheetEditor(Gtk.Stack):
         "saved": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
-    def __init__(self):
+    # One stylesheet for all editors (the single sheet and every section of the group view):
+    # they share font and size, and a stale provider per editor would fight over the rules.
+    _shared_css: Gtk.CssProvider | None = None
+
+    def __init__(self, embedded: bool = False):
+        """embedded: as a section of the group view – no own scrolling, small top and bottom
+        margins, natural height; the surrounding view scrolls."""
         super().__init__()
+        self.embedded = embedded
         self.path: Path | None = None
         self._dirty = False
         self._loading = False
@@ -251,8 +258,8 @@ class SheetEditor(Gtk.Stack):
         self.view = _EditorView(
             buffer=self.buffer,
             wrap_mode=Gtk.WrapMode.WORD_CHAR,
-            top_margin=48,
-            bottom_margin=96,
+            top_margin=8 if embedded else 48,
+            bottom_margin=24 if embedded else 96,
             left_margin=MIN_SIDE_MARGIN,
             right_margin=MIN_SIDE_MARGIN,
             pixels_inside_wrap=5,
@@ -262,18 +269,26 @@ class SheetEditor(Gtk.Stack):
         )
         self.view.styler = self.styler
         self.styler.on_blocks_changed = self.view.queue_draw
-        self._css = Gtk.CssProvider()
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(), self._css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
-        self.set_appearance()
+        if SheetEditor._shared_css is None:
+            SheetEditor._shared_css = Gtk.CssProvider()
+            Gtk.StyleContext.add_provider_for_display(
+                Gdk.Display.get_default(), SheetEditor._shared_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+            self._css = SheetEditor._shared_css
+            self.set_appearance()
+        self._css = SheetEditor._shared_css
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key_pressed)
         self.view.add_controller(keys)
-        scrolled = Gtk.ScrolledWindow(child=self.view, hexpand=True, vexpand=True)
-
         self.add_named(empty, "empty")
-        self.add_named(scrolled, "editor")
+        if embedded:
+            # As tall as its text: not as tall as the hidden status page, and no share of spare space.
+            self.set_vhomogeneous(False)
+            self.set_vexpand(False)
+            self.view.set_hexpand(True)
+            self.add_named(self.view, "editor")
+        else:
+            self.add_named(Gtk.ScrolledWindow(child=self.view, hexpand=True, vexpand=True), "editor")
         self.set_visible_child_name("empty")
 
     # --- Opening and closing ---------------------------------------------

@@ -15,9 +15,21 @@ def format_name(fmt: str) -> str:
 class ExportDialog(Adw.Dialog):
     """Choose format and template, then the location. The result is reported via on_done(path or None, error text)."""
 
-    def __init__(self, text: str, sheet_path: Path, title: str | None, defaults: dict, on_done):
+    def __init__(
+        self,
+        text: str,
+        sheet_path: Path,
+        title: str | None,
+        defaults: dict,
+        on_done,
+        editable_title: bool = False,
+        page_break_text: str | None = None,
+    ):
+        """page_break_text: for a group with subgroups, the same text with a new page for every subgroup."""
         super().__init__(title=_("Export"), content_width=420)
         self._text = text
+        self._page_break_text = page_break_text
+        self._editable_title = editable_title
         self._sheet_path = sheet_path
         self._title = title
         self._defaults = defaults
@@ -40,6 +52,15 @@ class ExportDialog(Adw.Dialog):
         if saved.get("export_template") in ids:
             self.template_row.set_selected(ids.index(saved["export_template"]))
         group.add(self.template_row)
+        # Exporting a group: its sheets have no common front matter, so the title is asked here.
+        self.title_row = Adw.EntryRow(title=_("Title"), text=title or "", visible=editable_title)
+        group.add(self.title_row)
+        self.page_break_row = Adw.SwitchRow(
+            title=_("Start Each Subgroup on a New Page"),
+            active=saved.get("export_page_breaks") is not False,
+            visible=page_break_text is not None,
+        )
+        group.add(self.page_break_row)
         page.add(group)
 
         self.export_button = Gtk.Button(label=_("Export…"), css_classes=["suggested-action", "pill"], halign=Gtk.Align.CENTER)
@@ -77,7 +98,15 @@ class ExportDialog(Adw.Dialog):
         self.export_button.set_sensitive(False)
         template = self._templates[self.template_row.get_selected()]
         config.update(export_template=template.id)
-        run_export(self._text, self.fmt, template, output, self._sheet_path, self._title, self._defaults, self._finished)
+        text, title = self._text, self._title
+        if self._page_break_text is not None:
+            config.update(export_page_breaks=self.page_break_row.get_active())
+            if self.page_break_row.get_active():
+                text = self._page_break_text
+        if self._editable_title:
+            title = self.title_row.get_text().strip() or None
+            text = export.with_title(text, title)
+        run_export(text, self.fmt, template, output, self._sheet_path, title, self._defaults, self._finished)
 
     def _finished(self, output: Path | None, error: str | None):
         self.close()

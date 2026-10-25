@@ -14,10 +14,12 @@ from .find_bar import FindBar
 from .fileio import atomic_write_text
 from .goal import GoalIndex, fraction, parse_goal
 from .goal_ring import GoalBadge, ProgressRing
+from .group_view import GroupView
 from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
+from .keywords import sheets as all_sheets
 from .preferences import PreferencesDialog
-from .library import Node, all_groups, create_group, create_sheet, move, rename, scan
+from .library import Node, all_groups, create_group, create_sheet, move, ordered_names, place, rename, rename_in_order, scan
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
 
@@ -60,6 +62,10 @@ def _install_css():
             margin: 6px;
             padding: 8px 12px;
         }
+        /* Where a dragged sheet or group lands: a line above or below the row, or the whole row. */
+        treeexpander.drop-before { box-shadow: inset 0 2px 0 0 var(--accent-bg-color); }
+        treeexpander.drop-after { box-shadow: inset 0 -2px 0 0 var(--accent-bg-color); }
+        treeexpander.drop-into { background-color: alpha(var(--accent-bg-color), 0.15); border-radius: 6px; }
         .goal-badge:hover { background-image: image(alpha(currentColor, 0.05)); }
         .goal-badge:active { background-image: image(alpha(currentColor, 0.1)); }
         """
@@ -104,12 +110,18 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # writing-goal rings of the library rows
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
+        self._dragging = False  # one of our library rows is being dragged
+        self._after_drag = None  # move to carry out once that drag has ended
 
         self._build_ui()
         self._setup_actions()
         self.editor.connect("save-failed", self._on_save_failed)
         self.editor.connect("counts-changed", self._on_counts_changed)
         self.editor.connect("external-change", self._on_external_change)
+        self.group_view.connect("save-failed", self._on_save_failed)
+        self.group_view.connect("counts-changed", self._on_group_counts_changed)
+        self.group_view.connect("external-change", lambda _view, editor, kind: self._on_external_change(editor, kind))
+        self.group_view.connect("open-sheet", lambda _view, path: self._open_sheet(Path(path)))
         self.connect("close-request", self._on_close_request)
 
         style = Adw.StyleManager.get_default()
@@ -186,9 +198,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         row_menu.append_section(None, creation)
         changes = Gio.Menu()
         changes.append(_("Rename…"), "win.rename")
+        changes.append(_("Move Up"), "win.move-up")
+        changes.append(_("Move Down"), "win.move-down")
         changes.append(_("Move to…"), "win.move")
         changes.append(_("Move to Trash…"), "win.delete")
         row_menu.append_section(None, changes)
+        exporting = Gio.Menu()
+        exporting.append(_("Export…"), "win.export-selection")
+        row_menu.append_section(None, exporting)
         self.row_menu = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False, halign=Gtk.Align.START)
 
         empty = Adw.StatusPage(
@@ -217,10 +234,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
             css_classes=["navigation-sidebar"],
         )
         self.list_view.connect("activate", self._on_row_activated)
+        # Alt+Up / Alt+Down reorder, but only while the library has the focus (in the editor the
+        # keys belong to the text).
+        reorder_keys = Gtk.ShortcutController()
+        for accel, action in (("<Alt>Up", "win.move-up"), ("<Alt>Down", "win.move-down")):
+            reorder_keys.add_shortcut(Gtk.Shortcut.new(Gtk.ShortcutTrigger.parse_string(accel), Gtk.NamedAction.new(action)))
+        self.list_view.add_controller(reorder_keys)
         tree_scroller = Gtk.ScrolledWindow(child=self.list_view, vexpand=True)
         # Dropping in the empty area below the entries: into the root folder.
         root_drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
-        root_drop.connect("drop", lambda _t, value, _x, _y: self._move(Path(value), self.library_path))
+        root_drop.connect("drop", lambda _t, value, _x, _y: self._accept_drop(value, lambda: self._move(Path(value), self.library_path)))
         tree_scroller.add_controller(root_drop)
         # Attached to the list permanently, so "win.…" actions are found when a menu item is clicked.
         self.row_menu.set_parent(self.list_view)
@@ -302,7 +325,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         # Writing goal as a small card at the bottom right, while the properties pane is closed.
         self.goal_badge = GoalBadge()
         self.goal_revealer = Gtk.Revealer(child=self.goal_badge, transition_type=Gtk.RevealerTransitionType.CROSSFADE)
-        editor_area = Gtk.Overlay(child=self.editor)
+        # A sheet on its own, or all sheets of a group one after another (each still its own file).
+        self.group_view = GroupView()
+        self.content_stack = Gtk.Stack()
+        self.content_stack.add_named(self.editor, "sheet")
+        self.content_stack.add_named(self.group_view, "group")
+        editor_area = Gtk.Overlay(child=self.content_stack)
         editor_area.add_overlay(self.format_revealer)
         editor_area.add_overlay(self.goal_revealer)
         editor_area.connect("get-child-position", self._place_goal_badge)
@@ -401,7 +429,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         path = folder.get_path()
         if path is None:
             return
-        if not self.editor.flush():
+        if not self._flush():
             return  # error message already came via "save-failed"; the open sheet stays.
         config.set_library_path(Path(path))
         self._open_library(Path(path))
@@ -473,7 +501,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             expanded = {new / p.relative_to(old) if p == old or old in p.parents else p for p in expanded}
         if select_path is None:
             node = self._selected_node()
-            select_path = node.path if node else self.editor.path
+            select_path = node.path if node else self._open_path()
         if select_path is not None:
             expanded.update(p for p in select_path.parents if p != self.library_path)
 
@@ -495,10 +523,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 row.set_expanded(True)
             i += 1
 
-        open_index = self._index_of(self.editor.path)
+        if self.group_view.group is not None:
+            self._refresh_group()
+        open_index = self._index_of(self._open_path())
         self._open_row = self.tree_model.get_item(open_index) if open_index is not None else None
         if self.editor.path is not None:
             self.content_title.set_title(self.editor.path.stem)
+        elif self.group_view.group is not None:
+            self.content_title.set_title(self.group_view.group.name)
         select_index = self._index_of(select_path)
         self.selection.set_selected(Gtk.INVALID_LIST_POSITION if select_index is None else select_index)
         self._ignore_selection = False
@@ -600,21 +632,24 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.keyword_button.popdown()
         self.set_keyword_filter(row.keyword)
 
-    def _on_external_change(self, _editor, kind):
-        name = self.editor.path.stem if self.editor.path else ""
+    def _on_external_change(self, editor, kind):
+        """editor: the single sheet or a section of the group view."""
+        name = editor.path.stem if editor.path else ""
         if kind == "reloaded":
             self._toast(_("“%s” was changed outside Typecase and reloaded.") % name)
         elif kind == "deleted":
-            self._show_sheet(None)
-            self._reload()
+            if editor is self.editor:
+                self._show_sheet(None)
+            self._reload()  # the group view drops the sheet
             self._toast(_("“%s” was deleted outside Typecase.") % name)
         elif kind == "restored":
             self._toast(_("“%s” was deleted outside Typecase. Your version was saved again.") % name)
             self._check_tree()
         elif kind == "conflict":
-            self._ask_conflict(name)
+            self._ask_conflict(editor)
 
-    def _ask_conflict(self, name: str):
+    def _ask_conflict(self, editor: SheetEditor):
+        name = editor.path.stem
         dialog = Adw.AlertDialog(
             heading=_("Sheet Changed Elsewhere"),
             body=_(
@@ -628,24 +663,27 @@ class TypecaseWindow(Adw.ApplicationWindow):
         dialog.set_response_appearance("mine", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("mine")
         dialog.set_close_response("mine")  # Escape keeps our own version; both are preserved
-        dialog.connect("response", self._on_conflict_response)
+        dialog.connect("response", self._on_conflict_response, editor)
         dialog.present(self)
 
-    def _on_conflict_response(self, _dialog, response):
-        if not self.editor.in_conflict:
+    def _on_conflict_response(self, _dialog, response, editor: SheetEditor):
+        if not editor.in_conflict:
             return  # already decided (the dialog may report a second time when closing)
         try:
-            copy = self.editor.resolve_conflict(keep_mine=response == "mine")
+            copy = editor.resolve_conflict(keep_mine=response == "mine")
         except UnicodeDecodeError:
             # The external version is no longer text; ours is safe in the copy.
-            self._show_sheet(None)
+            if editor is self.editor:
+                self._show_sheet(None)
+            else:
+                editor.close_sheet()  # the group view leaves it out when it refreshes
             self._reload()
             self._toast(_("The other version is not a UTF-8 text file. Your version was saved as a copy."))
             return
         except OSError as error:
             # Nothing decided yet; ask again instead of getting stuck in the conflict.
             self._toast(_("Could not save: %s") % (error.strerror or error))
-            self._ask_conflict(self.editor.path.stem)
+            self._ask_conflict(editor)
             return
         self._reload()
         if copy is not None:
@@ -684,14 +722,15 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if row is None or row is self._open_row:
             return
         node = row.get_item().node
-        if node.is_group:
-            return
-        if node.path == self.editor.path:
+        if node.path in (self.editor.path, self.group_view.group):
             self._open_row = row
             return
 
-        if not self.editor.flush():
+        if not self._flush():
             self._reselect(self._open_row)  # Switch refused, the previous sheet stays open.
+            return
+        if node.is_group:
+            self._show_group(row)
             return
         try:
             self.editor.open(node.path)
@@ -702,6 +741,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             )
             self._reselect(self._open_row)
             return
+        self._close_group()
         self._show_sheet(row)
 
     def _on_row_activated(self, _list_view, position):
@@ -709,17 +749,105 @@ class TypecaseWindow(Adw.ApplicationWindow):
         node = row.get_item().node
         if not node.is_group and self.editor.path == node.path:
             self.editor.focus_editor()
+        elif node.is_group and self.group_view.group == node.path:
+            self.group_view.focus_start()
 
     def _show_sheet(self, row):
         """Applies the state after opening (row) or closing (None) a sheet."""
         if row is None:
             self.editor.close_sheet()
+            self._close_group()
             self.content_title.set_title("Typecase")
         else:
             self.content_title.set_title(row.get_item().node.name)
         self._open_row = row
         if row is not None:
             self._save_state()
+
+    def _open_sheet(self, path: Path):
+        """Opens one sheet on its own, e.g. from the header of a section in the group view."""
+        self._reload(select_path=path)
+        self._open_selected()
+        self.editor.focus_editor()
+
+    def _show_group(self, row):
+        """Shows all sheets of a group one after another. Whatever was open is already flushed."""
+        node = row.get_item().node
+        self.editor.close_sheet()
+        self.find_bar.set_search_mode(False)  # find and replace work on a single sheet
+        failed = self.group_view.open(node.path, self._group_sheets(node.path))
+        for editor in self.group_view.editors:
+            self._style_editor(editor)
+        self.content_stack.set_visible_child_name("group")
+        self.content_title.set_title(node.name)
+        self._open_row = row
+        self._update_format_bar()
+        self._update_export_action()
+        self._update_goal_badge()
+        if failed:
+            self._toast(_("Could not open: %s") % ", ".join(failed))
+        self._save_state()
+
+    def _close_group(self):
+        """Leaves the group view without saving (call _flush() first)."""
+        if self.group_view.group is None:
+            return
+        self.group_view.close()
+        self.content_stack.set_visible_child_name("sheet")
+        self._update_format_bar()
+        self._update_export_action()
+
+    def _refresh_group(self):
+        """Keeps the group view in step with its folder: sheets added, removed, renamed or reordered."""
+        group = self.group_view.group
+        if not group.is_dir():
+            if self.group_view.flush():
+                self._show_sheet(None)
+            return
+        sheets = self._group_sheets(group)
+        if sheets == self.group_view.paths() or not self.group_view.flush():
+            return  # unchanged, or unsaved text that must not be dropped; the next change tries again
+        active = self.group_view.active
+        active_path = active.path if active is not None else None
+        had_focus = active is not None and active.view.has_focus()
+        scroll = self.group_view.get_vadjustment().get_value()
+        failed = self.group_view.open(group, sheets)
+        for editor in self.group_view.editors:
+            self._style_editor(editor)
+        if failed:
+            self._toast(_("Could not open: %s") % ", ".join(failed))
+        GLib.idle_add(lambda: self.group_view.get_vadjustment().set_value(scroll) and False)
+        editor = self.group_view.editor_for(active_path) if active_path else None
+        if editor is not None:
+            self.group_view.active = editor
+            if had_focus:
+                editor.focus_editor()
+
+    @staticmethod
+    def _group_sheets(group: Path) -> list[Path]:
+        """All sheets of a group in the manual order, those in subgroups included."""
+        return [sheet.path for sheet in all_sheets(scan(group))]
+
+    def _open_path(self) -> Path | None:
+        """The open sheet, or the group shown in the group view."""
+        return self.editor.path or self.group_view.group
+
+    def _flush(self) -> bool:
+        """Saves the open sheet or every sheet of the group view. Whoever switches, moves or
+        closes something continues only on True."""
+        return self.editor.flush() and self.group_view.flush()
+
+    def _active_editor(self) -> SheetEditor | None:
+        """The editor the formatting bar acts on: the single sheet or the section with the caret."""
+        if self.group_view.group is not None:
+            return self.group_view.active
+        return self.editor if self.editor.path is not None else None
+
+    def _focus_text(self):
+        if self.group_view.group is not None:
+            self.group_view.focus_start()
+        else:
+            self.editor.focus_editor()
 
     def _reselect(self, row):
         self._ignore_selection = True
@@ -739,13 +867,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
             if ring.path is not None:
                 self._update_row_ring(ring)
         if self.editor.path is None:
-            self.content_title.set_subtitle("")
+            if self.group_view.group is None:
+                self.content_title.set_subtitle("")
             return
+        self._show_counts(words, characters, parse_goal(self.editor.metadata().get("goal")))
 
+    def _on_group_counts_changed(self, _view, words, characters):
+        if self.group_view.group is not None:
+            self._show_counts(words, characters, None)
+
+    def _show_counts(self, words: int, characters: int, goal: int | None):
         def number(n):
             return locale.format_string("%d", n, grouping=True)  # 1,234 instead of 1234
 
-        goal = parse_goal(self.editor.metadata().get("goal"))
         if goal:
             word_text = ngettext("%(count)s of %(goal)s word", "%(count)s of %(goal)s words", goal) % {
                 "count": number(words),
@@ -787,7 +921,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.toasts.add_toast(Adw.Toast(title=_("Could not save: %s") % message, priority=Adw.ToastPriority.HIGH))
 
     def _on_close_request(self, _window):
-        if self.editor.flush():
+        if self._flush():
             self._save_state()
             return False
         dialog = Adw.AlertDialog(
@@ -807,6 +941,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if response == "discard":
             self._save_state()
             self.editor.close_sheet()
+            self.group_view.close()
             self.close()
 
     # --- New, rename, delete ----------------------------------------------
@@ -818,6 +953,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "rename": self._on_rename,
             "move": self._on_move_to,
             "delete": self._on_delete,
+            "move-up": lambda: self._move_step(-1),
+            "move-down": lambda: self._move_step(1),
+            "export-selection": self._export_selection,
         }
         for name, handler in handlers.items():
             action = Gio.SimpleAction.new(name, None)
@@ -846,11 +984,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
         export_action = Gio.SimpleAction.new("export", None)
         export_action.connect("activate", lambda _a, _p: self._export())
         export_action.set_enabled(False)
-        self.editor.connect("metadata-changed", lambda e: export_action.set_enabled(e.path is not None))
+        self.editor.connect("metadata-changed", lambda _e: self._update_export_action())
         self.add_action(export_action)
 
         format_action = Gio.SimpleAction.new("format", GLib.VariantType.new("s"))
-        format_action.connect("activate", lambda _a, kind: self.editor.apply_format(kind.get_string()))
+        format_action.connect("activate", lambda _a, kind: self._apply_format(kind.get_string()))
         self.add_action(format_action)
 
         search = Gio.SimpleAction.new("search", None)
@@ -864,6 +1002,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         shortcuts = Gio.SimpleAction.new("show-shortcuts", None)
         shortcuts.connect("activate", lambda _a, _p: self._show_shortcuts())
         self.add_action(shortcuts)
+
+    def _apply_format(self, kind: str):
+        editor = self._active_editor()
+        if editor is not None:
+            editor.apply_format(kind)
+
+    def _update_export_action(self):
+        self.lookup_action("export").set_enabled(self._open_path() is not None)
 
     # --- Full-text search ---------------------------------------------------
 
@@ -893,7 +1039,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if not query.strip() or self.library_path is None:
             self._show_library_page()
             return
-        overrides = {self.editor.path: self.editor.text()} if self.editor.path else {}
+        # Unsaved text counts too, in the single sheet and in every section of the group view.
+        overrides = {editor.path: editor.text() for editor in [self.editor, *self.group_view.editors] if editor.path}
         hits = self._search.search(self.library_path, query, overrides)
         self.results.remove_all()
         for hit in hits[:200]:
@@ -929,7 +1076,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _open_hit(self, hit: Hit):
         if self.editor.path != hit.path:
-            if not self.editor.flush():
+            if not self._flush():
                 return
             self._reload(select_path=hit.path)
             self._open_selected()
@@ -989,7 +1136,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             self.content_view.set_extend_content_to_top_edge(True)  # header bar overlays the text
             self.content_view.set_reveal_top_bars(False)
             self.fullscreen()
-            self.editor.focus_editor()
+            self._focus_text()
         else:
             sidebar, was_fullscreen, inspector = self._before_focus
             self.inspector_split.set_show_sidebar(inspector)
@@ -1001,7 +1148,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 self.unfullscreen()
 
     def _update_format_bar(self):
-        self.format_revealer.set_reveal_child(self._format_bar_wanted() and self.editor.path is not None)
+        self.format_revealer.set_reveal_child(self._format_bar_wanted() and self._active_editor() is not None)
 
     def _format_bar_wanted(self) -> bool:
         """Show the formatting bar permanently? Editor and focus mode each have their own setting."""
@@ -1019,7 +1166,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if not self._format_bar_wanted():
             height = self.content_view.get_height()
             if y > height - 8:
-                self.format_revealer.set_reveal_child(self.editor.path is not None)
+                self.format_revealer.set_reveal_child(self._active_editor() is not None)
             elif y < height - 120:
                 self.format_revealer.set_reveal_child(False)
 
@@ -1038,6 +1185,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("New Sheet"), "<Primary>n"),
                     (_("New Group"), "<Primary><Shift>n"),
                     (_("Rename"), "F2"),
+                    (_("Move Up"), "<Alt>Up"),
+                    (_("Move Down"), "<Alt>Down"),
                     (_("Search Library"), "<Primary><Shift>f"),
                 ],
             ),
@@ -1090,6 +1239,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
             ("rename", has_selection),
             ("move", has_selection),
             ("delete", has_selection),
+            ("move-up", has_selection),
+            ("move-down", has_selection),
+            ("export-selection", has_selection),
         ]:
             self.lookup_action(name).set_enabled(enabled)
 
@@ -1107,6 +1259,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
     # --- Export -------------------------------------------------------------
 
     def _export(self):
+        if self.group_view.group is not None:
+            self._export_group(self.group_view.group)
+            return
         if self.editor.path is None:
             return
         data = self.editor.metadata()
@@ -1119,6 +1274,39 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "date": None if data.get("date") else export.export_date(),
         }
         dialog = ExportDialog(self.editor.file_text(), self.editor.path, data.get("title") or None, missing, self._on_exported)
+        dialog.present(self)
+
+    def _export_selection(self):
+        """Context menu "Export…": a group as one document, a sheet as usual."""
+        node = self._selected_node()
+        if node is None:
+            return
+        if not node.is_group:
+            self._export()
+            return
+        self._export_group(node.path)
+
+    def _export_group(self, group: Path):
+        """All sheets of a group as one document."""
+        if not self._flush():  # export what is on disk, including what was just typed
+            return
+        sheets = self._group_sheets(group)
+        if not sheets:
+            self._toast(_("This group has no sheets to export."))
+            return
+        defaults = config.sheet_defaults()
+        missing = {"author": defaults["author"], "lang": defaults["lang"], "date": export.export_date()}
+        # A virtual sheet path inside the group: the group's name for the file, its folder for resources.
+        virtual = group / f"{group.name}.md"
+        dialog = ExportDialog(
+            export.combine_sheets(sheets),
+            virtual,
+            group.name,
+            missing,
+            self._on_exported,
+            editable_title=True,
+            page_break_text=export.combine_sheets(sheets, page_breaks=True) if export.has_subgroups(sheets) else None,
+        )
         dialog.present(self)
 
     def _on_exported(self, output: Path | None, error: str | None):
@@ -1135,7 +1323,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.toasts.add_toast(Adw.Toast(title=text))
 
     def _on_new_sheet(self):
-        if not self.editor.flush():
+        if not self._flush():
             return
         self.set_keyword_filter(None)  # otherwise the new sheet (without a keyword) would be invisible
         try:
@@ -1177,7 +1365,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         entry.select_region(0, -1)
 
     def _do_rename(self, node: Node, new_name: str):
-        if not self.editor.flush():
+        if not self._flush():
             return
         try:
             new_path = rename(node.path, new_name)
@@ -1190,9 +1378,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
         except OSError as error:
             self._toast(_("Could not rename: %s") % (error.strerror or error))
             return
-        open_path = self.editor.path
-        if open_path is not None and (open_path == node.path or node.path in open_path.parents):
-            self.editor.set_path(new_path / open_path.relative_to(node.path))
+        try:
+            rename_in_order(node.path.parent, node.path.name, new_path.name)
+        except OSError:
+            pass  # the order file is a convenience; the rename itself has worked
+        self._follow_rename(node.path, new_path)
         self._reload(select_path=new_path, renamed=(node.path, new_path))
 
     def _on_delete(self):
@@ -1214,14 +1404,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         dialog.present(self)
 
     def _do_delete(self, node: Node):
-        if not self.editor.flush():
+        if not self._flush():
             return
         try:
             Gio.File.new_for_path(str(node.path)).trash(None)
         except GLib.Error as error:
             self._toast(_("Could not move to the trash: %s") % error.message)
             return
-        open_path = self.editor.path
+        open_path = self._open_path()
         if open_path is not None and (open_path == node.path or node.path in open_path.parents):
             self._show_sheet(None)
         self._reload()
@@ -1241,9 +1431,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         expander = Gtk.TreeExpander(child=box)
         drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
         drag.connect("prepare", self._on_drag_prepare, list_item)
-        drag.connect("drag-begin", lambda source, _drag: source.set_icon(Gtk.WidgetPaintable(widget=box), 0, 0))
+        drag.connect("drag-begin", self._on_drag_begin, box)
+        drag.connect("drag-end", self._on_drag_end)
         expander.add_controller(drag)
         drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+        drop.connect("motion", self._on_row_drag_motion, list_item)
+        drop.connect("leave", lambda target: self._show_drop_zone(target.get_widget(), None))
         drop.connect("drop", self._on_row_drop, list_item)
         expander.add_controller(drop)
 
@@ -1263,25 +1456,111 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return None
         return Gdk.ContentProvider.new_for_value(str(row.get_item().node.path))
 
-    def _on_row_drop(self, _target, value, _x, _y, list_item):
+    def _on_drag_begin(self, source, _drag, box):
+        self._dragging = True
+        source.set_icon(Gtk.WidgetPaintable(widget=box), 0, 0)
+
+    def _on_drag_end(self, _source, _drag, _delete):
+        self._dragging = False
+        self._run_after_drag()
+
+    def _accept_drop(self, value: str, action) -> bool:
+        """Accepts a dropped library path and moves it only after the drag has ended. Moving rebuilds
+        the library list, which destroys the dragged row; doing that during the drop leaves the
+        drag unfinished, and on Wayland the compositor then keeps the pointer (no window takes
+        clicks any more). Dragged text that is not an entry of the library is refused."""
+        path = Path(value)
+        if not (self._inside_library(path) and path != self.library_path and path.exists()):
+            return False
+        self._after_drag = action
+        if not self._dragging:  # dropped from elsewhere: there is no drag of ours to wait for
+            GLib.idle_add(self._run_after_drag)
+        return True
+
+    def _run_after_drag(self):
+        action, self._after_drag = self._after_drag, None
+        if action is not None:
+            action()
+        return GLib.SOURCE_REMOVE
+
+    def _drop_zone(self, list_item, y: float) -> str | None:
+        """Upper or lower half of a sheet: before or after it. A group also has a middle zone: into it."""
         row = list_item.get_item()
         if row is None:
+            return None
+        height = max(1, list_item.get_child().get_height())
+        if row.get_item().node.is_group:
+            return "before" if y < height * 0.25 else "after" if y > height * 0.75 else "into"
+        return "before" if y < height / 2 else "after"
+
+    def _show_drop_zone(self, widget, zone: str | None):
+        for name in ("before", "after", "into"):
+            if name == zone:
+                widget.add_css_class(f"drop-{name}")
+            else:
+                widget.remove_css_class(f"drop-{name}")
+
+    def _on_row_drag_motion(self, target, _x, y, list_item):
+        zone = self._drop_zone(list_item, y)
+        self._show_drop_zone(target.get_widget(), zone)
+        return Gdk.DragAction.MOVE if zone else 0
+
+    def _on_row_drop(self, target, value, _x, y, list_item):
+        self._show_drop_zone(target.get_widget(), None)
+        row = list_item.get_item()
+        zone = self._drop_zone(list_item, y)
+        if row is None or zone is None:
             return False
         node = row.get_item().node
-        # Onto a group: into it. Onto a sheet: into its group.
-        return self._move(Path(value), node.path if node.is_group else node.path.parent)
+        if zone == "into":
+            return self._accept_drop(value, lambda: self._move(Path(value), node.path, to_end=True))
+        return self._accept_drop(value, lambda: self._place(Path(value), node.path, after=(zone == "after")))
+
+    def _place(self, source: Path, anchor: Path, after: bool) -> bool:
+        """Puts a sheet or group before or after another entry (manual order, also across groups)."""
+        if not (self._inside_library(source) and source != self.library_path and self._inside_library(anchor)):
+            return False
+        if source == anchor or not source.exists():
+            return False
+        if source.is_dir() and source in anchor.parents:
+            self._toast(_("A group cannot be moved into itself."))
+            return False
+        if not self._flush():
+            return False
+        try:
+            target = place(source, anchor, after)
+        except FileExistsError:
+            self._toast(_("“%s” already exists there.") % source.name)
+            return False
+        except OSError as error:
+            self._toast(_("Could not move: %s") % (error.strerror or error))
+            return False
+        self._after_move(source, target)
+        return True
+
+    def _move_step(self, direction: int):
+        """Alt+Up / Alt+Down: the selected entry one place up or down within its group."""
+        node = self._selected_node()
+        if node is None:
+            return
+        names = ordered_names(node.path.parent)
+        index = names.index(node.path.name) if node.path.name in names else -1
+        neighbour = index + direction
+        if index < 0 or not 0 <= neighbour < len(names):
+            return
+        self._place(node.path, node.path.parent / names[neighbour], after=direction > 0)
 
     def _inside_library(self, path: Path) -> bool:
         return self.library_path is not None and (path == self.library_path or self.library_path in path.parents)
 
-    def _move(self, source: Path, folder: Path) -> bool:
+    def _move(self, source: Path, folder: Path, to_end: bool = False) -> bool:
         """Moves a sheet or a group within the library. Foreign drag data
         (e.g. text from the editor) is ignored, because it is not a path in the library."""
         if not (self._inside_library(source) and source != self.library_path and self._inside_library(folder)):
             return False
         if not source.exists() or source.parent == folder:
             return False
-        if not self.editor.flush():
+        if not self._flush():
             return False
         try:
             target = move(source, folder)
@@ -1294,11 +1573,24 @@ class TypecaseWindow(Adw.ApplicationWindow):
         except OSError as error:
             self._toast(_("Could not move: %s") % (error.strerror or error))
             return False
-        open_path = self.editor.path
-        if open_path is not None and (open_path == source or source in open_path.parents):
-            self.editor.set_path(target / open_path.relative_to(source))
-        self._reload(select_path=target, renamed=(source, target))
+        if to_end:
+            place(target, None)  # dropped onto a group: at the end of its order
+        self._after_move(source, target)
         return True
+
+    def _after_move(self, source: Path, target: Path):
+        self._follow_rename(source, target)
+        self._reload(select_path=target, renamed=(source, target))
+
+    def _follow_rename(self, old: Path, new: Path):
+        """An entry was renamed or moved: the open sheet or group moves along. Sections of the
+        group view are reopened by _reload when their paths change."""
+        open_path = self.editor.path
+        if open_path is not None and (open_path == old or old in open_path.parents):
+            self.editor.set_path(new / open_path.relative_to(old))
+        group = self.group_view.group
+        if group is not None and (group == old or old in group.parents):
+            self.group_view.group = new / group.relative_to(old)
 
     def _on_move_to(self):
         node = self._selected_node()
@@ -1391,12 +1683,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def apply_settings(self):
         """Applies the saved settings (at startup and on every change in the dialog)."""
         current = config.effective_settings(self.focus_mode)
-        self.editor.set_appearance(
-            font_family=current["editor_font"],
-            font_size_pt=current["editor_font_size"],
-            line_width_chars=current["line_width"],
-            line_spacing=current["line_spacing"],
-        )
+        for editor in [self.editor, *self.group_view.editors]:
+            self._style_editor(editor)
         Adw.StyleManager.get_default().set_color_scheme(
             {
                 "system": Adw.ColorScheme.DEFAULT,
@@ -1405,18 +1693,35 @@ class TypecaseWindow(Adw.ApplicationWindow):
             }[current["color_scheme"]]
         )
         self._update_format_bar()
-        self.editor.view.set_underline_caret(config.load().get("underline_caret") is not False)
-        data = config.load()
-        self.editor.view.set_focus_effects(
-            typewriter=self.focus_mode and data.get("focus_typewriter") is not False,
-            dim_others=self.focus_mode and data.get("focus_dim") is not False,
-        )
         self.inspector.refresh()  # defaults for author and language may have changed
 
+    def _style_editor(self, editor: SheetEditor):
+        """Font, caret and focus aids for one editor (the single sheet or a section of the group view)."""
+        current = config.effective_settings(self.focus_mode)
+        data = config.load()
+        editor.set_appearance(
+            font_family=current["editor_font"],
+            font_size_pt=current["editor_font_size"],
+            line_width_chars=current["line_width"],
+            line_spacing=current["line_spacing"],
+        )
+        editor.view.set_underline_caret(data.get("underline_caret") is not False)
+        # Typewriter scrolling and dimming need the editor's own scrolling: not in the group view.
+        single = editor is self.editor
+        editor.view.set_focus_effects(
+            typewriter=single and self.focus_mode and data.get("focus_typewriter") is not False,
+            dim_others=single and self.focus_mode and data.get("focus_dim") is not False,
+        )
+        self._style_scheme(editor)
+
     def _apply_style_scheme(self):
+        for editor in [self.editor, *self.group_view.editors]:
+            self._style_scheme(editor)
+
+    @staticmethod
+    def _style_scheme(editor: SheetEditor):
         dark = Adw.StyleManager.get_default().get_dark()
-        manager = GtkSource.StyleSchemeManager.get_default()
-        scheme = manager.get_scheme("Adwaita-dark" if dark else "Adwaita")
+        scheme = GtkSource.StyleSchemeManager.get_default().get_scheme("Adwaita-dark" if dark else "Adwaita")
         if scheme is not None:
-            self.editor.buffer.set_style_scheme(scheme)
-        self.editor.styler.set_dark(dark)
+            editor.buffer.set_style_scheme(scheme)
+        editor.styler.set_dark(dark)

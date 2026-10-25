@@ -13,7 +13,9 @@ import re
 import shutil
 from pathlib import Path
 
+from . import frontmatter
 from .export_templates import Template
+from .fileio import read_text
 
 FORMATS = ("pdf", "docx", "html")
 EXTENSIONS = {"pdf": ".pdf", "docx": ".docx", "html": ".html"}
@@ -45,6 +47,45 @@ def export_date(today: datetime.date | None = None, time_locale: str | None = No
     if language.startswith("en"):
         return today.strftime("%d/%m/%Y")
     return today.isoformat()
+
+
+# A page break that Pandoc keeps for the format at hand and drops for the others: CSS for HTML
+# (and the PDF printed from it), a Word page break for DOCX.
+PAGE_BREAK = (
+    '```{=html}\n<div style="break-before: page; page-break-before: always"></div>\n```\n\n'
+    '```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```'
+)
+
+
+def combine_sheets(paths: list[Path], page_breaks: bool = False) -> str:
+    """Joins sheets into one Markdown text for exporting a group: each sheet's text without its
+    front matter, in the given order, separated by a blank line. Unreadable files are skipped.
+    page_breaks: a new page wherever the folder changes, so every subgroup starts on its own page."""
+    parts = []
+    folder = None
+    for path in paths:
+        try:
+            _header, body = frontmatter.split(read_text(path))
+        except (OSError, UnicodeDecodeError):
+            continue
+        body = body.strip("\n")
+        if body.strip():
+            if page_breaks and folder is not None and path.parent != folder:
+                parts.append(PAGE_BREAK)
+            folder = path.parent
+            parts.append(body)
+    return "\n\n".join(parts) + "\n"
+
+
+def has_subgroups(paths: list[Path]) -> bool:
+    """Whether the sheets of a group come from more than one folder."""
+    return len({path.parent for path in paths}) > 1
+
+
+def with_title(text: str, title: str | None) -> str:
+    """Puts a title into the front matter of a (front-matter-less) text, for the template's title block."""
+    title = (title or "").strip()
+    return frontmatter.join(frontmatter.update(None, {"title": title}), text) if title else text
 
 
 def pandoc_path() -> str | None:

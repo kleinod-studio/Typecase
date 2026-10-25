@@ -146,8 +146,8 @@ def steps(win, app):
     check(inner.exists() and ed.path == inner, "Open sheet is renamed, editor follows")
     check(body(inner) == "Kapitel", "Unsaved input survives renaming")
 
-    select(LIB / "Romane")
-    win._do_rename(win._selected_node(), "Bücher")
+    # Rename the group without selecting it (selecting a group opens the group view)
+    win._do_rename(win.tree_model.get_item(win._index_of(LIB / "Romane")).get_item().node, "Bücher")
     inner = LIB / "Bücher" / "Entwurf.md"
     check(ed.path == inner, "Group containing the open sheet renamed, editor follows")
     ed.buffer.insert_at_cursor("!")
@@ -430,8 +430,7 @@ def steps(win, app):
     check(win._index_of(LIB / "ExternGruppe") is not None, "New group created externally appears")
     (LIB / "ExternGruppe" / "Zwei.md").write_text("z")
     yield from wait_until(lambda: str(LIB / "ExternGruppe" / "Zwei.md") in repr(win._tree_signature))
-    select(LIB / "ExternGruppe")
-    win.selection.get_selected_item().set_expanded(True)
+    win.tree_model.get_item(win._index_of(LIB / "ExternGruppe")).set_expanded(True)  # without selecting (opens the group view)
     check(win._index_of(LIB / "ExternGruppe" / "Zwei.md") is not None, "New groups are watched too")
     check(ed.path == LIB / "a.md", "Open sheet stays open when the tree refreshes")
     select(LIB / "a.md")
@@ -529,19 +528,32 @@ def steps(win, app):
     content = read("a.md")
     group_row = row_widget(LIB / "ExternGruppe")
     check(isinstance(controller(row_widget(LIB / "a.md"), Gtk.DragSource), Gtk.DragSource), "Entries can be dragged")
-    dropped = controller(group_row, Gtk.DropTarget).emit("drop", str(LIB / "a.md"), 0.0, 0.0)
+    # The middle of a group row means "into it"; the upper or lower edge would mean before or after it.
+    dropped = controller(group_row, Gtk.DropTarget).emit("drop", str(LIB / "a.md"), 0.0, group_row.get_height() / 2)
     moved = LIB / "ExternGruppe" / "a.md"
+    check(dropped and (LIB / "a.md").exists(), "The drop is accepted, but nothing moves before the drag has ended")
+    yield from wait_until(lambda: moved.exists())
     check(dropped and moved.exists() and not (LIB / "a.md").exists(), "Dropping onto a group moves into it")
     check(ed.path == moved and moved.read_text() == content, "Open sheet moves along, content unchanged")
     check(win._index_of(moved) is not None and win.selection.get_selected() == win._index_of(moved), "Moved sheet is visible and selected")
     dropped = controller(row_widget(LIB / "Extern.md"), Gtk.DropTarget).emit("drop", str(moved), 0.0, 0.0)
+    yield from wait_until(lambda: (LIB / "a.md").exists())
     check(dropped and (LIB / "a.md").exists() and ed.path == LIB / "a.md", "Dropping onto a sheet moves into its group")
+    check(win._index_of(LIB / "a.md") == win._index_of(LIB / "Extern.md") - 1, "Dropped onto the upper half, it lands right before that sheet")
     check(not win._move(LIB / "ExternGruppe", LIB / "ExternGruppe"), "A group cannot be moved into itself")
     (LIB / "Merken" / "a.md").write_text("anderes")
     check(not win._move(LIB / "a.md", LIB / "Merken") and read("a.md") == content, "An item with the same name at the target is never overwritten")
     (LIB / "Merken" / "a.md").unlink()
     root_drop = controller(win.sidebar_stack.get_child_by_name("library"), Gtk.DropTarget)
     check(not root_drop.emit("drop", "Ein Stück Text aus dem Editor", 0.0, 0.0), "Unrelated dragged text is ignored")
+    # A drag of our own: the move waits until the drag has ended (otherwise Wayland keeps the pointer)
+    win._dragging = True
+    check(root_drop.emit("drop", str(LIB / "ExternGruppe" / "Zwei.md"), 0.0, 0.0), "Dropping into the empty area is accepted")
+    for _ in range(20):
+        GLib.MainContext.default().iteration(False)
+    check((LIB / "ExternGruppe" / "Zwei.md").exists(), "While the drag is still running, nothing is moved")
+    win._on_drag_end(None, None, False)
+    check((LIB / "Zwei.md").exists() and not (LIB / "ExternGruppe" / "Zwei.md").exists(), "When the drag ends, the entry is moved")
 
     select(LIB / "Extern.md")
     win.lookup_action("move").activate(None)
@@ -676,6 +688,140 @@ def steps(win, app):
         check((TMP / "export.docx").read_bytes()[:2] == b"PK", "DOCX is created")
         check("Der Drache" in (TMP / "export.html").read_text(encoding="utf-8"), "HTML contains the title")
         check(not [p for p in TMP.iterdir() if "typecase-tmp" in p.name], "No partial export files left behind")
+
+    # Manual order of sheets and exporting a whole group
+    from typecase.library import FOLDER_FILE, Node as LibNode, scan
+
+    book = LIB / "Book"
+    book.mkdir()
+    for number in (10, 2, 1):
+        (book / f"Chapter {number}.md").write_text(f"# Chapter {number}\n\nText {number}.\n", encoding="utf-8")
+    yield from wait_until(lambda: win._index_of(book) is not None)
+    win._reload(expand={book})
+    order = lambda: [node.path.name for node in scan(book)]  # noqa: E731
+    check(order() == ["Chapter 1.md", "Chapter 10.md", "Chapter 2.md"], "Without a manual order, sheets are alphabetical")
+    win._place(book / "Chapter 2.md", book / "Chapter 1.md", after=True)
+    check(order() == ["Chapter 1.md", "Chapter 2.md", "Chapter 10.md"], "Dropping between rows reorders the sheets")
+    check((book / FOLDER_FILE).is_file(), "The order is stored in a hidden file in the group")
+    check(win._index_of(book / "Chapter 2.md") < win._index_of(book / "Chapter 10.md"), "The library shows the new order")
+    select(book / "Chapter 10.md")
+    win.lookup_action("move-up").activate(None)
+    check(order() == ["Chapter 1.md", "Chapter 10.md", "Chapter 2.md"], "Move Up (Alt+Up) moves the sheet one place up")
+    win.lookup_action("move-down").activate(None)
+    check(order() == ["Chapter 1.md", "Chapter 2.md", "Chapter 10.md"], "Move Down (Alt+Down) moves it back")
+    win._do_rename(LibNode("Chapter 1", book / "Chapter 1.md"), "Prologue")
+    check(order()[0] == "Prologue.md", "A renamed sheet keeps its place")
+    select(book)
+    win.lookup_action("export-selection").activate(None)
+    dialog = win.get_visible_dialog()
+    check(isinstance(dialog, ExportDialog) and dialog.title_row.get_visible() and dialog.title_row.get_text() == "Book", "Exporting a group asks for a title (the group name)")
+    combined = dialog._text
+    dialog.force_close()
+    check(combined.index("Chapter 1") < combined.index("Chapter 2") < combined.index("Chapter 10"), "The group is combined in the manual order")
+    if export.pandoc_path() is not None:
+        results = {}
+        run_export(export.with_title(combined, "Book"), "html", export_templates.available(None)[0], TMP / "book.html", book / "Book.md", "Book", {}, lambda path, error: results.__setitem__("html", error))
+        yield from wait_until(lambda: "html" in results, timeout=15)
+        html = (TMP / "book.html").read_text(encoding="utf-8") if results.get("html") is None else ""
+        check(html.find(">Book<") < html.find("Chapter 1") < html.find("Chapter 10") and html.find(">Book<") > 0, "The exported group has the title and all chapters in order")
+
+    # Group view: all sheets of the selected group one after another, each saved to its own file
+    gv = win.group_view
+    inspector_shown, sidebar_shown = win.inspector_split.get_show_sidebar(), win.split.get_show_sidebar()
+    # In a narrow window the sidebars would cover the text and take the focus.
+    win.inspector_split.set_show_sidebar(False)
+    if win.split.get_collapsed():
+        win.split.set_show_sidebar(False)
+    chapters = [book / "Prologue.md", book / "Chapter 2.md", book / "Chapter 10.md"]
+    check(gv.group == book and win.content_stack.get_visible_child_name() == "group", "Selecting a group shows the group view")
+    check(gv.paths() == chapters and ed.path is None, "The group view shows the sheets in the manual order; no sheet is open twice")
+    check(win.content_title.get_title() == "Book" and "12 words" in win.content_title.get_subtitle(), "Title and counts belong to the group")
+    first, second, third = gv.editors
+    yield from wait_until(lambda: first.view.get_height() > 0)
+    first.buffer.place_cursor(first.buffer.get_end_iter())
+    first.view.grab_focus()
+    gv._on_key_pressed(None, Gdk.KEY_Down, 0, 0, first)
+    check(gv.active is second and second.buffer.get_iter_at_mark(second.buffer.get_insert()).is_start(), "Down on the last line continues in the next sheet")
+    gv._on_key_pressed(None, Gdk.KEY_Up, 0, 0, second)
+    check(gv.active is first and first.buffer.get_iter_at_mark(first.buffer.get_insert()).is_end(), "Up on the first line goes back to the end of the previous sheet")
+    first.buffer.place_cursor(first.buffer.get_start_iter())
+    check(not gv._on_key_pressed(None, Gdk.KEY_Down, 0, 0, first), "Down inside a sheet stays in the sheet")
+
+    start = second.buffer.get_iter_at_offset(text(second).index("Text 2"))
+    end = start.copy()
+    end.forward_chars(4)
+    second.buffer.select_range(start, end)
+    second.view.grab_focus()
+    win.lookup_action("format").activate(GLib.Variant.new_string("bold"))
+    check("**Text** 2" in text(second) and "**" not in text(first), "The formatting bar acts on the section with the caret")
+    win.lookup_action("export").activate(None)
+    dialog = win.get_visible_dialog()
+    check(isinstance(dialog, ExportDialog) and dialog.title_row.get_visible(), "Export in the group view exports the whole group")
+    dialog.force_close()
+    check("**Text** 2" in body(book / "Chapter 2.md"), "Before exporting, the group view saves every sheet")
+
+    (book / "Chapter 10.md").write_text("# Chapter 10\n\nVon außen.\n", encoding="utf-8")
+    yield from wait_until(lambda: "Von außen" in text(third))
+    check("Von außen" in text(third) and win.get_visible_dialog() is None, "External change reloads only that section")
+    third.buffer.insert(third.buffer.get_end_iter(), "Meins")
+    mine = text(third)
+    (book / "Chapter 10.md").write_text("Fremd im Buch", encoding="utf-8")
+    yield from wait_until(lambda: third.in_conflict)
+    check(third.in_conflict and not win._flush(), "Conflict in a section: switching away is refused")
+    answer_dialog("mine")
+    copies = [p for p in book.iterdir() if "conflict" in p.name]
+    check(body(book / "Chapter 10.md") == mine and any(p.read_text() == "Fremd im Buch" for p in copies), "Conflict in a section: both versions are kept")
+    for copy in copies:
+        copy.unlink()
+    yield from wait_until(lambda: gv.paths() == chapters)
+
+    (book / "Epilogue.md").write_text("Ende.", encoding="utf-8")
+    yield from wait_until(lambda: book / "Epilogue.md" in gv.paths())
+    check(gv.paths()[-1] == book / "Epilogue.md", "A sheet added to the group appears at the end of the group view")
+    second = gv.editor_for(book / "Chapter 2.md")
+    second.buffer.insert(second.buffer.get_end_iter(), "Ungesichert")
+    win._place(book / "Chapter 10.md", book / "Prologue.md", after=False)
+    check("Ungesichert" in body(book / "Chapter 2.md"), "Reordering saves unsaved text in the group view first")
+    check(gv.paths()[0] == book / "Chapter 10.md", "The group view follows the new order")
+    second = gv.editor_for(book / "Chapter 2.md")
+    second.buffer.insert(second.buffer.get_end_iter(), " Weiter")
+    win._do_rename(LibNode("Book", book, []), "Buch")
+    book = LIB / "Buch"
+    check(gv.group == book and all(p.parent == book for p in gv.paths()), "Renaming the shown group keeps the group view open")
+    check(body(book / "Chapter 2.md").endswith("Ungesichert Weiter"), "Renaming the group saves unsaved text first")
+
+    gv.editor_for(book / "Epilogue.md").buffer.insert_at_cursor("Zuletzt ")
+    win._open_sheet(book / "Prologue.md")
+    check(ed.path == book / "Prologue.md" and gv.group is None and win.content_stack.get_visible_child_name() == "sheet", "The header of a section opens that sheet on its own")
+    check(body(book / "Epilogue.md") == "Zuletzt Ende.", "Leaving the group view saves every sheet")
+    select(book)
+    check(gv.group == book and ed.path is None, "Back to the group view")
+    gv.editor_for(book / "Epilogue.md").buffer.insert_at_cursor("Ganz ")
+    select(meta)
+    check(ed.path == meta and gv.group is None and body(book / "Epilogue.md") == "Ganz Zuletzt Ende.", "Selecting a sheet leaves the group view and saves it")
+    win.lookup_action("export").activate(None)  # a single sheet: no switch for subgroups
+    dialog = win.get_visible_dialog()
+    check(not dialog.page_break_row.get_visible(), "Exporting a sheet offers no page breaks for subgroups")
+    dialog.force_close()
+    (book / "Appendix").mkdir()
+    (book / "Appendix" / "Sources.md").write_text("Quellen.", encoding="utf-8")
+    yield from wait_until(lambda: win._index_of(book / "Appendix") is not None)
+    select(book)
+    headings = []
+    child = gv._box.get_first_child()
+    while child is not None:
+        if isinstance(child, Gtk.Label) and "title-3" in child.get_css_classes():
+            headings.append(child.get_label())
+        child = child.get_next_sibling()
+    check(headings == ["Buch", "Appendix"], f"The group view marks where each subgroup starts ({headings})")
+    win.lookup_action("export").activate(None)
+    dialog = win.get_visible_dialog()
+    check(dialog.page_break_row.get_visible() and dialog.page_break_row.get_active(), "A group with subgroups offers a new page for each one")
+    check(export.PAGE_BREAK in dialog._page_break_text and export.PAGE_BREAK not in dialog._text, "Only the page-break version contains page breaks")
+    dialog.force_close()
+    select(meta)
+    win.inspector_split.set_show_sidebar(inspector_shown)
+    win.split.set_show_sidebar(sidebar_shown)
 
     # Custom templates: save as a file, import, choose in the export dialog, remove
     from typecase import config as tc_config

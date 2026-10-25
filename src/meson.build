@@ -15,6 +15,7 @@ install_data(
     'typecase/frontmatter.py',
     'typecase/goal.py',
     'typecase/goal_ring.py',
+    'typecase/group_view.py',
     'typecase/inspector.py',
     'typecase/keywords.py',
     'typecase/library.py',
