@@ -2,6 +2,28 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 0.10.0 – 2026-10-25
+
+### Library
+- Your own order for sheets and groups: drag between rows, or Alt+Up and Alt+Down
+- Duplicate sheets (with their attachments) and whole groups
+- Group view: selecting a group shows all of its sheets one after another, directly editable; each sheet is still saved to its own file, subgroups are marked with their names, and the arrow keys move across sheets
+
+### Writing
+- Spell checking while you type, offline, in each sheet's language, with suggestions in the right-click menu; a button in the formatting bar and F7 switch it on and off, and focus mode has its own setting
+- Notes per sheet, stored in the front matter, and attachments: copies of files that move along with the sheet
+- Editor themes: Standard, Paper, Solarized, Calm and High Contrast, each with a light and a dark variant; focus mode can have its own theme, and the window takes on the theme's colors
+- Import GtkSourceView style schemes as themes, or save a built-in one as a starting point ([guide](docs/themes.md))
+
+### Export
+- Export a whole group (subgroups included) as one document, with a title, optionally with every subgroup on a new page
+- The export dialog says right away when PDF export is not possible (WebKitGTK missing outside the Flatpak)
+
+### Fixes and details
+- Dragging an entry in the library no longer leaves the pointer stuck on Wayland
+- Screen readers: progress rings, group view sections and subgroup titles are announced properly
+- The preferences gather editor, focus mode and themes on one "Writing" page
+
 ## 0.9.0 – 2026-10-25
 
 First public release. Typecase is usable day to day; 1.0 will follow together with the release on Flathub (see the [roadmap](ROADMAP.md)).

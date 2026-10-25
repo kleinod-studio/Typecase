@@ -4,7 +4,7 @@ A calm, native Markdown writing app for Linux. Built with GTK 4, libadwaita and 
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 
-> **Status:** 0.9.0, the first public release. Typecase is usable day to day; 1.0 will come together with the release on Flathub. Expect changes. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
+> **Status:** 0.10.0. Typecase is usable day to day; 1.0 will come together with the release on Flathub. Expect changes. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
 
 ## Features
 
@@ -24,22 +24,39 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 
 ## Install
 
+Typecase comes as a Flatpak, a format that runs on almost every Linux distribution.
+
+### First time with Flatpak?
+
+Fedora and Linux Mint come with Flatpak and Flathub already set up; you can skip this step. On Ubuntu and most other distributions, set it up once in a terminal:
+
+```bash
+sudo apt install flatpak
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+```
+
+The first command installs Flatpak (on other distributions, use their package manager, see [flatpak.org/setup](https://flatpak.org/setup/)); the second adds Flathub, where the GNOME runtime that Typecase needs comes from. Log out and back in afterwards, so that Flatpak apps appear in your app launcher.
+
+### Install Typecase
+
 Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
 
 ```bash
-flatpak install --user Typecase-0.9.0-x86_64.flatpak
+flatpak install --user Typecase-0.10.0-x86_64.flatpak
 ```
 
 Bundles don't update by themselves; install the next release the same way. Typecase will come to Flathub with version 1.0.
 
 ### Spell checking dictionaries
 
-In the Flatpak, the dictionaries come from the GNOME runtime’s language packs, which Flatpak installs only for the languages it is set up for. If Typecase says that no dictionary is installed for a language, add it and update (for a system-wide Flatpak installation, run both commands with `sudo`):
+In the Flatpak, the dictionaries come from the GNOME runtime’s language packs, which Flatpak installs only for the languages it is set up for. If Typecase says that no dictionary is installed for a language, add the language (here German and English) and update:
 
 ```bash
-flatpak config --set languages "de;en"
-flatpak update
+flatpak config --user --set languages "de;en"
+flatpak update --user
 ```
+
+If you installed the GNOME runtime system-wide instead, run `sudo flatpak config --set languages "de;en"` and `sudo flatpak update`.
 
 Outside the Flatpak, install Hunspell dictionaries from your distribution, for example `hunspell-de` and `hunspell-en_us`.
 

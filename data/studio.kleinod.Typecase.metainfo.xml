@@ -38,6 +38,20 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.10.0" date="2026-10-25">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.10.0</url>
+      <description>
+        <p>Writing a longer work, and making the app your own.</p>
+        <ul>
+          <li>Group view: read and edit all sheets of a group as one continuous text</li>
+          <li>Your own order for sheets and groups, and duplicating them</li>
+          <li>Notes and attachments per sheet</li>
+          <li>Export a whole group as one document, optionally with each subgroup on a new page</li>
+          <li>Editor themes with light and dark variants; import your own</li>
+          <li>Spell checking while you type, in each sheet's language</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.0" date="2026-10-25">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.9.0</url>
       <description>
