@@ -76,6 +76,25 @@ class ThemesTest(unittest.TestCase):
         self.assertEqual(themes.scheme("nacht", True).get_id(), "nacht-dark")
         self.assertEqual(len(imported[1].files), 2)
 
+    def test_saved_builtin_theme_imports_next_to_the_original(self):
+        folder = self.root / "saved"
+        folder.mkdir()
+        files = themes.save_builtin("typecase-paper", folder, "Paper (custom)")
+        self.assertEqual([p.name for p in files], ["Paper (custom).xml", "Paper (custom) (dark).xml"])
+        self.assertIn("Markdown marks", files[0].read_text())
+        again = themes.save_builtin("typecase-paper", folder, "Paper (custom)")
+        self.assertEqual(again[0].name, "Paper (custom) 2.xml", "existing files are never overwritten")
+        for path in files:
+            themes.install(path)
+        imported = [t for t in themes.available() if not t.builtin]
+        self.assertEqual([(t.name, t.light, t.dark) for t in imported], [("Paper (custom)", "paper-custom", "paper-custom-dark")])
+        original = themes.palette(themes.scheme("typecase-paper", True))
+        copy = themes.palette(themes.scheme("paper-custom", True))
+        self.assertEqual({k: str(v) for k, v in copy.items()}, {k: str(v) for k, v in original.items()}, "the copy looks exactly like the original")
+        # Standard inherits its text colors from Adwaita; the saved file spells them out.
+        standard = themes.save_builtin("typecase-standard", folder, "Mine")
+        self.assertIn('<style name="text" foreground="#504E55" background="#FFFFFF"/>', standard[0].read_text())
+
     def test_invalid_files_are_refused(self):
         broken = self.root / "kaputt.xml"
         broken.write_text("<style-scheme")

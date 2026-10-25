@@ -1050,6 +1050,8 @@ def steps(win, app):
     prefs.themes_group.refresh()
     prefs._themes_changed()
     check("nacht" in prefs.editor_page._previews and "nacht" in prefs.focus_page._previews, "An imported theme appears as a tile")
+    titles = [row.get_title() for row in prefs.themes_group._rows]
+    check(titles[:5] == [t.name for t in themes.available()[:5]] and "Nacht" in titles and titles[-1] == "How to Build Your Own Theme", "The theme list shows built-in and imported themes and links the guide")
     prefs.editor_page._previews["nacht"].emit("activate")
     check(ed.buffer.get_style_scheme().get_id() == "nacht", "A theme with one variant is used for light and dark")
     prefs.themes_group._remove(next(t for t in themes.available() if t.id == "nacht"))

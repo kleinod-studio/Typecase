@@ -337,8 +337,12 @@ class _TemplatesPage(Adw.PreferencesPage):
         alert.present(self)
 
 
+THEMES_GUIDE = "https://kleinod.studio/typecase/themes/"
+
+
 class _ThemesGroup(Adw.PreferencesGroup):
-    """Imported editor themes: GtkSourceView style schemes (.xml), e.g. from GNOME Text Editor."""
+    """Editor themes: save a built-in one as a starting point, import GtkSourceView style schemes
+    (.xml, e.g. from GNOME Text Editor), remove imported ones."""
 
     def __init__(self, on_change, toast):
         super().__init__(
@@ -357,19 +361,48 @@ class _ThemesGroup(Adw.PreferencesGroup):
         for row in self._rows:
             self.remove(row)
         self._rows = []
-        imported = [theme for theme in themes.available() if not theme.builtin]
-        for theme in imported:
+        for theme in themes.available():
             variants = _("Light and dark") if theme.light != theme.dark else _("One variant for light and dark")
             row = Adw.ActionRow(title=theme.name, subtitle=variants)
-            remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Remove"), css_classes=["flat"], valign=Gtk.Align.CENTER)
-            remove.connect("clicked", lambda _b, t=theme: self._remove(t))
-            row.add_suffix(remove)
+            if theme.builtin:
+                row.add_suffix(Gtk.Label(label=_("Built-in"), css_classes=["dim-label", "caption"], valign=Gtk.Align.CENTER))
+                save = Gtk.Button(
+                    icon_name="document-save-symbolic", tooltip_text=_("Save as File…"), css_classes=["flat"], valign=Gtk.Align.CENTER
+                )
+                save.connect("clicked", lambda _b, t=theme: self._choose_save(t))
+                row.add_suffix(save)
+            else:
+                remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Remove"), css_classes=["flat"], valign=Gtk.Align.CENTER)
+                remove.connect("clicked", lambda _b, t=theme: self._remove(t))
+                row.add_suffix(remove)
             self.add(row)
             self._rows.append(row)
-        if not imported:
-            row = Adw.ActionRow(title=_("No imported themes"), css_classes=["dim-label"])
-            self.add(row)
-            self._rows.append(row)
+        # The guide on the website (opens the browser; Typecase itself stays offline).
+        guide = Adw.ActionRow(title=_("How to Build Your Own Theme"), activatable=True)
+        guide.add_suffix(Gtk.Image(icon_name="adw-external-link-symbolic"))
+        guide.connect("activated", lambda _r: Gtk.UriLauncher(uri=THEMES_GUIDE).launch(self.get_root(), None, None))
+        self.add(guide)
+        self._rows.append(guide)
+
+    def _choose_save(self, theme):
+        """Both variants of a built-in theme as files to edit; they import next to the original."""
+        dialog = Gtk.FileDialog(title=_("Save Theme"))
+        dialog.select_folder(self.get_root(), None, lambda d, r: self._on_save_chosen(d, r, theme))
+
+    def _on_save_chosen(self, dialog, result, theme):
+        try:
+            folder = Path(dialog.select_folder_finish(result).get_path())
+        except (GLib.Error, TypeError):
+            return  # canceled
+        try:
+            # Translators: file and theme name of a built-in theme saved as a starting point
+            files = themes.save_builtin(theme.id, folder, _("%(name)s (custom)") % {"name": theme.name})
+        except OSError as error:
+            alert = Adw.AlertDialog(heading=_("Theme Not Saved"), body=error.strerror or str(error))
+            alert.add_response("close", _("Close"))
+            alert.present(self)
+            return
+        self._toast(_("Saved %s") % " · ".join(f"“{path.name}”" for path in files))
 
     def _choose(self):
         file_filter = Gtk.FileFilter(name=_("Style Schemes"))

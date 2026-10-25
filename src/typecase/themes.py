@@ -7,6 +7,7 @@ colors derived from their text color. Light and dark variants are paired through
 metadata (light-variant / dark-variant, as GNOME Text Editor does) or the "-dark" suffix."""
 
 import os
+import re
 import shutil
 import tempfile
 import xml.etree.ElementTree as ElementTree
@@ -258,3 +259,74 @@ def install(path: Path) -> str:
         raise
     rescan()
     return scheme_id
+
+
+# --- Saving a built-in theme as a starting point --------------------------------
+
+# The styles a saved theme spells out, with what they color (comments in the file).
+_STYLES = (
+    ("text", "Text color and page background"),
+    ("selection", "Selected text"),
+    ("cursor", "Text cursor"),
+    ("typecase:syntax", "Markdown marks such as # ** _ (shown faintly)"),
+    ("typecase:heading", "Headings (leave out to use the text color)"),
+    ("typecase:link", "Links; also the accent color of the window"),
+    ("typecase:list-marker", "List bullets and numbers (leave out to use the link color)"),
+    ("typecase:code", "Background of `inline code`"),
+    ("typecase:code-block", "Code blocks: frame (foreground) and fill (background)"),
+)
+
+
+def _xml_attribute(value: str) -> str:
+    return value.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
+
+
+def theme_xml(theme_id: str, dark: bool, new_id: str, new_name: str, partner_id: str) -> str:
+    """A built-in variant as a commented, self-contained scheme file with a new id, ready to edit
+    and import. Code highlighting keeps coming from the same parent scheme."""
+    source = scheme(theme_id, dark)
+    parent_id = ElementTree.parse(source.get_filename()).getroot().get("parent-scheme")
+    variant = "dark" if dark else "light"
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<!-- An editor theme for Typecase: a GtkSourceView style scheme. Change the colors, then import",
+        "     the file under Preferences → Writing → Editor Themes. Guide: https://kleinod.studio/typecase/themes/ -->",
+        f'<style-scheme id="{_xml_attribute(new_id)}" name="{_xml_attribute(new_name)}" version="1.0"'
+        + (f' parent-scheme="{_xml_attribute(parent_id)}"' if parent_id else "")
+        + ">",
+        f"  <description>{_xml_attribute(new_name)}</description>",
+        "  <metadata>",
+        f'    <property name="variant">{variant}</property>',
+        f'    <property name="{"dark" if variant == "light" else "light"}-variant">{_xml_attribute(partner_id)}</property>',
+        "  </metadata>",
+    ]
+    for style_id, comment in _STYLES:
+        style = source.get_style(style_id)
+        attributes = []
+        for prop in ("foreground", "background"):
+            value = getattr(style.props, prop) if style is not None else None
+            if value:
+                attributes.append(f'{prop}="{_xml_attribute(value)}"')
+        lines.append(f"  <!-- {comment} -->")
+        if attributes:
+            lines.append(f'  <style name="{style_id}" {" ".join(attributes)}/>')
+        else:
+            lines.append(f'  <!-- <style name="{style_id}" foreground="#000000"/> -->')
+    lines.append("</style-scheme>")
+    return "\n".join(lines) + "\n"
+
+
+def save_builtin(theme_id: str, folder: Path, name: str) -> list[Path]:
+    """Saves both variants of a built-in theme into folder as "<name>.xml" and "<name> (dark).xml"
+    (never overwriting: a free name is chosen). Their ids are derived from the name, so the files
+    can be imported next to the original. Returns the written files."""
+    from .fileio import atomic_write_text
+    from .library import unique_path
+
+    light = unique_path(folder, name, ".xml")
+    dark = unique_path(folder, light.stem + " (dark)", ".xml")
+    slug = re.sub(r"[^a-z0-9]+", "-", light.stem.casefold()).strip("-") or "theme"
+    light_id, dark_id = slug, slug + "-dark"
+    atomic_write_text(light, theme_xml(theme_id, False, light_id, light.stem, dark_id))
+    atomic_write_text(dark, theme_xml(theme_id, True, dark_id, light.stem, light_id))
+    return [light, dark]

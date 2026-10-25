@@ -8,14 +8,17 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 
 ## Features
 
-- **Library**: any folder becomes your library; subfolders are groups. Create, rename, move (also by drag and drop) and delete sheets and groups. Deleted items go to the system trash.
+- **Library**: any folder becomes your library; subfolders are groups. Create, rename, duplicate, move (also by drag and drop) and delete sheets and groups, and sort them in your own order. Deleted items go to the system trash.
+- **Group view**: select a group to read and edit all of its sheets as one continuous text; each sheet is still saved to its own file.
 - **Your text is safe**: autosave with atomic writes. If another program or a sync tool changes a file, Typecase notices and never overwrites your unsaved text. On a conflict, both versions are kept.
 - **Writing**: Markdown is styled as you type and code blocks are highlighted. Lists continue on Enter, and you can find and replace in a sheet.
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
 - **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
+- **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
-- **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode has its own font settings.
-- **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/templates.md)).
+- **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode can have its own font settings and theme.
+- **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/templates.md)). A group can be exported as one document, optionally with every subgroup on a new page.
+- **Editor themes**: Standard, Paper, Solarized, Calm and High Contrast, each with a light and a dark variant; the whole window takes on the theme's colors. Themes are GtkSourceView style schemes, so you can import your own ([how themes work](docs/themes.md)).
 - **GNOME-native**: libadwaita look, light and dark style, fully usable with the keyboard. The UI is in English and German.
 
 ## Install
@@ -74,7 +77,7 @@ Project layout:
 - `data/`: desktop file, AppStream metainfo, icon
 - `po/`: translations (gettext, English source strings)
 - `skills/typecase-template/`: a Claude skill that builds export templates from a description; `python3 skills/package.py skills/typecase-template` packs it into `dist/typecase-template.skill`
-- `docs/`: the template guide (`templates.md`; German: `vorlagen.md`)
+- `docs/`: the template guide (`templates.md`; German: `vorlagen.md`) and the theme guide (`themes.md`)
 
 ## Translations
 
