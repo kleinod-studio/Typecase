@@ -2,16 +2,16 @@
 
 An editor theme decides the colors of the writing area: page background, text, the faint Markdown marks, links, headings, and code. Every theme except “Standard” also tints the rest of the window to match, so the sidebar, header bars, and menus become shades of the same colors.
 
-You choose a theme under **Preferences → Writing**, in the tiles below “Style”. Each theme has a light and a dark variant, and Typecase picks the one that fits the current style (follow system, light, or dark). Focus mode can have a theme of its own once “Use Editor Settings” is switched off.
+You choose a theme under **Preferences → Writing**, in the tiles below “Style”. Each theme has a light and a dark variant, and Typecase picks the one that fits the current style (follow system, light, or dark). Focus mode can have a theme of its own once “Use Editor Settings” is switched off; imported themes are available for both.
 
 A theme is not a Typecase invention: it is a **GtkSourceView style scheme**, an XML file in the format that GNOME Text Editor and GNOME Builder use. You can import schemes made for those programs, or build your own.
 
 ## Quick start: begin with a built-in theme
 
-1. In Typecase, open **Preferences → Writing** and scroll to **Editor Themes**.
+1. In Typecase, open **Preferences → Writing** and scroll down to **Themes**, below the focus mode settings.
 2. Next to a built-in theme, for example “Paper”, click **Save as File…** and choose a folder. You get two files: `Paper (custom).xml` and `Paper (custom) (dark).xml`.
 3. Open them in a text editor and change the colors. Every line has a comment that says what it colors.
-4. Back in **Editor Themes**, click **Import…** and select both files at once.
+4. Back in **Themes**, click **Import…** and select both files at once.
 5. The theme appears as a new tile. Click it to use it.
 
 The saved files already have their own ID, so they import next to the original instead of replacing it. Change the `name` attribute if you want a different name on the tile.

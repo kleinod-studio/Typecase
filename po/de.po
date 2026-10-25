@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-25 14:22+0100\n"
+"POT-Creation-Date: 2026-10-25 14:34+0100\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -495,19 +495,19 @@ msgstr ""
 "Die Vorlage wählst du beim Exportieren. Für eine eigene speicherst du eine "
 "Vorlage als Datei und nimmst sie als Ausgangspunkt."
 
-#: src/typecase/preferences.py:231 src/typecase/preferences.py:354
+#: src/typecase/preferences.py:231 src/typecase/preferences.py:353
 msgid "Import…"
 msgstr "Importieren …"
 
-#: src/typecase/preferences.py:245 src/typecase/preferences.py:368
+#: src/typecase/preferences.py:245 src/typecase/preferences.py:367
 msgid "Built-in"
 msgstr "Mitgeliefert"
 
-#: src/typecase/preferences.py:247 src/typecase/preferences.py:370
+#: src/typecase/preferences.py:247 src/typecase/preferences.py:369
 msgid "Save as File…"
 msgstr "Als Datei speichern …"
 
-#: src/typecase/preferences.py:253 src/typecase/preferences.py:375
+#: src/typecase/preferences.py:253 src/typecase/preferences.py:374
 msgid "Remove"
 msgstr "Entfernen"
 
@@ -567,128 +567,123 @@ msgstr "Vorlage nicht entfernt"
 msgid "Template “%s” moved to the trash"
 msgstr "Vorlage „%s“ in den Papierkorb verschoben"
 
-#: src/typecase/preferences.py:336 src/typecase/preferences.py:402
-#: src/typecase/preferences.py:427 src/typecase/preferences.py:443
+#: src/typecase/preferences.py:336 src/typecase/preferences.py:401
+#: src/typecase/preferences.py:426 src/typecase/preferences.py:442
 #: src/typecase/window.py:1323
 msgid "Close"
 msgstr "Schließen"
 
 #: src/typecase/preferences.py:349
-msgid "Editor Themes"
-msgstr "Editor-Themes"
-
-#: src/typecase/preferences.py:350
 msgid ""
-"Import more themes as style scheme files (.xml), the format of GNOME Text "
-"Editor. Import the light and the dark variant to get both."
+"Themes are style scheme files (.xml), the format of GNOME Text Editor. "
+"Import the light and the dark variant to get both."
 msgstr ""
-"Weitere Themes als Farbschema-Dateien (.xml) importieren, im Format von "
-"GNOME Texteditor. Für beide Fassungen die helle und die dunkle Variante "
-"importieren."
+"Themes sind Farbschema-Dateien (.xml) im Format von GNOME Texteditor. Für "
+"beide Fassungen die helle und die dunkle Variante importieren."
 
-#: src/typecase/preferences.py:365
+#: src/typecase/preferences.py:364
 msgid "Light and dark"
 msgstr "Hell und dunkel"
 
-#: src/typecase/preferences.py:365
+#: src/typecase/preferences.py:364
 msgid "One variant for light and dark"
 msgstr "Eine Fassung für hell und dunkel"
 
-#: src/typecase/preferences.py:381
+#: src/typecase/preferences.py:380
 msgid "How to Build Your Own Theme"
 msgstr "Eigenes Theme erstellen – Anleitung"
 
-#: src/typecase/preferences.py:389
+#: src/typecase/preferences.py:388
 msgid "Save Theme"
 msgstr "Theme speichern"
 
 #. Translators: file and theme name of a built-in theme saved as a starting point
-#: src/typecase/preferences.py:399
+#: src/typecase/preferences.py:398
 #, python-format
 msgid "%(name)s (custom)"
 msgstr "%(name)s (eigene Fassung)"
 
-#: src/typecase/preferences.py:401
+#: src/typecase/preferences.py:400
 msgid "Theme Not Saved"
 msgstr "Theme nicht gespeichert"
 
-#: src/typecase/preferences.py:405
+#: src/typecase/preferences.py:404
 #, python-format
 msgid "Saved %s"
 msgstr "%s gespeichert"
 
-#: src/typecase/preferences.py:408
+#: src/typecase/preferences.py:407
 msgid "Style Schemes"
 msgstr "Farbschemata"
 
-#: src/typecase/preferences.py:412
+#: src/typecase/preferences.py:411
 msgid "Import Theme"
 msgstr "Theme importieren"
 
-#: src/typecase/preferences.py:426
+#: src/typecase/preferences.py:425
 msgid "Theme Not Imported"
 msgstr "Theme nicht importiert"
 
-#: src/typecase/preferences.py:434
+#: src/typecase/preferences.py:433
 #, python-format
 msgid "Imported %s"
 msgstr "%s importiert"
 
-#: src/typecase/preferences.py:442
+#: src/typecase/preferences.py:441
 msgid "Theme Not Removed"
 msgstr "Theme nicht entfernt"
 
-#: src/typecase/preferences.py:448
+#: src/typecase/preferences.py:447
 #, python-format
 msgid "Theme “%s” moved to the trash"
 msgstr "Theme „%s“ in den Papierkorb verschoben"
 
-#: src/typecase/preferences.py:459 src/typecase/window.py:299
+#: src/typecase/preferences.py:458 src/typecase/window.py:299
 #: src/typecase/window.py:1228
 msgid "Preferences"
 msgstr "Einstellungen"
 
-#: src/typecase/preferences.py:463
+#: src/typecase/preferences.py:462
 msgid "Writing"
 msgstr "Schreiben"
 
-#: src/typecase/preferences.py:464 src/typecase/window.py:1201
+#: src/typecase/preferences.py:463 src/typecase/window.py:1201
 msgid "Editor"
 msgstr "Editor"
 
-#: src/typecase/preferences.py:464
+#: src/typecase/preferences.py:463
 msgid "How your text looks while you write as usual."
 msgstr "So sieht dein Text beim normalen Schreiben aus."
 
-#: src/typecase/preferences.py:466 src/typecase/preferences.py:515
+#: src/typecase/preferences.py:465 src/typecase/preferences.py:512
 msgid "Tools"
 msgstr "Werkzeuge"
 
-#: src/typecase/preferences.py:468
+#: src/typecase/preferences.py:467
 msgid "Formatting Bar"
 msgstr "Formatierungsleiste"
 
-#: src/typecase/preferences.py:469
+#: src/typecase/preferences.py:468
 msgid "Buttons below the text for bold, lists, headings and more"
 msgstr "Knöpfe unter dem Text für Fett, Listen, Überschriften und mehr"
 
-#: src/typecase/preferences.py:475
+#: src/typecase/preferences.py:474
 msgid "Underline Cursor"
 msgstr "Unterstrich als Schreibmarke"
 
-#: src/typecase/preferences.py:476
+#: src/typecase/preferences.py:475
 msgid ""
 "Show the text cursor as a line below the character instead of a vertical bar"
 msgstr ""
 "Die Schreibmarke als Strich unter dem Zeichen statt als senkrechten Strich "
 "zeigen"
 
-#: src/typecase/preferences.py:490 src/typecase/window.py:294
+#: src/typecase/preferences.py:487 src/typecase/window.py:294
 #: src/typecase/window.py:1223
 msgid "Focus Mode"
 msgstr "Fokus-Modus"
 
-#: src/typecase/preferences.py:491
+#: src/typecase/preferences.py:488
 msgid ""
 "Focus mode hides the sidebar and toolbars and shows only your text, full "
 "screen."
@@ -696,39 +691,51 @@ msgstr ""
 "Der Fokus-Modus blendet Seitenleiste und Leisten aus und zeigt nur deinen "
 "Text im Vollbild."
 
-#: src/typecase/preferences.py:496
+#: src/typecase/preferences.py:493
 msgid "Use Editor Settings"
 msgstr "Einstellungen des Editors übernehmen"
 
-#: src/typecase/preferences.py:497
+#: src/typecase/preferences.py:494
 msgid "Switch off to give focus mode its own font, size and style"
 msgstr ""
 "Ausschalten, um dem Fokus-Modus eigene Schrift, Größe und Stil zu geben"
 
-#: src/typecase/preferences.py:517
+#: src/typecase/preferences.py:514
 msgid "Show Formatting Bar"
 msgstr "Formatierungsleiste anzeigen"
 
-#: src/typecase/preferences.py:518
+#: src/typecase/preferences.py:515
 msgid "When off, it appears when you move the pointer to the bottom edge"
 msgstr ""
 "Wenn aus, erscheint sie, sobald der Mauszeiger an den unteren Rand kommt"
 
-#: src/typecase/preferences.py:524
+#: src/typecase/preferences.py:521
 msgid "Typewriter Scrolling"
 msgstr "Schreibmaschinen-Modus"
 
-#: src/typecase/preferences.py:524
+#: src/typecase/preferences.py:521
 msgid "Keep the line you are writing in the middle of the screen"
 msgstr "Die Zeile, in der du schreibst, bleibt in der Bildschirmmitte"
 
-#: src/typecase/preferences.py:525
+#: src/typecase/preferences.py:522
 msgid "Dim Surroundings"
 msgstr "Umgebung abblenden"
 
-#: src/typecase/preferences.py:525
+#: src/typecase/preferences.py:522
 msgid "Fade everything except the paragraph you are writing"
 msgstr "Alles außer dem Absatz, in dem du schreibst, wird blasser"
+
+#: src/typecase/preferences.py:531
+msgid "Themes"
+msgstr "Themes"
+
+#: src/typecase/preferences.py:531
+msgid ""
+"Import themes for the editor and focus mode, or save a built-in one as a "
+"starting point."
+msgstr ""
+"Themes für den Editor und den Fokusmodus importieren oder ein mitgeliefertes "
+"als Ausgangspunkt speichern."
 
 #: src/typecase/sheet_editor.py:249
 msgid "No Sheet Open"

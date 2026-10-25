@@ -290,7 +290,7 @@ def theme_xml(theme_id: str, dark: bool, new_id: str, new_name: str, partner_id:
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         "<!-- An editor theme for Typecase: a GtkSourceView style scheme. Change the colors, then import",
-        "     the file under Preferences → Writing → Editor Themes. Guide: https://kleinod.studio/typecase/themes/ -->",
+        "     the file under Preferences → Writing → Themes. Guide: https://kleinod.studio/typecase/themes/ -->",
         f'<style-scheme id="{_xml_attribute(new_id)}" name="{_xml_attribute(new_name)}" version="1.0"'
         + (f' parent-scheme="{_xml_attribute(parent_id)}"' if parent_id else "")
         + ">",

@@ -346,8 +346,7 @@ class _ThemesGroup(Adw.PreferencesGroup):
 
     def __init__(self, on_change, toast):
         super().__init__(
-            title=_("Editor Themes"),
-            description=_("Import more themes as style scheme files (.xml), the format of GNOME Text Editor. Import the light and the dark variant to get both."),
+            description=_("Themes are style scheme files (.xml), the format of GNOME Text Editor. Import the light and the dark variant to get both."),
         )
         self._on_change = on_change
         self._toast = toast
@@ -481,8 +480,6 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         tools.add(self.underline_caret)
         page.add(tools)
-        self.themes_group = _ThemesGroup(self._themes_changed, lambda text: self.add_toast(Adw.Toast(title=text)))
-        page.add(self.themes_group)
         self._editor_reset(page)
 
         _section_heading(
@@ -529,6 +526,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
             focus_tools.add(row)
             setattr(self, key, row)
         page.add(focus_tools)
+
+        # Themes serve both parts, so their list sits below both, under a heading of its own.
+        _section_heading(page, _("Themes"), _("Import themes for the editor and focus mode, or save a built-in one as a starting point."), separator=True)
+        self.themes_group = _ThemesGroup(self._themes_changed, lambda text: self.add_toast(Adw.Toast(title=text)))
+        page.add(self.themes_group)
         self.add(page)
 
         self.sheets_page = _SheetsPage(apply)
