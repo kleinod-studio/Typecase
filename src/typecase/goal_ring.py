@@ -19,7 +19,9 @@ class ProgressRing(Gtk.Widget):
     __gtype_name__ = "TypecaseGoalRing"
 
     def __init__(self, size: int, thickness: float, **kwargs):
-        super().__init__(css_classes=["accent"], **kwargs)
+        # A progress bar for screen readers (they announce the percentage and the label).
+        super().__init__(css_classes=["accent"], accessible_role=Gtk.AccessibleRole.PROGRESS_BAR, **kwargs)
+        self.update_property([Gtk.AccessibleProperty.VALUE_MIN, Gtk.AccessibleProperty.VALUE_MAX], [0.0, 100.0])
         self.size = size
         self.thickness = thickness
         self.value = 0.0
@@ -35,6 +37,7 @@ class ProgressRing(Gtk.Widget):
     def show_progress(self, value: float, reached: bool, animate: bool = True) -> None:
         """Glide smoothly to the new value (libadwaita skips this when animations are turned off)."""
         self.set_css_classes(["success" if reached else "accent"])
+        self.update_property([Gtk.AccessibleProperty.VALUE_NOW], [round(min(value, 1.0) * 100, 1)])
         self._animation.pause()
         if animate and self.get_mapped():
             self._animation.set_value_from(self.value)

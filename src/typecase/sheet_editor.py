@@ -5,7 +5,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
-from . import formatting, frontmatter
+from . import formatting, frontmatter, spelling
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
 from .markdown_lists import change_indent, on_enter, renumber
@@ -222,6 +222,8 @@ class SheetEditor(Gtk.Stack):
         # Front matter (metadata) was loaded, changed externally, or the sheet was closed
         "metadata-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "saved": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        # Spell checking is on, but there is no dictionary for the sheet's language (e.g. "de-DE")
+        "dictionary-missing": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     # One stylesheet for all editors (the single sheet and every section of the group view):
@@ -276,6 +278,18 @@ class SheetEditor(Gtk.Stack):
             self._css = SheetEditor._shared_css
             self.set_appearance()
         self._css = SheetEditor._shared_css
+        # Spell checking (if libspelling is there): each editor has its own checker, since every
+        # sheet can have its own language. Suggestions appear in the right-click menu.
+        self._spell_wanted = False
+        self._spell_default_lang: str | None = None
+        self.spell_adapter = None
+        if spelling.available():
+            provider = spelling.Spelling.Provider.get_default()
+            checker = spelling.Spelling.Checker.new(provider, provider.get_default_code())
+            self.spell_adapter = spelling.Spelling.TextBufferAdapter.new(self.buffer, checker)
+            self.spell_adapter.set_enabled(False)
+            self.view.set_extra_menu(self.spell_adapter.get_menu_model())
+            self.view.insert_action_group("spelling", self.spell_adapter)
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key_pressed)
         self.view.add_controller(keys)
@@ -297,6 +311,7 @@ class SheetEditor(Gtk.Stack):
         Raises OSError or UnicodeDecodeError; the previous state is then left untouched."""
         text = read_text(path)
         header, body = frontmatter.split(text)
+        self._pause_spelling()
         self._set_text(body)
         self._header = header
         self.path = path
@@ -306,6 +321,7 @@ class SheetEditor(Gtk.Stack):
         self.set_visible_child_name("editor")
         self._watch()
         self._emit_counts()
+        self._update_spelling()
         self.emit("metadata-changed")
 
     def set_path(self, path: Path) -> None:
@@ -324,6 +340,7 @@ class SheetEditor(Gtk.Stack):
         self.in_conflict = False
         self._set_text("")
         self.set_visible_child_name("empty")
+        self._update_spelling()
         self._emit_counts()
 
     def set_appearance(
@@ -431,6 +448,44 @@ class SheetEditor(Gtk.Stack):
         self._mark_dirty()
         if "goal" in changes:
             self._emit_counts()  # the word count display mentions the goal
+        if "lang" in changes:
+            self._update_spelling()
+
+    # --- Spell checking -----------------------------------------------------
+
+    def set_spell_checking(self, enabled: bool, default_lang: str | None) -> None:
+        """Switches spell checking on or off; it uses the sheet's language, else default_lang."""
+        changed = (enabled, default_lang) != (self._spell_wanted, self._spell_default_lang)
+        self._spell_wanted, self._spell_default_lang = enabled, default_lang
+        if changed:
+            self._update_spelling()
+
+    def spell_language(self) -> str | None:
+        lang = self.metadata().get("lang")
+        return lang.strip() if isinstance(lang, str) and lang.strip() else self._spell_default_lang
+
+    def _pause_spelling(self) -> None:
+        """Before the whole text is replaced: libspelling does not recheck text that is swapped
+        in while it is on, so it is switched off and _update_spelling switches it on again."""
+        if self.spell_adapter is not None:
+            self.spell_adapter.set_enabled(False)
+
+    def _update_spelling(self) -> None:
+        if self.spell_adapter is None:
+            return
+        if not self._spell_wanted or self.path is None:
+            self.spell_adapter.set_enabled(False)
+            return
+        lang = self.spell_language()
+        code = spelling.dictionary_for(lang)
+        if code is None:
+            self.spell_adapter.set_enabled(False)
+            if lang:
+                self.emit("dictionary-missing", lang)
+            return
+        self.spell_adapter.get_checker().set_language(code)
+        self.spell_adapter.set_enabled(True)
+
 
     def show_match(self, offset: int, length: int) -> None:
         """Selects a search match and scrolls it to the centre."""
@@ -719,10 +774,12 @@ class SheetEditor(Gtk.Stack):
     def _load_from_disk(self, text: str) -> None:
         """Takes over new file content (external change or the chosen external version)."""
         header, body = frontmatter.split(text)
+        self._pause_spelling()
         self._replace_text(body)
         self._header = header
         self._disk_text = text
         self._dirty = False
+        self._update_spelling()
         self.emit("metadata-changed")
 
     def _buffer_text(self) -> str:

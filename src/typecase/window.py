@@ -9,7 +9,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 from . import config
 from . import export
 from . import frontmatter
-from . import themes
+from . import spelling, themes
 from .export_dialog import ExportDialog
 from .find_bar import FindBar
 from .fileio import atomic_write_text
@@ -111,6 +111,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # writing-goal rings of the library rows
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
+        self._missing_dictionaries: set[str] = set()  # languages already reported this session
         self._dragging = False  # one of our library rows is being dragged
         self._after_drag = None  # move to carry out once that drag has ended
 
@@ -122,6 +123,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.editor.connect("save-failed", self._on_save_failed)
         self.editor.connect("counts-changed", self._on_counts_changed)
         self.editor.connect("external-change", self._on_external_change)
+        self.editor.connect("dictionary-missing", self._on_dictionary_missing)
+        self.group_view.connect("dictionary-missing", self._on_dictionary_missing)
         self.group_view.connect("save-failed", self._on_save_failed)
         self.group_view.connect("counts-changed", self._on_group_counts_changed)
         self.group_view.connect("external-change", lambda _view, editor, kind: self._on_external_change(editor, kind))
@@ -292,6 +295,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         file_section.append(_("Export…"), "win.export")
         view_section = Gio.Menu()
         view_section.append(_("Focus Mode"), "win.focus-mode")
+        if spelling.available():
+            view_section.append(_("Check Spelling"), "win.spell-check")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
         view_section.append(_("Properties"), "win.inspector")
         view_section.append(_("Fullscreen"), "win.fullscreen")
@@ -402,11 +407,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
         for level in (1, 2, 3):
             headings.append(_("Heading %d") % level, f"win.format::h{level}")
         headings.append(_("Normal Text"), "win.format::paragraph")
-        bar.append(Gtk.MenuButton(label="H", tooltip_text=_("Heading"), menu_model=headings, css_classes=["flat"]))
+        heading_button = Gtk.MenuButton(label="H", tooltip_text=_("Heading"), menu_model=headings, css_classes=["flat"])
+        heading_button.update_property([Gtk.AccessibleProperty.LABEL], [_("Heading")])  # not "H"
+        bar.append(heading_button)
         button("bullet", _("Bulleted List"), icon="view-list-bullet-symbolic")
         button("numbered", _("Numbered List"), icon="view-list-ordered-symbolic")
         button("quote", _("Quote"), label="“ ”")
         button("codeblock", _("Code Block"), label="{ }")
+        if spelling.available():
+            separator()
+            spell_button = Gtk.ToggleButton(
+                icon_name="tools-check-spelling-symbolic",
+                action_name="win.spell-check",
+                tooltip_text=_("Check Spelling (F7)"),
+                css_classes=["flat"],
+            )
+            spell_button.update_property([Gtk.AccessibleProperty.LABEL], [_("Check Spelling")])
+            bar.append(spell_button)
         self.format_bar = bar
         # Scrollable sideways in a narrow window, instead of making the editor wider.
         _install_css()
@@ -994,6 +1011,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.editor.connect("metadata-changed", lambda _e: self._update_export_action())
         self.add_action(export_action)
 
+        # Spell checking on/off, for the editor and focus mode separately (each remembers its own).
+        spell_action = Gio.SimpleAction.new_stateful("spell-check", None, GLib.Variant.new_boolean(False))
+        spell_action.connect("change-state", self._on_spell_check_changed)
+        spell_action.set_enabled(spelling.available())
+        self.add_action(spell_action)
+
         format_action = Gio.SimpleAction.new("format", GLib.VariantType.new("s"))
         format_action.connect("activate", lambda _a, kind: self._apply_format(kind.get_string()))
         self.add_action(format_action)
@@ -1154,6 +1177,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
             if not was_fullscreen:
                 self.unfullscreen()
 
+    def _spell_check_wanted(self) -> bool:
+        """Editor: on unless switched off. Focus mode: off unless switched on (nothing to distract)."""
+        data = config.load()
+        return data.get("focus_spell_check") is True if self.focus_mode else data.get("spell_check") is not False
+
+    def _on_spell_check_changed(self, _action, value):
+        config.update(**{"focus_spell_check" if self.focus_mode else "spell_check": value.get_boolean()})
+        self.apply_settings()
+
+    def _on_dictionary_missing(self, _editor_or_view, lang: str):
+        if lang in self._missing_dictionaries:
+            return
+        self._missing_dictionaries.add(lang)
+        from .inspector import language_name
+
+        self._toast(_("No spelling dictionary for %s is installed, so spelling is not checked.") % language_name(lang))
+
     def _update_format_bar(self):
         self.format_revealer.set_reveal_child(self._format_bar_wanted() and self._active_editor() is not None)
 
@@ -1214,6 +1254,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Outdent List Item"), "<Shift>Tab"),
                     (_("Find"), "<Primary>f"),
                     (_("Find and Replace"), "<Primary>h"),
+                    (_("Check Spelling"), "F7"),
                     (_("Next / Previous Match"), "Return <Shift>Return"),
                 ],
             ),
@@ -1705,10 +1746,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
         ring.set_visible(progress is not None)
         if progress is not None:
             words, goal = progress
-            ring.set_tooltip_text(
-                ngettext("%(count)s of %(goal)s word", "%(count)s of %(goal)s words", goal)
-                % {"count": locale.format_string("%d", words, grouping=True), "goal": locale.format_string("%d", goal, grouping=True)}
-            )
+            text = ngettext("%(count)s of %(goal)s word", "%(count)s of %(goal)s words", goal) % {
+                "count": locale.format_string("%d", words, grouping=True),
+                "goal": locale.format_string("%d", goal, grouping=True),
+            }
+            ring.set_tooltip_text(text)
+            ring.update_property([Gtk.AccessibleProperty.LABEL], [_("Writing Goal") + ": " + text])
             ring.show_progress(fraction(words, goal), words >= goal, animate)
 
     # --- Appearance -------------------------------------------------------
@@ -1726,6 +1769,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             }[current["color_scheme"]]
         )
         self._update_format_bar()
+        self.lookup_action("spell-check").set_state(GLib.Variant.new_boolean(self._spell_check_wanted()))
         self.inspector.refresh()  # defaults for author and language may have changed
 
     def _style_editor(self, editor: SheetEditor):
@@ -1739,6 +1783,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             line_spacing=current["line_spacing"],
         )
         editor.view.set_underline_caret(data.get("underline_caret") is not False)
+        editor.set_spell_checking(self._spell_check_wanted(), config.sheet_defaults()["lang"])
         # Typewriter scrolling and dimming need the editor's own scrolling: not in the group view.
         single = editor is self.editor
         editor.view.set_focus_effects(

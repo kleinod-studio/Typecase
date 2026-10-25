@@ -73,6 +73,14 @@ class ExportDialog(Adw.Dialog):
         view.add_top_bar(Adw.HeaderBar())
         self.set_child(view)
         self.set_default_widget(self.export_button)
+        self.format_row.connect("notify::selected", lambda *_a: self._check_format())
+        self._check_format()
+
+    def _check_format(self):
+        """Tells right away when a format cannot be exported here (PDF without WebKitGTK)."""
+        missing = self.fmt == "pdf" and not pdf_available()
+        self.format_row.set_subtitle(pdf_missing_text() if missing else "")
+        self.export_button.set_sensitive(not missing)
 
     @property
     def fmt(self) -> str:
@@ -182,6 +190,11 @@ def _webkit():
     return WebKit
 
 
+def pdf_missing_text() -> str:
+    # Translators: shown when the system lacks the library for PDF export (only outside the Flatpak)
+    return _("PDF export needs WebKitGTK 6.0, which is not installed. The Flatpak version of Typecase includes it.")
+
+
 def pdf_available() -> bool:
     return _webkit() is not None
 
@@ -190,7 +203,7 @@ def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, d
     """Loads the HTML into an invisible WebKit view and prints it to a PDF file without a dialog."""
     WebKit = _webkit()
     if WebKit is None:
-        done(None, _("PDF export needs WebKitGTK 6.0."))
+        done(None, pdf_missing_text())
         return
 
     view = WebKit.WebView()

@@ -5,6 +5,12 @@ from gi.repository import Gdk, GLib, GtkSource, Pango
 from .markdown_style import FENCE, fence_language, line_spans
 
 _FENCE_LINES = re.compile(r"^[ \t]{0,3}(?:```|~~~).*$", re.MULTILINE)
+_BARE_ADDRESS = re.compile(r"\b(?:https?://|www\.)\S+|\b[\w.+-]+@[\w-]+\.[\w.-]+")
+# Spans that the spell checker skips: code, code blocks, Markdown marks and link targets.
+_NO_SPELL_CHECK = {"code", "codeblock", "syntax"}
+# libspelling skips text with GtkSourceView's "no-spell-check" context class; since Typecase styles
+# Markdown itself (no GtkSourceView language), it marks those regions with a tag of that name.
+NO_SPELL_CHECK_TAG = "gtksourceview:context-classes:no-spell-check"
 
 # Map common short names after ``` to GtkSourceView's language IDs.
 _LANGUAGE_ALIASES = {
@@ -70,6 +76,7 @@ class MarkdownStyler:
         tag("link", underline=Pango.Underline.SINGLE)
         tag("list-marker")
         tag("syntax")
+        self.no_spell_check = buffer.create_tag(NO_SPELL_CHECK_TAG)
 
         self._source_tags: dict[tuple, object] = {}  # colors from GtkSourceView, one tag per style
         self._highlighter = GtkSource.Buffer()
@@ -181,14 +188,19 @@ class MarkdownStyler:
         before = self._text(buffer.get_start_iter(), start)
         in_code = len(_FENCE_LINES.findall(before)) % 2 == 1
 
-        for tag in list(self.tags.values()) + list(self._source_tags.values()):
+        for tag in list(self.tags.values()) + list(self._source_tags.values()) + [self.no_spell_check]:
             buffer.remove_tag(tag, start, end)
 
         offset = start.get_offset()
         for line in self._text(start, end).split("\n"):
             for a, b, name in line_spans(line, in_code):
                 if a < b:
-                    buffer.apply_tag(self.tags[name], buffer.get_iter_at_offset(offset + a), buffer.get_iter_at_offset(offset + b))
+                    first_iter, last_iter = buffer.get_iter_at_offset(offset + a), buffer.get_iter_at_offset(offset + b)
+                    buffer.apply_tag(self.tags[name], first_iter, last_iter)
+                    if name in _NO_SPELL_CHECK:
+                        buffer.apply_tag(self.no_spell_check, first_iter, last_iter)
+            for match in _BARE_ADDRESS.finditer(line):  # web and mail addresses are no words
+                buffer.apply_tag(self.no_spell_check, buffer.get_iter_at_offset(offset + match.start()), buffer.get_iter_at_offset(offset + match.end()))
             if FENCE.match(line):
                 in_code = not in_code
             offset += len(line) + 1

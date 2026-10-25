@@ -23,6 +23,8 @@ class GroupView(Gtk.ScrolledWindow):
         "external-change": (GObject.SignalFlags.RUN_FIRST, None, (object, str)),
         # The user asks to open one sheet on its own (header of a section clicked).
         "open-sheet": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        # A section has spell checking on but no dictionary for its language.
+        "dictionary-missing": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self):
@@ -138,15 +140,24 @@ class GroupView(Gtk.ScrolledWindow):
             self._box.append(Gtk.Separator(margin_start=48, margin_end=48))
         if heading is not None:
             header.set_margin_top(4)
-            self._box.append(
-                Gtk.Label(label=heading, css_classes=["title-3"], margin_top=32 if self.editors else 0, wrap=True, justify=Gtk.Justification.CENTER)
+            title = Gtk.Label(
+                label=heading,
+                css_classes=["title-3"],
+                margin_top=32 if self.editors else 0,
+                wrap=True,
+                justify=Gtk.Justification.CENTER,
+                accessible_role=Gtk.AccessibleRole.HEADING,  # screen readers can jump between subgroups
             )
+            title.update_property([Gtk.AccessibleProperty.LEVEL], [2])
+            self._box.append(title)
         self._box.append(header)
         self._box.append(editor)
+        editor.view.update_property([Gtk.AccessibleProperty.LABEL], [editor.path.stem])  # which sheet is being edited
         self.editors.append(editor)
 
         editor.connect("save-failed", lambda _e, message: self.emit("save-failed", message))
         editor.connect("external-change", lambda e, kind: self.emit("external-change", e, kind))
+        editor.connect("dictionary-missing", lambda _e, lang: self.emit("dictionary-missing", lang))
         editor.buffer.connect("notify::cursor-position", lambda _b, _p: self._queue_caret_visible(editor))
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)  # before the view moves the caret
         keys.connect("key-pressed", self._on_key_pressed, editor)

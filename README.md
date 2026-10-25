@@ -12,6 +12,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Group view**: select a group to read and edit all of its sheets as one continuous text; each sheet is still saved to its own file.
 - **Your text is safe**: autosave with atomic writes. If another program or a sync tool changes a file, Typecase notices and never overwrites your unsaved text. On a conflict, both versions are kept.
 - **Writing**: Markdown is styled as you type and code blocks are highlighted. Lists continue on Enter, and you can find and replace in a sheet.
+- **Spell checking**: offline, in each sheet's language, with suggestions in the right-click menu; F7 or one click switches it on and off.
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
 - **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
@@ -30,6 +31,17 @@ flatpak install --user Typecase-0.9.0-x86_64.flatpak
 ```
 
 Bundles don't update by themselves; install the next release the same way. Typecase will come to Flathub with version 1.0.
+
+### Spell checking dictionaries
+
+In the Flatpak, the dictionaries come from the GNOME runtime’s language packs, which Flatpak installs only for the languages it is set up for. If Typecase says that no dictionary is installed for a language, add it and update (for a system-wide Flatpak installation, run both commands with `sudo`):
+
+```bash
+flatpak config --set languages "de;en"
+flatpak update
+```
+
+Outside the Flatpak, install Hunspell dictionaries from your distribution, for example `hunspell-de` and `hunspell-en_us`.
 
 ## Install from source (Flatpak)
 
@@ -50,7 +62,7 @@ The Flatpak includes Pandoc, so export works out of the box.
 
 ## Development
 
-Requirements: Python 3, PyGObject, GTK 4, libadwaita and GtkSourceView 5. Export also needs Pandoc, and PDF export needs WebKitGTK 6.0 (both are included in the Flatpak).
+Requirements: Python 3, PyGObject, GTK 4, libadwaita and GtkSourceView 5. Export also needs Pandoc, PDF export needs WebKitGTK 6.0, and spell checking needs libspelling with Hunspell dictionaries (all included in the Flatpak).
 
 Run Typecase from the source tree without building:
 

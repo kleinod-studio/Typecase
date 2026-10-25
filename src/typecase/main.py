@@ -72,6 +72,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.preferences", ["<Primary>comma"])
         self.set_accels_for_action("win.inspector", ["<Alt>Return"])
         self.set_accels_for_action("win.export", ["<Primary>e"])
+        self.set_accels_for_action("win.spell-check", ["F7"])
         for kind, keys in [
             ("bold", ["<Primary>b"]),
             ("italic", ["<Primary>i"]),

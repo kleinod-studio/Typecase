@@ -28,6 +28,19 @@ modules:
         url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-amd64.tar.gz
         sha256: d0c90410e90204c9ca83b8539fac5c7aed01fd537207e4585849f8abc5df20b8
 
+  # Spell checking while typing (the library GNOME Text Editor uses); dictionaries come from the
+  # GNOME runtime's language packs. LGPL-2.1-or-later.
+  - name: libspelling
+    buildsystem: meson
+    config-opts:
+      - -Ddocs=false
+      - -Dvapi=false
+      - -Dsysprof=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/libspelling/0.4/libspelling-0.4.10.tar.xz
+        sha256: 56e3f01a3a18b575beea4c34349f99cdaba316e1f7c271b1231f7bcf5d9af73b
+
   - name: typecase
     buildsystem: meson
     sources:

@@ -479,6 +479,16 @@ class PreferencesDialog(Adw.PreferencesDialog):
             "notify::active", lambda row, _p: (config.update(underline_caret=row.get_active()), self._apply())
         )
         tools.add(self.underline_caret)
+        from . import spelling
+
+        self.spell_check = Adw.SwitchRow(
+            title=_("Check Spelling"),
+            subtitle=_("Underline misspelled words, in the sheet’s language; F7 switches it on and off"),
+            active=config.load().get("spell_check") is not False,
+            visible=spelling.available(),
+        )
+        self.spell_check.connect("notify::active", lambda row, _p: (config.update(spell_check=row.get_active()), self._apply()))
+        tools.add(self.spell_check)
         page.add(tools)
         self._editor_reset(page)
 
@@ -525,6 +535,16 @@ class PreferencesDialog(Adw.PreferencesDialog):
             row.connect("notify::active", lambda r, _p, k=key: (config.update(**{k: r.get_active()}), self._apply()))
             focus_tools.add(row)
             setattr(self, key, row)
+        self.focus_spell_check = Adw.SwitchRow(
+            title=_("Check Spelling"),
+            subtitle=_("Off by default, so that nothing distracts you"),
+            active=config.load().get("focus_spell_check") is True,
+            visible=self.spell_check.get_visible(),
+        )
+        self.focus_spell_check.connect(
+            "notify::active", lambda row, _p: (config.update(focus_spell_check=row.get_active()), self._apply())
+        )
+        focus_tools.add(self.focus_spell_check)
         page.add(focus_tools)
 
         # Themes serve both parts, so their list sits below both, under a heading of its own.

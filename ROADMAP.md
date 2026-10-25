@@ -32,7 +32,6 @@ These apply to every feature:
 - [x] Find and replace in the current sheet
 - [x] Configurable font, size, line width and spacing
 - [x] Move sheets and groups by drag and drop
-- [ ] Rendered Markdown preview (on hold; live styling covers most of it)
 
 ## Phase 3: Organizing and publishing ✅
 
@@ -52,7 +51,7 @@ These apply to every feature:
 ## Next
 
 - [x] Manual ordering of sheets and groups (drag between rows, or Alt+Up and Alt+Down)
-- [ ] Spell checking while you type, offline, in the sheet's language; switched on and off with one click or a shortcut, so it never gets in the way of your flow
+- [x] Spell checking while you type, offline, in the sheet's language; switched on and off with one click or F7, with its own setting for focus mode
 - [x] English version of the template guide
 - [ ] Testing on Fedora (GNOME), Linux Mint (Cinnamon) and Kubuntu (KDE)
 - [x] Screenshots and a first public release (0.9.0)
@@ -62,6 +61,8 @@ These apply to every feature:
 ## Later
 
 Ideas for after 1.0:
+
+- [ ] Rendered Markdown preview (live styling covers most of it)
 
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)

@@ -23,6 +23,10 @@ LIB.mkdir()
 os.environ["XDG_CONFIG_HOME"] = str(TMP / "cfg")
 os.environ["XDG_DATA_HOME"] = str(TMP / "data")  # imported templates
 (TMP / "cfg" / "typecase").mkdir(parents=True)
+# A tiny spelling dictionary of our own, so the test needs no installed language packs.
+(TMP / "cfg" / "enchant" / "hunspell").mkdir(parents=True)
+(TMP / "cfg" / "enchant" / "hunspell" / "de_DE.aff").write_text("SET UTF-8\n")
+(TMP / "cfg" / "enchant" / "hunspell" / "de_DE.dic").write_text("5\nDas\nHaus\nsteht\nhier\nkurz\n")
 (TMP / "cfg" / "typecase" / "config.json").write_text(f'{{"library_path": "{LIB}"}}')
 
 import gi  # noqa: E402
@@ -655,6 +659,7 @@ def steps(win, app):
     win.inspector_split.set_show_sidebar(False)
     check(not win.goal_revealer.get_reveal_child() and not win.goal_revealer.get_can_target(), "No goal card without a goal (and no invisible click area)")
     check(not any(r.get_visible() for r in win._row_rings if r.path == meta), "Without a goal the ring disappears from the library")
+    check(all(r.get_accessible_role() == Gtk.AccessibleRole.PROGRESS_BAR for r in win._row_rings), "Screen readers know the rings as progress bars")
     win.inspector_split.set_show_sidebar(True)
     check(not win.content_title.get_subtitle().startswith("9 of"), "Header bar without a goal")
     ed.buffer.set_text("Es war einmal.\nEnde.")
@@ -692,6 +697,47 @@ def steps(win, app):
     check(not sheet.exists() and not (sheet.parent / ".attachments").exists(), "Deleting a sheet takes its attachments along into the trash")
     select(meta)
 
+    # Spell checking (libspelling, with the test dictionary)
+    from typecase import spelling
+
+    if not spelling.available():
+        print("skip   Spell checking: libspelling is not installed")
+    else:
+        spell_sheet = LIB / "Rechtschreibung.md"
+        spell_sheet.write_text("---\nlang: de-DE\n---\nDas Hauss steht `Codewrt` hier: https://kleinod.studio\n", encoding="utf-8")
+        yield from wait_until(lambda: win._index_of(spell_sheet) is not None)
+        select(spell_sheet)
+        tag = ed.spell_adapter.get_tag()
+
+        def misspelled():
+            found, it = [], ed.buffer.get_start_iter()
+            while not it.is_end():
+                if it.starts_tag(tag):
+                    end = it.copy()
+                    end.forward_to_tag_toggle(tag)
+                    found.append(ed.buffer.get_text(it, end, False))
+                it.forward_char()
+            return found
+
+        yield from wait_until(lambda: misspelled() != [])
+        check(misspelled() == ["Hauss"], f"Misspelled words are marked, code and web addresses are skipped ({misspelled()})")
+        check(win.lookup_action("spell-check").get_state().get_boolean(), "Spell checking is on in the editor")
+        win.lookup_action("spell-check").activate(None)
+        check(not ed.spell_adapter.get_enabled() and config.load().get("spell_check") is False, "F7 switches it off and remembers that")
+        win.lookup_action("spell-check").activate(None)
+        check(ed.spell_adapter.get_enabled(), "F7 switches it on again")
+        ed.set_metadata({"lang": "fr-FR"})
+        check(not ed.spell_adapter.get_enabled() and "fr-FR" in win._missing_dictionaries, "Without a dictionary for the sheet's language, a notice appears once")
+        ed.set_metadata({"lang": "de-AT"})
+        check(ed.spell_adapter.get_enabled() and ed.spell_adapter.get_checker().get_language() == "de_DE", "Another variant of the language is used if needed")
+        ed.flush()
+        win.lookup_action("focus-mode").activate(None)
+        check(not ed.spell_adapter.get_enabled(), "Focus mode checks no spelling unless switched on")
+        win.lookup_action("focus-mode").activate(None)
+        yield from wait_until(lambda: not win.is_fullscreen())
+        check(ed.spell_adapter.get_enabled(), "Back in the editor, spelling is checked again")
+        select(meta)
+
     # Export
     from typecase import export, export_templates
     from typecase.export_dialog import ExportDialog, pdf_available, run_export
@@ -700,6 +746,8 @@ def steps(win, app):
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
     check(isinstance(dialog, ExportDialog) and dialog.template_row.get_model().get_n_items() >= 1, "Export dialog offers format and template")
+    dialog.format_row.set_selected(export.FORMATS.index("pdf"))
+    check(dialog.export_button.get_sensitive() == pdf_available() and bool(dialog.format_row.get_subtitle()) != pdf_available(), "Without WebKitGTK, the dialog says so before exporting a PDF")
     dialog.force_close()
     if export.pandoc_path() is None:
         print("      (Pandoc is missing here; export files are only checked in the Flatpak)")
@@ -842,7 +890,7 @@ def steps(win, app):
     headings = []
     child = gv._box.get_first_child()
     while child is not None:
-        if isinstance(child, Gtk.Label) and "title-3" in child.get_css_classes():
+        if isinstance(child, Gtk.Label) and "title-3" in child.get_css_classes() and child.get_accessible_role() == Gtk.AccessibleRole.HEADING:
             headings.append(child.get_label())
         child = child.get_next_sibling()
     check(headings == ["Buch", "Appendix"], f"The group view marks where each subgroup starts ({headings})")

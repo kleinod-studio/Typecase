@@ -25,6 +25,7 @@ install_data(
     'typecase/preferences.py',
     'typecase/search.py',
     'typecase/sheet_editor.py',
+    'typecase/spelling.py',
     'typecase/textstats.py',
     'typecase/themes.py',
     'typecase/window.py',
