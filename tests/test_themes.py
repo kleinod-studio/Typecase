@@ -93,7 +93,8 @@ class ThemesTest(unittest.TestCase):
         self.assertEqual({k: str(v) for k, v in copy.items()}, {k: str(v) for k, v in original.items()}, "the copy looks exactly like the original")
         # Standard inherits its text colors from Adwaita; the saved file spells them out.
         standard = themes.save_builtin("typecase-standard", folder, "Mine")
-        self.assertIn('<style name="text" foreground="#504E55" background="#FFFFFF"/>', standard[0].read_text())
+        adwaita = themes.scheme("typecase-standard", False).get_style("text")
+        self.assertIn(f'<style name="text" foreground="{adwaita.props.foreground}" background="{adwaita.props.background}"/>', standard[0].read_text())
 
     def test_invalid_files_are_refused(self):
         broken = self.root / "kaputt.xml"

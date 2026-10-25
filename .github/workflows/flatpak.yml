@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Install PyGObject
-        run: sudo apt-get update && sudo apt-get install -y python3-gi gir1.2-glib-2.0
+      - name: Install PyGObject, GTK 4 and GtkSourceView 5
+        run: sudo apt-get update && sudo apt-get install -y python3-gi gir1.2-glib-2.0 gir1.2-gtk-4.0 gir1.2-gtksource-5
       - name: Run unit tests
         run: python3 -m unittest discover -s tests
 
