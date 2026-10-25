@@ -783,8 +783,14 @@ def steps(win, app):
     yield 1.5
     check(win.is_fullscreen(), "Focus mode switches to fullscreen")
     check(ed.view.typewriter and ed.view.dim_others, "Focus aids are on in focus mode")
-    yield from wait_until(lambda: ed.view.get_top_margin() == ed.view.get_height() // 2)
-    check(ed.view.get_top_margin() == ed.view.get_height() // 2, "Typewriter mode adds half the height as top margin")
+    # Compare with the height the margins were computed for: while the window grows into fullscreen,
+    # the current height can briefly be ahead of the last layout pass.
+    ed.view.queue_resize()
+    yield from wait_until(lambda: ed.view.get_top_margin() == getattr(ed.view, "allocated_height", -2) // 2, timeout=6)
+    check(
+        ed.view.get_top_margin() == getattr(ed.view, "allocated_height", -2) // 2 > 0,
+        "Typewriter mode adds half the height as top margin",
+    )
     check(not win.inspector_split.get_show_sidebar() and not win.split.get_show_sidebar(), "Sidebars stay hidden in fullscreen")
     check(ed.path and ed.path.name == "a.md", "Checkpoint F3 in focus mode: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
     margin = ed.view.get_left_margin()

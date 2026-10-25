@@ -125,6 +125,7 @@ class _EditorView(GtkSource.View):
             self.set_left_margin(side)
             self.set_right_margin(side)
         # Typewriter mode: half a viewport of space above and below, so the first and last lines can be centred too.
+        self.allocated_height = height  # what the margins were computed for (the tests compare against it)
         top, bottom = (height // 2, height // 2) if self.typewriter else self._margins
         if (top, bottom) != (self.get_top_margin(), self.get_bottom_margin()):
             self.set_top_margin(top)
