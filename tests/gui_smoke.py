@@ -728,8 +728,8 @@ def steps(win, app):
         check(ed.spell_adapter.get_enabled(), "F7 switches it on again")
         ed.set_metadata({"lang": "fr-FR"})
         check(not ed.spell_adapter.get_enabled() and "fr-FR" in win._missing_dictionaries, "Without a dictionary for the sheet's language, a notice appears once")
-        ed.set_metadata({"lang": "de-AT"})
-        check(ed.spell_adapter.get_enabled() and ed.spell_adapter.get_checker().get_language() == "de_DE", "Another variant of the language is used if needed")
+        ed.set_metadata({"lang": "de-XX"})  # a variant no one has a dictionary for
+        check(ed.spell_adapter.get_enabled() and ed.spell_adapter.get_checker().get_language().startswith("de_"), "Another variant of the language is used if needed")
         ed.flush()
         win.lookup_action("focus-mode").activate(None)
         check(not ed.spell_adapter.get_enabled(), "Focus mode checks no spelling unless switched on")

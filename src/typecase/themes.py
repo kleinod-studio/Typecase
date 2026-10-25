@@ -51,13 +51,19 @@ class Theme:
 _manager: GtkSource.StyleSchemeManager | None = None
 
 
+def _system_paths() -> list[str]:
+    """Where GtkSourceView keeps its own schemes (Adwaita, solarized-light, …), which our themes
+    use as parents: built into the library in newer versions, as files in older ones."""
+    return [path for path in GtkSource.StyleSchemeManager.get_default().get_search_path() if path not in (str(USER_DIR), str(BUILTIN_DIR))]
+
+
 def manager() -> GtkSource.StyleSchemeManager:
-    """A scheme manager that sees only Typecase's own themes and the imported ones (not every
-    scheme installed on the system), plus GtkSourceView's built-in ones as parents."""
+    """A scheme manager for Typecase's own themes and the imported ones; only those are offered
+    (see available()), the system's schemes serve as their parents."""
     global _manager
     if _manager is None:
         _manager = GtkSource.StyleSchemeManager()
-        _manager.set_search_path([str(USER_DIR), str(BUILTIN_DIR), "resource:///org/gnome/gtksourceview/styles/"])
+        _manager.set_search_path([str(USER_DIR), str(BUILTIN_DIR), *_system_paths()])
     return _manager
 
 
@@ -248,7 +254,7 @@ def install(path: Path) -> str:
         staging = Path(tempfile.mkdtemp(dir=USER_DIR, prefix=".check-"))
         try:
             shutil.copyfile(temporary, staging / f"{scheme_id}.xml")
-            check.set_search_path([str(staging), "resource:///org/gnome/gtksourceview/styles/", str(BUILTIN_DIR)])
+            check.set_search_path([str(staging), str(BUILTIN_DIR), *_system_paths()])
             if check.get_scheme(scheme_id) is None:
                 raise ThemeError(_("GtkSourceView could not load this theme."))
         finally:
