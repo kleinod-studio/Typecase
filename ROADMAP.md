@@ -63,10 +63,11 @@ These apply to every feature:
 Ideas for after 1.0:
 
 - [ ] Rendered Markdown preview (live styling covers most of it)
-
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
-- [ ] Tables in Markdown, styled in the editor
+- [ ] Images in the text (shown in the editor, included in the export) and Markdown tables, styled in the editor
+- [ ] Math formulas (LaTeX notation), shown in the editor and in the export
+- [ ] Export as EPUB for e-readers
 - [ ] Optional grammar checking with LanguageTool, running locally on your computer; installed only if you ask for it in the preferences, as a separate third-party component
 - [ ] Publish texts to WordPress and other platforms (opt-in: only this feature would connect to the internet, and only when you publish)
 
