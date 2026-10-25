@@ -840,8 +840,11 @@ def steps(win, app):
 
     # Separate settings for focus mode
     focus = prefs.focus_page
-    check(prefs.focus_same.get_active() and not focus.groups[0].get_sensitive(), "Focus mode initially uses the editor settings")
+    check(prefs.focus_same.get_active() and not focus.groups[0].get_visible(), "Focus mode initially uses the editor settings (its own are hidden)")
+    page = prefs.get_visible_page()
+    check(page.get_name() == "editor" and focus.page is page, "Editor and focus mode share one page")
     prefs.focus_same.set_active(False)
+    check(all(group.get_visible() for group in focus.groups), "Switching off shows focus mode's own settings")
     focus.color_scheme.set_selected(2)
     focus.font_size.set_value(26)
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT, "Outside of focus mode the editor style stays")

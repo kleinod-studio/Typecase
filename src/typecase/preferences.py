@@ -12,18 +12,29 @@ def _system_font_family() -> str:
     return Pango.FontDescription.from_string(name).get_family()
 
 
-class _ProfilePage(Adw.PreferencesPage):
-    """A page with font, text block and style for one profile (editor or focus mode)."""
+def _section_heading(page: Adw.PreferencesPage, title: str, description: str | None = None, separator: bool = False):
+    """A large heading that divides a preferences page into clearly separate parts."""
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    if separator:
+        box.append(Gtk.Separator(margin_bottom=18))
+    box.append(Gtk.Label(label=title, xalign=0, css_classes=["title-2"]))
+    if description:
+        box.append(Gtk.Label(label=description, xalign=0, wrap=True, css_classes=["dim-label"]))
+    group = Adw.PreferencesGroup()
+    group.add(box)
+    page.add(group)
 
-    def __init__(self, profile: str, title: str, icon_name: str, on_change, intro: Adw.PreferencesGroup | None = None):
-        super().__init__(title=title, icon_name=icon_name, name=profile)
+
+class _ProfileSection:
+    """Font, text block and style for one profile (editor or focus mode), as groups on a page."""
+
+    def __init__(self, page: Adw.PreferencesPage, profile: str, on_change):
+        self.page = page
         self.profile = profile
         self._on_change = on_change
         self._loading = True
         current = config.settings(profile)
         self.groups: list[Adw.PreferencesGroup] = []
-        if intro is not None:
-            self.add(intro)  # sits above the other groups
 
         # Font
         font_group = self._group(_("Font"))
@@ -83,6 +94,7 @@ class _ProfilePage(Adw.PreferencesPage):
         look_group.add(self.color_scheme)
 
         reset_group = self._group(None)
+        self.reset_group = reset_group
         reset = Gtk.Button(label=_("Restore Defaults"), halign=Gtk.Align.CENTER, css_classes=["pill"])
         reset.connect("clicked", lambda _b: self.reset())
         reset_group.add(reset)
@@ -100,7 +112,7 @@ class _ProfilePage(Adw.PreferencesPage):
 
     def _group(self, title: str | None) -> Adw.PreferencesGroup:
         group = Adw.PreferencesGroup(title=title) if title else Adw.PreferencesGroup()
-        self.add(group)
+        self.page.add(group)
         self.groups.append(group)
         return group
 
@@ -288,38 +300,18 @@ class _TemplatesPage(Adw.PreferencesPage):
 class PreferencesDialog(Adw.PreferencesDialog):
     """Preferences in GNOME style: changes take effect immediately and are saved right away.
 
-    Two pages: the normal editor and focus mode. Focus mode initially uses the editor's
-    settings; only when that is switched off do its own settings apply."""
+    The "Editor" page covers the normal editor and, set apart below it, focus mode. Focus mode
+    initially uses the editor's settings; only when that is switched off do its own settings
+    apply (and appear)."""
 
     def __init__(self, apply):
         super().__init__(title=_("Preferences"))
         self._apply = apply
 
-        intro = Adw.PreferencesGroup(
-            description=_("Focus mode hides the sidebar and toolbars and shows only your text, full screen.")
-        )
-        self.focus_same = Adw.SwitchRow(
-            title=_("Use Editor Settings"),
-            subtitle=_("Switch off to give focus mode its own font, size and style"),
-            active=config.focus_uses_editor_settings(),
-        )
-        intro.add(self.focus_same)
-
-        self.editor_page = _ProfilePage("editor", _("Editor"), "document-edit-symbolic", apply)
-        self.focus_page = _ProfilePage("focus", _("Focus Mode"), "view-fullscreen-symbolic", apply, intro)
-        self.sheets_page = _SheetsPage(apply)
-        self.add(self.editor_page)
-        self.add(self.focus_page)
-        self.add(self.sheets_page)
-        self.templates_page = _TemplatesPage(lambda text: self.add_toast(Adw.Toast(title=text)))
-        self.add(self.templates_page)
-
-        for group in self.focus_page.groups:
-            self.focus_same.bind_property(
-                "active", group, "sensitive", GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN
-            )
-        self.focus_same.connect("notify::active", self._on_focus_same_changed)
-
+        # One page for both editors: the normal editor on top, focus mode below, clearly set apart.
+        page = Adw.PreferencesPage(title=_("Writing"), icon_name="document-edit-symbolic", name="editor")
+        _section_heading(page, _("Editor"), _("How your text looks while you write as usual."))
+        self.editor_page = _ProfileSection(page, "editor", apply)
         tools = Adw.PreferencesGroup(title=_("Tools"))
         self.format_bar = Adw.SwitchRow(
             title=_("Formatting Bar"),
@@ -337,7 +329,30 @@ class PreferencesDialog(Adw.PreferencesDialog):
             "notify::active", lambda row, _p: (config.update(underline_caret=row.get_active()), self._apply())
         )
         tools.add(self.underline_caret)
-        self.editor_page.add(tools)
+        page.add(tools)
+        self._editor_reset(page)
+
+        _section_heading(
+            page,
+            _("Focus Mode"),
+            _("Focus mode hides the sidebar and toolbars and shows only your text, full screen."),
+            separator=True,
+        )
+        same_group = Adw.PreferencesGroup()
+        self.focus_same = Adw.SwitchRow(
+            title=_("Use Editor Settings"),
+            subtitle=_("Switch off to give focus mode its own font, size and style"),
+            active=config.focus_uses_editor_settings(),
+        )
+        same_group.add(self.focus_same)
+        page.add(same_group)
+        self.focus_page = _ProfileSection(page, "focus", apply)
+        # Its own font and style only matter when it doesn't use the editor's: hidden until then.
+        for group in self.focus_page.groups:
+            self.focus_same.bind_property(
+                "active", group, "visible", GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN
+            )
+        self.focus_same.connect("notify::active", self._on_focus_same_changed)
 
         # Separate tool settings in focus mode (independent of "Use Editor Settings").
         focus_tools = Adw.PreferencesGroup(title=_("Tools"))
@@ -356,7 +371,19 @@ class PreferencesDialog(Adw.PreferencesDialog):
             row.connect("notify::active", lambda r, _p, k=key: (config.update(**{k: r.get_active()}), self._apply()))
             focus_tools.add(row)
             setattr(self, key, row)
-        self.focus_page.add(focus_tools)
+        page.add(focus_tools)
+        self.add(page)
+
+        self.sheets_page = _SheetsPage(apply)
+        self.add(self.sheets_page)
+        self.templates_page = _TemplatesPage(lambda text: self.add_toast(Adw.Toast(title=text)))
+        self.add(self.templates_page)
+
+    def _editor_reset(self, page):
+        """"Restore Defaults" for the editor sits after its tools, before the focus mode part."""
+        group = self.editor_page.reset_group
+        page.remove(group)
+        page.add(group)
 
     def _on_focus_format_bar_changed(self, *_args):
         config.update(focus_format_bar=self.focus_format_bar.get_active())

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-25 00:31+0200\n"
+"POT-Creation-Date: 2026-10-25 11:20+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -121,7 +121,7 @@ msgid "Next Match"
 msgstr ""
 
 #: src/typecase/find_bar.py:36 src/typecase/find_bar.py:40
-#: src/typecase/preferences.py:240
+#: src/typecase/preferences.py:252
 msgid "Replace"
 msgstr ""
 
@@ -249,7 +249,7 @@ msgstr ""
 msgid "Subtitle"
 msgstr ""
 
-#: src/typecase/inspector.py:85 src/typecase/preferences.py:149
+#: src/typecase/inspector.py:85 src/typecase/preferences.py:161
 msgid "Author"
 msgstr ""
 
@@ -265,7 +265,7 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: src/typecase/inspector.py:97 src/typecase/preferences.py:155
+#: src/typecase/inspector.py:97 src/typecase/preferences.py:167
 msgid "Language"
 msgstr ""
 
@@ -321,254 +321,262 @@ msgstr ""
 msgid "Source Code"
 msgstr ""
 
-#: src/typecase/preferences.py:29 src/typecase/preferences.py:45
+#: src/typecase/preferences.py:40 src/typecase/preferences.py:56
 msgid "Font"
 msgstr ""
 
-#: src/typecase/preferences.py:31
+#: src/typecase/preferences.py:42
 msgid "Use System Font"
 msgstr ""
 
-#: src/typecase/preferences.py:32
+#: src/typecase/preferences.py:43
 msgid "The same font as the rest of the desktop"
 msgstr ""
 
-#: src/typecase/preferences.py:38
+#: src/typecase/preferences.py:49
 msgid "Choose Font"
 msgstr ""
 
-#: src/typecase/preferences.py:55
+#: src/typecase/preferences.py:66
 msgid "Font Size"
 msgstr ""
 
-#: src/typecase/preferences.py:56
+#: src/typecase/preferences.py:67
 msgid "In points"
 msgstr ""
 
-#: src/typecase/preferences.py:61
+#: src/typecase/preferences.py:72
 msgid "Text Block"
 msgstr ""
 
-#: src/typecase/preferences.py:64
+#: src/typecase/preferences.py:75
 msgid "Line Width"
 msgstr ""
 
-#: src/typecase/preferences.py:65
+#: src/typecase/preferences.py:76
 msgid "Maximum characters per line; the text stays centered"
 msgstr ""
 
-#: src/typecase/preferences.py:70
+#: src/typecase/preferences.py:81
 msgid "Line Spacing"
 msgstr ""
 
-#: src/typecase/preferences.py:71
+#: src/typecase/preferences.py:82
 msgid "Compact"
 msgstr ""
 
-#: src/typecase/preferences.py:71
+#: src/typecase/preferences.py:82
 msgid "Normal"
 msgstr ""
 
-#: src/typecase/preferences.py:71
+#: src/typecase/preferences.py:82
 msgid "Relaxed"
 msgstr ""
 
-#: src/typecase/preferences.py:77
+#: src/typecase/preferences.py:88
 msgid "Appearance"
 msgstr ""
 
-#: src/typecase/preferences.py:79
+#: src/typecase/preferences.py:90
 msgid "Style"
 msgstr ""
 
-#: src/typecase/preferences.py:80
+#: src/typecase/preferences.py:91
 msgid "Follow System"
 msgstr ""
 
-#: src/typecase/preferences.py:80
+#: src/typecase/preferences.py:91
 msgid "Light"
 msgstr ""
 
-#: src/typecase/preferences.py:80
+#: src/typecase/preferences.py:91
 msgid "Dark"
 msgstr ""
 
-#: src/typecase/preferences.py:86
+#: src/typecase/preferences.py:98
 msgid "Restore Defaults"
 msgstr ""
 
-#: src/typecase/preferences.py:141
+#: src/typecase/preferences.py:153
 msgid "Sheets"
 msgstr ""
 
-#: src/typecase/preferences.py:145
+#: src/typecase/preferences.py:157
 msgid "Defaults"
 msgstr ""
 
-#: src/typecase/preferences.py:146
+#: src/typecase/preferences.py:158
 msgid ""
 "Used for every sheet that does not set its own value, for example when "
 "exporting. They are not written into your files."
 msgstr ""
 
-#: src/typecase/preferences.py:171
+#: src/typecase/preferences.py:183
 msgid "Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:174
+#: src/typecase/preferences.py:186
 msgid "Export Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:176
+#: src/typecase/preferences.py:188
 msgid ""
 "Choose a template when exporting. To build your own, save a template as a "
 "file and use it as a starting point."
 msgstr ""
 
-#: src/typecase/preferences.py:179
+#: src/typecase/preferences.py:191
 msgid "Import…"
 msgstr ""
 
-#: src/typecase/preferences.py:193
+#: src/typecase/preferences.py:205
 msgid "Built-in"
 msgstr ""
 
-#: src/typecase/preferences.py:195
+#: src/typecase/preferences.py:207
 msgid "Save as File…"
 msgstr ""
 
-#: src/typecase/preferences.py:201
+#: src/typecase/preferences.py:213
 msgid "Remove"
 msgstr ""
 
-#: src/typecase/preferences.py:211
+#: src/typecase/preferences.py:223
 msgid "Typecase Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:218
+#: src/typecase/preferences.py:230
 msgid "Import Template"
 msgstr ""
 
-#: src/typecase/preferences.py:229 src/typecase/preferences.py:249
+#: src/typecase/preferences.py:241 src/typecase/preferences.py:261
 msgid "Template Not Imported"
 msgstr ""
 
-#: src/typecase/preferences.py:236
+#: src/typecase/preferences.py:248
 msgid "Replace Template?"
 msgstr ""
 
-#: src/typecase/preferences.py:237
+#: src/typecase/preferences.py:249
 #, python-format
 msgid ""
 "A template “%s” is already installed. It will be replaced by the new file."
 msgstr ""
 
-#: src/typecase/preferences.py:239 src/typecase/window.py:1169
+#: src/typecase/preferences.py:251 src/typecase/window.py:1169
 #: src/typecase/window.py:1208 src/typecase/window.py:1325
 msgid "Cancel"
 msgstr ""
 
-#: src/typecase/preferences.py:252
+#: src/typecase/preferences.py:264
 #, python-format
 msgid "Template “%s” imported"
 msgstr ""
 
-#: src/typecase/preferences.py:257
+#: src/typecase/preferences.py:269
 msgid "Save Template"
 msgstr ""
 
-#: src/typecase/preferences.py:268
+#: src/typecase/preferences.py:280
 msgid "Template Not Saved"
 msgstr ""
 
-#: src/typecase/preferences.py:270
+#: src/typecase/preferences.py:282
 #, python-format
 msgid "Saved “%s”"
 msgstr ""
 
-#: src/typecase/preferences.py:277
+#: src/typecase/preferences.py:289
 msgid "Template Not Removed"
 msgstr ""
 
-#: src/typecase/preferences.py:280
+#: src/typecase/preferences.py:292
 #, python-format
 msgid "Template “%s” moved to the trash"
 msgstr ""
 
-#: src/typecase/preferences.py:284 src/typecase/window.py:1127
+#: src/typecase/preferences.py:296 src/typecase/window.py:1127
 msgid "Close"
 msgstr ""
 
-#: src/typecase/preferences.py:295 src/typecase/window.py:271
+#: src/typecase/preferences.py:308 src/typecase/window.py:271
 #: src/typecase/window.py:1072
 msgid "Preferences"
 msgstr ""
 
-#: src/typecase/preferences.py:299
+#: src/typecase/preferences.py:312
+msgid "Writing"
+msgstr ""
+
+#: src/typecase/preferences.py:313 src/typecase/window.py:1045
+msgid "Editor"
+msgstr ""
+
+#: src/typecase/preferences.py:313
+msgid "How your text looks while you write as usual."
+msgstr ""
+
+#: src/typecase/preferences.py:315 src/typecase/preferences.py:358
+msgid "Tools"
+msgstr ""
+
+#: src/typecase/preferences.py:317
+msgid "Formatting Bar"
+msgstr ""
+
+#: src/typecase/preferences.py:318
+msgid "Buttons below the text for bold, lists, headings and more"
+msgstr ""
+
+#: src/typecase/preferences.py:324
+msgid "Underline Cursor"
+msgstr ""
+
+#: src/typecase/preferences.py:325
+msgid ""
+"Show the text cursor as a line below the character instead of a vertical bar"
+msgstr ""
+
+#: src/typecase/preferences.py:337 src/typecase/window.py:266
+#: src/typecase/window.py:1067
+msgid "Focus Mode"
+msgstr ""
+
+#: src/typecase/preferences.py:338
 msgid ""
 "Focus mode hides the sidebar and toolbars and shows only your text, full "
 "screen."
 msgstr ""
 
-#: src/typecase/preferences.py:302
+#: src/typecase/preferences.py:343
 msgid "Use Editor Settings"
 msgstr ""
 
-#: src/typecase/preferences.py:303
+#: src/typecase/preferences.py:344
 msgid "Switch off to give focus mode its own font, size and style"
 msgstr ""
 
-#: src/typecase/preferences.py:308 src/typecase/window.py:1045
-msgid "Editor"
-msgstr ""
-
-#: src/typecase/preferences.py:309 src/typecase/window.py:266
-#: src/typecase/window.py:1067
-msgid "Focus Mode"
-msgstr ""
-
-#: src/typecase/preferences.py:323 src/typecase/preferences.py:343
-msgid "Tools"
-msgstr ""
-
-#: src/typecase/preferences.py:325
-msgid "Formatting Bar"
-msgstr ""
-
-#: src/typecase/preferences.py:326
-msgid "Buttons below the text for bold, lists, headings and more"
-msgstr ""
-
-#: src/typecase/preferences.py:332
-msgid "Underline Cursor"
-msgstr ""
-
-#: src/typecase/preferences.py:333
-msgid ""
-"Show the text cursor as a line below the character instead of a vertical bar"
-msgstr ""
-
-#: src/typecase/preferences.py:345
+#: src/typecase/preferences.py:360
 msgid "Show Formatting Bar"
 msgstr ""
 
-#: src/typecase/preferences.py:346
+#: src/typecase/preferences.py:361
 msgid "When off, it appears when you move the pointer to the bottom edge"
 msgstr ""
 
-#: src/typecase/preferences.py:352
+#: src/typecase/preferences.py:367
 msgid "Typewriter Scrolling"
 msgstr ""
 
-#: src/typecase/preferences.py:352
+#: src/typecase/preferences.py:367
 msgid "Keep the line you are writing in the middle of the screen"
 msgstr ""
 
-#: src/typecase/preferences.py:353
+#: src/typecase/preferences.py:368
 msgid "Dim Surroundings"
 msgstr ""
 
-#: src/typecase/preferences.py:353
+#: src/typecase/preferences.py:368
 msgid "Fade everything except the paragraph you are writing"
 msgstr ""
 
