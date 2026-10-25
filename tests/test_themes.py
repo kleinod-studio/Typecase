@@ -90,7 +90,10 @@ class ThemesTest(unittest.TestCase):
         self.assertEqual([(t.name, t.light, t.dark) for t in imported], [("Paper (custom)", "paper-custom", "paper-custom-dark")])
         original = themes.palette(themes.scheme("typecase-paper", True))
         copy = themes.palette(themes.scheme("paper-custom", True))
-        self.assertEqual({k: str(v) for k, v in copy.items()}, {k: str(v) for k, v in original.items()}, "the copy looks exactly like the original")
+        def colors(palette):
+            return {key: value.to_string() if hasattr(value, "to_string") else value for key, value in palette.items()}
+
+        self.assertEqual(colors(copy), colors(original), "the copy looks exactly like the original")
         # Standard inherits its text colors from Adwaita; the saved file spells them out.
         standard = themes.save_builtin("typecase-standard", folder, "Mine")
         adwaita = themes.scheme("typecase-standard", False).get_style("text")
