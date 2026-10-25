@@ -55,6 +55,7 @@ SETTINGS_DEFAULTS = {
     "line_width": 70,  # characters per line in the text column
     "line_spacing": "normal",
     "color_scheme": "system",
+    "editor_theme": "typecase-standard",  # see themes.py
 }
 FONT_SIZE_RANGE = (8, 48)
 LINE_WIDTH_RANGE = (30, 200)
@@ -81,6 +82,10 @@ def settings(profile: str = "editor") -> dict:
         result["line_spacing"] = data[prefix + "line_spacing"]
     if data.get(prefix + "color_scheme") in COLOR_SCHEMES:
         result["color_scheme"] = data[prefix + "color_scheme"]
+    theme = data.get(prefix + "editor_theme")
+    if isinstance(theme, str) and theme.strip():
+        result["editor_theme"] = theme  # an unknown (e.g. removed) theme falls back to the default
+
     return result
 
 

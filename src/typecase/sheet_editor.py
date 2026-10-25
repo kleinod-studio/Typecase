@@ -140,11 +140,9 @@ class _EditorView(GtkSource.View):
             return
         if layer != Gtk.TextViewLayer.BELOW_TEXT or self.styler is None or not self.styler.code_blocks:
             return
-        dark = self.styler.dark
-        fill = Gdk.RGBA()
-        fill.parse("rgba(255,255,255,0.04)" if dark else "rgba(0,0,0,0.035)")
-        border = Gdk.RGBA()
-        border.parse("rgba(255,255,255,0.12)" if dark else "rgba(0,0,0,0.12)")
+        if self.styler.palette is None:
+            return
+        fill, border = self.styler.palette["block-fill"], self.styler.palette["block-border"]
 
         buffer = self.get_buffer()
         left = self.get_left_margin()
@@ -193,7 +191,8 @@ class _EditorView(GtkSource.View):
         width = where.width if where.width > 2 else self._char_width()
         thickness = 2
         rect = Graphene.Rect().init(where.x, where.y + where.height - thickness, width, thickness)
-        snapshot.append_color(self.get_color(), rect)
+        palette = self.styler.palette if self.styler is not None else None
+        snapshot.append_color(palette["caret"] if palette else self.get_color(), rect)
 
     def _char_width(self) -> float:
         context = self.get_pango_context()

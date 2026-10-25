@@ -34,7 +34,7 @@ These apply to every feature:
 - [x] Move sheets and groups by drag and drop
 - [ ] Rendered Markdown preview (on hold; live styling covers most of it)
 
-## Phase 3: Organizing and publishing 🚧
+## Phase 3: Organizing and publishing ✅
 
 - [x] Writing goals per sheet (word count) with progress rings
 - [x] Keywords on sheets and filtering by keyword
@@ -47,7 +47,7 @@ These apply to every feature:
 - [x] Combine the sheets of a group (subgroups included) into one text and export it, optionally with every subgroup on a new page
 - [x] Group view: select a group to read and edit all of its sheets as one continuous text, while each sheet is still saved to its own file
 - [x] Notes per sheet (in the front matter) and attachments (copies of files that move along with the sheet), in the properties pane
-- [ ] Custom editor themes
+- [x] Editor themes with a light and a dark variant (Standard, Paper, Solarized, Calm, High Contrast), a separate theme for focus mode, and importing GtkSourceView style schemes
 
 ## Next
 

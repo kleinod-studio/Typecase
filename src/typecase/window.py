@@ -4,11 +4,12 @@ from gettext import gettext as _
 from gettext import ngettext
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
 from . import config
 from . import export
 from . import frontmatter
+from . import themes
 from .export_dialog import ExportDialog
 from .find_bar import FindBar
 from .fileio import atomic_write_text
@@ -113,6 +114,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._dragging = False  # one of our library rows is being dragged
         self._after_drag = None  # move to carry out once that drag has ended
 
+        self._theme_css = Gtk.CssProvider()
+        self._theme_css_text = ""
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self._theme_css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self._build_ui()
         self._setup_actions()
         self.editor.connect("save-failed", self._on_save_failed)
@@ -1747,10 +1751,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
         for editor in [self.editor, *self.group_view.editors]:
             self._style_scheme(editor)
 
-    @staticmethod
-    def _style_scheme(editor: SheetEditor):
+    def _style_scheme(self, editor: SheetEditor):
+        """The editor theme (its light or dark variant, following the style) for one editor."""
         dark = Adw.StyleManager.get_default().get_dark()
-        scheme = GtkSource.StyleSchemeManager.get_default().get_scheme("Adwaita-dark" if dark else "Adwaita")
-        if scheme is not None:
-            editor.buffer.set_style_scheme(scheme)
-        editor.styler.set_dark(dark)
+        theme_id = themes.find(config.effective_settings(self.focus_mode)["editor_theme"]).id
+        scheme = themes.scheme(theme_id, dark)
+        editor.buffer.set_style_scheme(scheme)
+        palette = themes.palette(scheme)
+        editor.styler.set_palette(palette)
+        # The group view shows the theme's background between its sections, too; any theme other
+        # than Standard tints the rest of the window to match (Standard keeps the usual GNOME look).
+        css = f".typecase-group {{ background-color: {palette['background'].to_string()}; color: {palette['text'].to_string()}; }}"
+        if theme_id != themes.DEFAULT:
+            css += "\n" + themes.window_css(palette)
+        if css != self._theme_css_text:
+            self._theme_css_text = css
+            self._theme_css.load_from_string(css)

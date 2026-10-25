@@ -80,21 +80,26 @@ class MarkdownStyler:
         self._dirty = False
         self._idle = 0
         self._fence_count = 0
-        self.dark = False
-        self.set_dark(False)
+        self.palette: dict | None = None  # colors of the editor theme (see themes.palette)
 
         buffer.connect_after("insert-text", self._on_insert)
         buffer.connect_after("delete-range", self._on_delete)
 
-    def set_dark(self, dark: bool):
-        self.dark = dark
-        accent = "#78aeed" if dark else "#1c71d8"
-        self.tags["syntax"].props.foreground_rgba = _rgba("rgba(255,255,255,0.35)" if dark else "rgba(0,0,0,0.35)")
-        self.tags["code"].props.background_rgba = _rgba("rgba(255,255,255,0.06)" if dark else "rgba(0,0,0,0.05)")
-        self.tags["link"].props.foreground_rgba = _rgba(accent)
-        self.tags["list-marker"].props.foreground_rgba = _rgba(accent)
+    def set_palette(self, palette: dict):
+        """Colors from the editor theme; the code highlighting follows the buffer's style scheme."""
+        self.palette = palette
+        self.tags["syntax"].props.foreground_rgba = palette["syntax"]
+        self.tags["code"].props.background_rgba = palette["code"]
+        self.tags["link"].props.foreground_rgba = palette["link"]
+        self.tags["list-marker"].props.foreground_rgba = palette["list-marker"]
+        for level in range(1, 7):
+            tag = self.tags[f"h{level}"]
+            if palette["heading"] is not None:
+                tag.props.foreground_rgba = palette["heading"]
+            else:
+                tag.props.foreground_set = False
         if self.buffer.get_char_count():
-            self.restyle_all()  # syntax colors come from the (light/dark) color scheme
+            self.restyle_all()  # code colors come from the style scheme
 
     def restyle_all(self):
         self._cancel_idle()

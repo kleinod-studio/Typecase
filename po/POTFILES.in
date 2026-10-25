@@ -7,4 +7,5 @@ src/typecase/inspector.py
 src/typecase/main.py
 src/typecase/preferences.py
 src/typecase/sheet_editor.py
+src/typecase/themes.py
 src/typecase/window.py

@@ -2,9 +2,9 @@ from gettext import gettext as _
 
 from pathlib import Path
 
-from gi.repository import Adw, Gio, GLib, GObject, Gtk, Pango
+from gi.repository import Adw, Gio, GLib, GObject, Gtk, GtkSource, Pango
 
-from . import config, export_templates
+from . import config, export_templates, themes
 
 
 def _system_font_family() -> str:
@@ -92,6 +92,19 @@ class _ProfileSection:
             selected=config.COLOR_SCHEMES.index(current["color_scheme"]),
         )
         look_group.add(self.color_scheme)
+        # Editor theme: preview tiles as in GNOME Text Editor, showing the variant for the current style.
+        self._theme = current["editor_theme"]
+        self.theme_box = Gtk.FlowBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            homogeneous=True,
+            min_children_per_line=2,
+            max_children_per_line=5,
+            column_spacing=12,
+            row_spacing=12,
+            margin_top=12,
+        )
+        look_group.add(self.theme_box)
+        self.refresh_themes()
 
         reset_group = self._group(None)
         self.reset_group = reset_group
@@ -116,6 +129,32 @@ class _ProfileSection:
         self.groups.append(group)
         return group
 
+    def refresh_themes(self):
+        """(Re)builds the theme tiles, e.g. after an import or when the style turns dark."""
+        self.theme_box.remove_all()
+        self._previews: dict[str, GtkSource.StyleSchemePreview] = {}
+        dark = Adw.StyleManager.get_default().get_dark()
+        known = False
+        for theme in themes.available():
+            preview = GtkSource.StyleSchemePreview(scheme=themes.scheme(theme.id, dark), tooltip_text=theme.name)
+            preview.update_property([Gtk.AccessibleProperty.LABEL], [theme.name])
+            preview.connect("activate", lambda _p, theme_id=theme.id: self._choose_theme(theme_id))
+            tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            tile.append(preview)
+            tile.append(Gtk.Label(label=theme.name, ellipsize=3, css_classes=["caption"]))
+            self.theme_box.append(tile)
+            self._previews[theme.id] = preview
+            known = known or theme.id == self._theme
+        if not known:
+            self._theme = themes.DEFAULT  # e.g. an imported theme that was removed
+        self._previews[self._theme].set_selected(True)
+
+    def _choose_theme(self, theme_id: str):
+        for key, preview in self._previews.items():
+            preview.set_selected(key == theme_id)
+        self._theme = theme_id
+        self.save()
+
     def save(self):
         if self._loading:
             return
@@ -130,6 +169,7 @@ class _ProfileSection:
                 "line_width": int(self.line_width.get_value()),
                 "line_spacing": config.LINE_SPACINGS[self.line_spacing.get_selected()],
                 "color_scheme": config.COLOR_SCHEMES[self.color_scheme.get_selected()],
+                "editor_theme": self._theme,
             },
         )
         self._on_change()
@@ -143,7 +183,7 @@ class _ProfileSection:
         self.line_spacing.set_selected(config.LINE_SPACINGS.index(defaults["line_spacing"]))
         self.color_scheme.set_selected(config.COLOR_SCHEMES.index(defaults["color_scheme"]))
         self._loading = False
-        self.save()
+        self._choose_theme(defaults["editor_theme"])  # saves
 
 
 class _SheetsPage(Adw.PreferencesPage):
@@ -297,6 +337,84 @@ class _TemplatesPage(Adw.PreferencesPage):
         alert.present(self)
 
 
+class _ThemesGroup(Adw.PreferencesGroup):
+    """Imported editor themes: GtkSourceView style schemes (.xml), e.g. from GNOME Text Editor."""
+
+    def __init__(self, on_change, toast):
+        super().__init__(
+            title=_("Editor Themes"),
+            description=_("Import more themes as style scheme files (.xml), the format of GNOME Text Editor. Import the light and the dark variant to get both."),
+        )
+        self._on_change = on_change
+        self._toast = toast
+        button = Gtk.Button(label=_("Import…"), css_classes=["flat"], valign=Gtk.Align.CENTER)
+        button.connect("clicked", lambda _b: self._choose())
+        self.set_header_suffix(button)
+        self._rows: list[Gtk.Widget] = []
+        self.refresh()
+
+    def refresh(self):
+        for row in self._rows:
+            self.remove(row)
+        self._rows = []
+        imported = [theme for theme in themes.available() if not theme.builtin]
+        for theme in imported:
+            variants = _("Light and dark") if theme.light != theme.dark else _("One variant for light and dark")
+            row = Adw.ActionRow(title=theme.name, subtitle=variants)
+            remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Remove"), css_classes=["flat"], valign=Gtk.Align.CENTER)
+            remove.connect("clicked", lambda _b, t=theme: self._remove(t))
+            row.add_suffix(remove)
+            self.add(row)
+            self._rows.append(row)
+        if not imported:
+            row = Adw.ActionRow(title=_("No imported themes"), css_classes=["dim-label"])
+            self.add(row)
+            self._rows.append(row)
+
+    def _choose(self):
+        file_filter = Gtk.FileFilter(name=_("Style Schemes"))
+        file_filter.add_suffix("xml")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(file_filter)
+        dialog = Gtk.FileDialog(title=_("Import Theme"), filters=filters)
+        dialog.open_multiple(self.get_root(), None, self._on_chosen)
+
+    def _on_chosen(self, dialog, result):
+        try:
+            files = dialog.open_multiple_finish(result)
+        except GLib.Error:
+            return  # canceled
+        imported = []
+        for i in range(files.get_n_items()):
+            path = Path(files.get_item(i).get_path())
+            try:
+                themes.install(path)
+            except (themes.ThemeError, OSError) as error:
+                alert = Adw.AlertDialog(heading=_("Theme Not Imported"), body=f"{path.name}: {error}")
+                alert.add_response("close", _("Close"))
+                alert.present(self)
+                continue
+            imported.append(path.name)
+        if imported:
+            self.refresh()
+            self._on_change()
+            self._toast(_("Imported %s") % ", ".join(imported))
+
+    def _remove(self, theme):
+        # Into the trash, like templates: something removed by accident can be restored.
+        try:
+            for path in theme.files:
+                Gio.File.new_for_path(str(path)).trash(None)
+        except GLib.Error as error:
+            alert = Adw.AlertDialog(heading=_("Theme Not Removed"), body=error.message)
+            alert.add_response("close", _("Close"))
+            alert.present(self)
+        themes.rescan()
+        self.refresh()
+        self._on_change()
+        self._toast(_("Theme “%s” moved to the trash") % theme.name)
+
+
 class PreferencesDialog(Adw.PreferencesDialog):
     """Preferences in GNOME style: changes take effect immediately and are saved right away.
 
@@ -330,6 +448,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         tools.add(self.underline_caret)
         page.add(tools)
+        self.themes_group = _ThemesGroup(self._themes_changed, lambda text: self.add_toast(Adw.Toast(title=text)))
+        page.add(self.themes_group)
         self._editor_reset(page)
 
         _section_heading(
@@ -353,6 +473,10 @@ class PreferencesDialog(Adw.PreferencesDialog):
                 "active", group, "visible", GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.INVERT_BOOLEAN
             )
         self.focus_same.connect("notify::active", self._on_focus_same_changed)
+        # The tiles show the light or dark variant, whichever the style currently uses.
+        style = Adw.StyleManager.get_default()
+        handler = style.connect("notify::dark", lambda *_a: [section.refresh_themes() for section in (self.editor_page, self.focus_page)])
+        self.connect("closed", lambda _d: style.disconnect(handler))
 
         # Separate tool settings in focus mode (independent of "Use Editor Settings").
         focus_tools = Adw.PreferencesGroup(title=_("Tools"))
@@ -378,6 +502,12 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self.add(self.sheets_page)
         self.templates_page = _TemplatesPage(lambda text: self.add_toast(Adw.Toast(title=text)))
         self.add(self.templates_page)
+
+    def _themes_changed(self):
+        for section in (self.editor_page, self.focus_page):
+            section.refresh_themes()
+            section.save()  # a removed theme falls back to the default
+        self._apply()
 
     def _editor_reset(self, page):
         """"Restore Defaults" for the editor sits after its tools, before the focus mode part."""

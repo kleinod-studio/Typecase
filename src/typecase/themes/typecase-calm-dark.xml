@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Typecase editor theme; a GtkSourceView style scheme. The typecase:* styles color the
+     Markdown styling, everything else (including code blocks) comes from the parent scheme. -->
+<style-scheme id="typecase-calm-dark" name="Calm" version="1.0" parent-scheme="Adwaita-dark">
+  <author>Typecase</author>
+  <description>Cool blue-grey with gentle contrast</description>
+  <metadata>
+    <property name="variant">dark</property>
+    <property name="light-variant">typecase-calm</property>
+  </metadata>
+  <style name="text" foreground="#D8DEE9" background="#2E3440"/>
+  <style name="selection" background="#434C5E"/>
+  <style name="current-line" background="#343B48"/>
+  <style name="cursor" foreground="#D8DEE9"/>
+  <style name="typecase:syntax" foreground="#616E88"/>
+  <style name="typecase:link" foreground="#88C0D0"/>
+  <style name="typecase:heading" foreground="#ECEFF4"/>
+  <style name="typecase:code" background="#3B4252"/>
+  <style name="typecase:code-block" foreground="#434C5E" background="#343B48"/>
+</style-scheme>

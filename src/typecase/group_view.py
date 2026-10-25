@@ -26,8 +26,8 @@ class GroupView(Gtk.ScrolledWindow):
     }
 
     def __init__(self):
-        # "view": the background of a text view also between the sections
-        super().__init__(hexpand=True, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["view"])
+        # The background of the editor theme also between the sections (set by the window).
+        super().__init__(hexpand=True, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER, css_classes=["view", "typecase-group"])
         self.group: Path | None = None
         self.editors: list[SheetEditor] = []
         self._active: SheetEditor | None = None

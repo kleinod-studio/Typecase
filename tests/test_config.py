@@ -23,16 +23,16 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(config.settings(), config.SETTINGS_DEFAULTS)
 
     def test_valid_values_are_used(self):
-        config.update(editor_font="Cantarell", editor_font_size=20, line_width=90, line_spacing="relaxed", color_scheme="dark")
+        config.update(editor_font="Cantarell", editor_font_size=20, line_width=90, line_spacing="relaxed", color_scheme="dark", editor_theme="typecase-paper")
         self.assertEqual(
             config.settings(),
-            {"editor_font": "Cantarell", "editor_font_size": 20, "line_width": 90, "line_spacing": "relaxed", "color_scheme": "dark"},
+            {"editor_font": "Cantarell", "editor_font_size": 20, "line_width": 90, "line_spacing": "relaxed", "color_scheme": "dark", "editor_theme": "typecase-paper"},
         )
 
     def test_invalid_values_fall_back(self):
         config.CONFIG_PATH.write_text(json.dumps({
             "editor_font": "  ", "editor_font_size": 400, "line_width": "breit",
-            "line_spacing": "riesig", "color_scheme": True,
+            "line_spacing": "riesig", "color_scheme": True, "editor_theme": 7,
         }))
         self.assertEqual(config.settings(), config.SETTINGS_DEFAULTS)
 

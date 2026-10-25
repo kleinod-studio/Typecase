@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Typecase editor theme; a GtkSourceView style scheme. The typecase:* styles color the
+     Markdown styling, everything else (including code blocks) comes from the parent scheme. -->
+<style-scheme id="typecase-standard" name="Standard" version="1.0" parent-scheme="Adwaita">
+  <author>Typecase</author>
+  <description>The usual GNOME look</description>
+  <metadata>
+    <property name="variant">light</property>
+    <property name="dark-variant">typecase-standard-dark</property>
+  </metadata>
+  <style name="typecase:syntax" foreground="#00000059"/>
+  <style name="typecase:link" foreground="#1c71d8"/>
+  <style name="typecase:code" background="#0000000D"/>
+  <style name="typecase:code-block" foreground="#0000001F" background="#00000009"/>
+</style-scheme>

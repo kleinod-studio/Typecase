@@ -1031,6 +1031,32 @@ def steps(win, app):
 
     prefs.editor_page.font_button.set_font_desc(Pango.FontDescription.from_string("Monospace"))
     check(config.settings()["editor_font"] == "Monospace", "Custom font is saved")
+
+    # Editor themes: tiles, light/dark variant, import and removal
+    from typecase import themes
+
+    check(tc_config.TEMPLATES_DIR.is_relative_to(TMP) and themes.USER_DIR.is_relative_to(TMP), "Test uses its own themes folder")
+    tiles = prefs.editor_page._previews
+    check(list(tiles) == list(themes.BUILTIN) and tiles["typecase-standard"].get_selected(), "Five built-in themes, Standard selected")
+    tiles["typecase-paper"].emit("activate")
+    check(config.settings()["editor_theme"] == "typecase-paper" and tiles["typecase-paper"].get_selected() and not tiles["typecase-standard"].get_selected(), "Choosing a tile saves the theme")
+    check(ed.buffer.get_style_scheme().get_id() == "typecase-paper-dark", "The editor uses the dark variant while the style is dark")
+    check(ed.styler.tags["link"].props.foreground_rgba.to_string() == "rgb(217,160,102)", "Links take the theme's color")
+    check("rgb(43,37,32)" in win._theme_css.to_string(), "The group view takes the theme's background")
+    check("--sidebar-bg-color" in win._theme_css_text and "--accent-bg-color: rgb(217,160,102)" in win._theme_css_text, "The rest of the window is tinted to match the theme")
+    scheme_xml = TMP / "nacht.xml"
+    scheme_xml.write_text('<?xml version="1.0"?><style-scheme id="nacht" name="Nacht" version="1.0"><style name="text" foreground="#dddddd" background="#101820"/></style-scheme>')
+    themes.install(scheme_xml)
+    prefs.themes_group.refresh()
+    prefs._themes_changed()
+    check("nacht" in prefs.editor_page._previews and "nacht" in prefs.focus_page._previews, "An imported theme appears as a tile")
+    prefs.editor_page._previews["nacht"].emit("activate")
+    check(ed.buffer.get_style_scheme().get_id() == "nacht", "A theme with one variant is used for light and dark")
+    prefs.themes_group._remove(next(t for t in themes.available() if t.id == "nacht"))
+    check("nacht" not in prefs.editor_page._previews and config.settings()["editor_theme"] == themes.DEFAULT, "Removing the chosen theme falls back to Standard")
+    check(ed.buffer.get_style_scheme().get_id() == "typecase-standard-dark", "The editor falls back to Standard, too")
+    check("--sidebar-bg-color" not in win._theme_css_text, "Standard keeps the usual GNOME colors")
+    prefs.editor_page._previews["typecase-calm"].emit("activate")
     prefs.editor_page.reset()
     check(ed.path and ed.path.name == "a.md", "Checkpoint after reset: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
     check(config.settings() == config.SETTINGS_DEFAULTS, "Reset restores the defaults")
@@ -1045,12 +1071,15 @@ def steps(win, app):
     check(all(group.get_visible() for group in focus.groups), "Switching off shows focus mode's own settings")
     focus.color_scheme.set_selected(2)
     focus.font_size.set_value(26)
+    focus._previews["typecase-solarized"].emit("activate")
+    check(ed.buffer.get_style_scheme().get_id() in ("typecase-standard", "typecase-standard-dark"), "Outside of focus mode the editor theme stays")
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT, "Outside of focus mode the editor style stays")
     prefs.force_close()
     check(ed.path and ed.path.name == "a.md", "Checkpoint preferences closed: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
     win.lookup_action("focus-mode").activate(None)
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.FORCE_DARK, "Focus mode switches to its own style (dark)")
     check("26pt" in ed._css.to_string(), "Focus mode uses its own font size")
+    check(ed.buffer.get_style_scheme().get_id() == "typecase-solarized-dark", "Focus mode uses its own theme")
     win.lookup_action("focus-mode").activate(None)
     check(Adw.StyleManager.get_default().get_color_scheme() == Adw.ColorScheme.DEFAULT and "15pt" in ed._css.to_string(), "Back in the editor, its settings apply again")
     yield from wait_until(lambda: not win.is_fullscreen())
