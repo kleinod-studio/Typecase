@@ -1,4 +1,7 @@
 import json
+import os
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -7,6 +10,9 @@ from .fileio import atomic_write_text
 # Per-folder settings of the library, written only where needed (for now: the manual order).
 # A hidden JSON file keeps the file names untouched and travels along with sync tools.
 FOLDER_FILE = ".typecase.json"
+# Attachments of a sheet: copies of files in a hidden folder of its group, one subfolder per
+# sheet (".attachments/Chapter 1/"). They move along when the sheet is renamed or moved.
+ATTACHMENTS_DIR = ".attachments"
 
 
 @dataclass
@@ -155,6 +161,8 @@ def rename(path: Path, new_name: str) -> Path:
         raise FileExistsError(str(target))
     # A case-only change on case-insensitive file systems is handled cleanly by rename().
     path.rename(target)
+    if target.is_file():
+        move_attachments(path, target)
     return target
 
 
@@ -177,6 +185,38 @@ def move(path: Path, folder: Path) -> Path:
     if target.exists():
         raise FileExistsError(str(target))
     path.rename(target)
+    if target.is_file():
+        move_attachments(path, target)
+    return target
+
+
+def duplicate(path: Path, base: str) -> Path:
+    """Copies a sheet (with its attachments) or a whole group (everything in it) next to the
+    original, under a free name built from base ("Name (Copy)", then "Name (Copy) 2" …), and
+    puts the copy right after the original in the manual order. The copy is made under a hidden
+    temporary name and appears only once it is complete. Returns the copy's path."""
+    folder = path.parent
+    if path.is_dir():
+        staging = Path(tempfile.mkdtemp(dir=folder, prefix=".", suffix=".part"))
+        try:
+            shutil.copytree(path, staging / "copy", symlinks=True)
+            target = unique_path(folder, base)
+            os.rename(staging / "copy", target)
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)  # only our own temporary folder
+    else:
+        handle, temporary = tempfile.mkstemp(dir=folder, prefix=".", suffix=".part")
+        os.close(handle)
+        try:
+            shutil.copyfile(path, temporary)
+            target = unique_path(folder, base, path.suffix)
+            os.rename(temporary, target)
+        except BaseException:
+            Path(temporary).unlink(missing_ok=True)
+            raise
+        for attachment in attachments(path):
+            add_attachment(target, attachment)
+    place(target, path, after=True)
     return target
 
 
@@ -188,3 +228,65 @@ def all_groups(nodes: list[Node]) -> list[Path]:
             groups.append(node.path)
             groups.extend(all_groups(node.children))
     return groups
+
+
+# --- Attachments ------------------------------------------------------------
+
+
+def attachments_folder(sheet: Path) -> Path:
+    return sheet.parent / ATTACHMENTS_DIR / sheet.stem
+
+
+def attachments(sheet: Path) -> list[Path]:
+    """The attached files of a sheet, sorted by name."""
+    try:
+        entries = list(attachments_folder(sheet).iterdir())
+    except OSError:
+        return []
+    files = [entry for entry in entries if entry.is_file() and not entry.name.startswith(".")]
+    return sorted(files, key=lambda path: (path.stem.casefold(), path.suffix.casefold()))
+
+
+def add_attachment(sheet: Path, source: Path) -> Path:
+    """Copies a file into the sheet's attachments; an existing attachment with the same name is
+    never overwritten (the copy gets "Name 2"). The copy appears only once it is complete."""
+    folder = attachments_folder(sheet)
+    folder.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(dir=folder, prefix=".", suffix=".part")
+    os.close(handle)
+    try:
+        shutil.copyfile(source, temporary)
+        target = unique_path(folder, Path(source.name).stem, Path(source.name).suffix)
+        os.rename(temporary, target)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
+    return target
+
+
+def move_attachments(old_sheet: Path, new_sheet: Path) -> None:
+    """The sheet was renamed or moved: its attachments follow. Files that already exist at the
+    new place are kept; incoming ones with the same name get a free name. If something cannot
+    be moved, it stays where it was (nothing is deleted)."""
+    old, new = attachments_folder(old_sheet), attachments_folder(new_sheet)
+    if old == new or not old.is_dir():
+        return
+    try:
+        if not new.exists():
+            new.parent.mkdir(parents=True, exist_ok=True)
+            old.rename(new)
+        else:
+            for item in old.iterdir():
+                item.rename(unique_path(new, Path(item.name).stem, Path(item.name).suffix) if item.is_file() else new / item.name)
+            old.rmdir()
+    except OSError:
+        pass
+    remove_empty_attachments_dir(old_sheet.parent)
+
+
+def remove_empty_attachments_dir(folder: Path) -> None:
+    """Removes the hidden attachments folder of a group once no sheet has attachments any more."""
+    try:
+        (folder / ATTACHMENTS_DIR).rmdir()  # only succeeds when empty
+    except OSError:
+        pass

@@ -19,7 +19,7 @@ from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
 from .keywords import sheets as all_sheets
 from .preferences import PreferencesDialog
-from .library import Node, all_groups, create_group, create_sheet, move, ordered_names, place, rename, rename_in_order, scan
+from .library import Node, all_groups, attachments, attachments_folder, create_group, create_sheet, duplicate, move, ordered_names, place, remove_empty_attachments_dir, rename, rename_in_order, scan
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
 
@@ -198,6 +198,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         row_menu.append_section(None, creation)
         changes = Gio.Menu()
         changes.append(_("Rename…"), "win.rename")
+        changes.append(_("Duplicate"), "win.duplicate")
         changes.append(_("Move Up"), "win.move-up")
         changes.append(_("Move Down"), "win.move-down")
         changes.append(_("Move to…"), "win.move")
@@ -340,6 +341,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         # Properties pane on the right for the metadata (GNOME pattern: second sidebar at the end).
         self.inspector = Inspector(self.editor)
+        self.inspector.connect("message", lambda _i, text: self._toast(text))
         self.inspector_split = Adw.OverlaySplitView(
             sidebar_position=Gtk.PackType.END,
             show_sidebar=False,
@@ -951,6 +953,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "new-sheet": self._on_new_sheet,
             "new-group": self._on_new_group,
             "rename": self._on_rename,
+            "duplicate": self._on_duplicate,
             "move": self._on_move_to,
             "delete": self._on_delete,
             "move-up": lambda: self._move_step(-1),
@@ -1237,6 +1240,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             ("new-sheet", has_library),
             ("new-group", has_library),
             ("rename", has_selection),
+            ("duplicate", has_selection),
             ("move", has_selection),
             ("delete", has_selection),
             ("move-up", has_selection),
@@ -1385,6 +1389,20 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._follow_rename(node.path, new_path)
         self._reload(select_path=new_path, renamed=(node.path, new_path))
 
+    def _on_duplicate(self):
+        """A copy of the selected sheet or group right below it; the copy is then selected."""
+        node = self._selected_node()
+        if node is None or not self._flush():  # copy what was just typed, too
+            return
+        try:
+            # Translators: name of a duplicated sheet or group, e.g. "Chapter 1 (Copy)"
+            copy = duplicate(node.path, _("%(name)s (Copy)") % {"name": node.name})
+        except OSError as error:
+            self._toast(_("Could not duplicate: %s") % (error.strerror or error))
+            return
+        self._reload(select_path=copy)
+        self._open_selected()
+
     def _on_delete(self):
         node = self._selected_node()
         if node is None:
@@ -1393,6 +1411,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
             heading=_("Move “%s” to the Trash?") % node.name,
             body=_("The group and everything in it will be moved to the trash.")
             if node.is_group
+            else _("The sheet and its attachments will be moved to the trash.")
+            if attachments(node.path)
             else _("The sheet will be moved to the trash."),
         )
         dialog.add_response("cancel", _("Cancel"))
@@ -1411,6 +1431,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         except GLib.Error as error:
             self._toast(_("Could not move to the trash: %s") % error.message)
             return
+        folder = attachments_folder(node.path)
+        if not node.is_group and folder.is_dir():
+            # The attachments go along into the trash; if that fails they simply stay where they are.
+            try:
+                Gio.File.new_for_path(str(folder)).trash(None)
+            except GLib.Error:
+                pass
+            remove_empty_attachments_dir(node.path.parent)
         open_path = self._open_path()
         if open_path is not None and (open_path == node.path or node.path in open_path.parents):
             self._show_sheet(None)
@@ -1588,6 +1616,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         open_path = self.editor.path
         if open_path is not None and (open_path == old or old in open_path.parents):
             self.editor.set_path(new / open_path.relative_to(old))
+            self.inspector.refresh_attachments()
         group = self.group_view.group
         if group is not None and (group == old or old in group.parents):
             self.group_view.group = new / group.relative_to(old)

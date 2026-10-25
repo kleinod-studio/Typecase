@@ -43,9 +43,10 @@ These apply to every feature:
 - [x] Export to PDF, DOCX and HTML via Pandoc
 - [x] Export templates as single `.typecase-template` files, imported in the preferences, with a [Claude skill](skills/typecase-template/) that builds them from a description
 - [x] Template placeholders (title, author, date, any front-matter field)
+- [x] Duplicate sheets (with their attachments) and whole groups
 - [x] Combine the sheets of a group (subgroups included) into one text and export it, optionally with every subgroup on a new page
 - [x] Group view: select a group to read and edit all of its sheets as one continuous text, while each sheet is still saved to its own file
-- [ ] Notes and attachments per sheet
+- [x] Notes per sheet (in the front matter) and attachments (copies of files that move along with the sheet), in the properties pane
 - [ ] Custom editor themes
 
 ## Next

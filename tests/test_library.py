@@ -11,7 +11,7 @@ import stat
 from typecase.fileio import atomic_write_text, read_text
 from typecase.markdown_lists import change_indent, on_enter, renumber
 from typecase.textstats import count_characters, count_words
-from typecase.library import all_groups, create_group, create_sheet, move, rename, scan, sheet_filename, validate_name
+from typecase.library import add_attachment, all_groups, attachments, create_group, duplicate, read_order, create_sheet, move, rename, scan, sheet_filename, validate_name
 
 
 class ScanTest(unittest.TestCase):
@@ -294,6 +294,94 @@ class AtomicWriteTest(unittest.TestCase):
             finally:
                 os.chmod(tmp, 0o700)
             self.assertEqual(target.read_text(), "original")
+
+
+class AttachmentTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.sheet = self.root / "Chapter.md"
+        self.sheet.write_text("Text")
+        self.source = self.root / "outside" / "photo.jpg"
+        self.source.parent.mkdir()
+        self.source.write_bytes(b"jpeg")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_add_lists_and_never_overwrites(self):
+        first = add_attachment(self.sheet, self.source)
+        second = add_attachment(self.sheet, self.source)
+        self.assertEqual(first, self.root / ".attachments" / "Chapter" / "photo.jpg")
+        self.assertEqual(second.name, "photo 2.jpg")
+        self.assertEqual(attachments(self.sheet), [first, second])
+        self.assertEqual(first.read_bytes(), b"jpeg")
+        self.assertTrue(self.source.exists(), "the original stays where it is")
+        self.assertEqual([node.name for node in scan(self.root)], ["outside", "Chapter"], "the hidden folder is no group in the library")
+
+    def test_follow_rename_and_move(self):
+        add_attachment(self.sheet, self.source)
+        renamed = rename(self.sheet, "Prologue")
+        self.assertEqual([p.name for p in attachments(renamed)], ["photo.jpg"])
+        self.assertFalse((self.root / ".attachments" / "Chapter").exists())
+        group = create_group(self.root, "Part")
+        moved = move(renamed, group)
+        self.assertEqual(attachments(moved), [group / ".attachments" / "Prologue" / "photo.jpg"])
+        self.assertFalse((self.root / ".attachments").exists(), "the empty hidden folder is cleaned up")
+
+    def test_merge_keeps_existing_files(self):
+        add_attachment(self.sheet, self.source)
+        group = create_group(self.root, "Part")
+        orphan = group / ".attachments" / "Chapter" / "photo.jpg"
+        orphan.parent.mkdir(parents=True)
+        orphan.write_bytes(b"older")
+        moved = move(self.sheet, group)
+        self.assertEqual(sorted(p.name for p in attachments(moved)), ["photo 2.jpg", "photo.jpg"])
+        self.assertEqual(orphan.read_bytes(), b"older")
+
+    def test_sheet_without_attachments(self):
+        self.assertEqual(attachments(self.sheet), [])
+        moved = move(self.sheet, create_group(self.root, "Part"))
+        self.assertFalse((moved.parent / ".attachments").exists())
+
+
+class DuplicateTest(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_sheet_with_attachments_lands_after_the_original(self):
+        for name in ("A.md", "B.md", "C.md"):
+            (self.root / name).write_text(name)
+        source = self.root / "photo.jpg"
+        source.write_bytes(b"jpeg")
+        add_attachment(self.root / "B.md", source)
+        copy = duplicate(self.root / "B.md", "B (Copy)")
+        self.assertEqual(copy, self.root / "B (Copy).md")
+        self.assertEqual(copy.read_text(), "B.md")
+        self.assertEqual([p.name for p in attachments(copy)], ["photo.jpg"])
+        self.assertEqual([p.name for p in attachments(self.root / "B.md")], ["photo.jpg"], "the original keeps its attachments")
+        self.assertEqual(read_order(self.root), ["A.md", "B.md", "B (Copy).md", "C.md"])
+        self.assertEqual(duplicate(self.root / "B.md", "B (Copy)").name, "B (Copy) 2.md")
+        self.assertEqual(sorted(p.name for p in self.root.iterdir() if p.name.endswith(".part")), [], "no temporary files are left")
+
+    def test_group_with_everything_in_it(self):
+        group = create_group(self.root, "Novel")
+        (group / "Part").mkdir()
+        (group / "Part" / "Chapter.md").write_text("Text")
+        (group / "Intro.md").write_text("Hi")
+        add_attachment(group / "Intro.md", group / "Part" / "Chapter.md")
+        (group / ".typecase.json").write_text('{"order": ["Intro.md", "Part"]}')
+        copy = duplicate(group, "Novel (Copy)")
+        self.assertEqual(copy, self.root / "Novel (Copy)")
+        self.assertEqual((copy / "Part" / "Chapter.md").read_text(), "Text")
+        self.assertEqual([p.name for p in attachments(copy / "Intro.md")], ["Chapter.md"])
+        self.assertEqual(read_order(copy), ["Intro.md", "Part"], "the manual order inside is copied too")
+        self.assertEqual([n.name for n in scan(self.root)], ["Novel", "Novel (Copy)"])
+        self.assertEqual([p.name for p in self.root.iterdir() if p.name.startswith(".") and p.name != ".typecase.json"], [])
 
 
 if __name__ == "__main__":

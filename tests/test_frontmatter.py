@@ -81,6 +81,22 @@ class UpdateTest(unittest.TestCase):
         self.assertEqual(data["keywords"], tricky)
         self.assertEqual(data["title"], 'Er sagte: "Hallo"')
 
+    def test_multiline_text_as_block(self):
+        notes = "Idee: Drache\n\nZweiter Absatz\n  eingerückt\n---"
+        header = update("---\ntitle: X\nstatus: draft\n---\n", {"notes": notes})
+        self.assertEqual(
+            header, "---\ntitle: X\nstatus: draft\nnotes: |-\n  Idee: Drache\n\n  Zweiter Absatz\n    eingerückt\n  ---\n---\n"
+        )
+        self.assertEqual(parse(header), {"title": "X", "status": "draft", "notes": notes})
+        # Replacing the block replaces all of its lines, blank lines included; the next field stays.
+        changed = update(update(header, {"author": "A"}), {"notes": "Kurz"})
+        self.assertEqual(changed, "---\ntitle: X\nstatus: draft\nnotes: Kurz\nauthor: A\n---\n")
+        self.assertEqual(parse(update(None, {"notes": "  vorne Leerzeichen\nzwei"}))["notes"], "  vorne Leerzeichen\nzwei")
+
+    def test_reads_blocks_written_by_other_programs(self):
+        data = parse("---\na: |\n  eins\n  zwei\nb: >-\n  gefaltete\n  Zeilen\n\n  neu\nc: x\n---\n")
+        self.assertEqual(data, {"a": "eins\nzwei\n", "b": "gefaltete Zeilen\nneu", "c": "x"})
+
     def test_keeps_crlf(self):
         header, _ = split("---\r\ntitle: x\r\n---\r\nText")
         self.assertEqual(update(header, {"author": "A"}), "---\r\ntitle: x\r\nauthor: A\r\n---\r\n")

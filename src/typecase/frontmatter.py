@@ -1,7 +1,7 @@
 """Reading and changing the front matter (YAML) of a Markdown file, without GTK.
 
 Principle: the front matter belongs to the user. Typecase only reads simple fields
-(text, list) and, when writing, changes only the lines of the fields that have
+(text, multi-line text as a block, list) and, when writing, changes only the lines of the fields that have
 changed. Everything else – unknown fields, comments, formatting – is preserved character
 for character."""
 
@@ -11,6 +11,7 @@ _OPEN = re.compile(r"\A---[ \t]*\r?\n")
 _CLOSE = re.compile(r"^(?:---|\.\.\.)[ \t]*(?:\r?\n|\Z)", re.MULTILINE)
 _KEY = re.compile(r"^([A-Za-z_][\w-]*)[ \t]*:(?:[ \t]+(.*?))?[ \t]*$")
 _LIST_ITEM = re.compile(r"^[ \t]+-[ \t]+(.*?)[ \t]*$")
+_BLOCK = re.compile(r"^([|>])([+-]?)([1-9]?)([+-]?)$")  # block scalar header: | |- >+ |2- …
 _NEEDS_QUOTES = re.compile(r"""^[\s\-?:,\[\]{}#&*!|>'"%@`]|[:#]\s|\s$|^$|^(?:true|false|null|yes|no|~)$""", re.IGNORECASE)
 
 
@@ -42,7 +43,12 @@ def parse(header: str | None) -> dict:
         if not match:
             continue
         key, value = match.group(1), match.group(2)
-        if value is None or value == "":
+        block = _BLOCK.match(_strip_comment(value)) if value else None
+        if block:
+            end = _continuation_end(lines, i)
+            result[key] = _block_text(lines[i:end], block)
+            i = end
+        elif value is None or value == "":
             items = []
             while i < len(lines) and (item := _LIST_ITEM.match(lines[i].rstrip("\r"))):
                 items.append(_unquote(item.group(1)))
@@ -96,17 +102,60 @@ def _field_span(lines: list[str], key: str) -> tuple[int | None, int | None]:
     for i, line in enumerate(lines):
         match = _KEY.match(line.rstrip("\r"))
         if match and match.group(1) == key:
-            end = i + 1
-            while end < len(lines) and lines[end][:1] in (" ", "\t") and lines[end].strip():
-                end += 1
-            return i, end
+            return i, _continuation_end(lines, i + 1)
     return None, None
+
+
+def _continuation_end(lines: list[str], start: int) -> int:
+    """End of the indented lines that belong to a field. Blank lines count only when more
+    indented lines follow them (paragraphs of a block of text)."""
+    end = start
+    i = start
+    while i < len(lines):
+        line = lines[i].rstrip("\r")
+        if line.strip() and line[:1] not in (" ", "\t"):
+            break
+        i += 1
+        if line.strip():
+            end = i
+    return end
+
+
+def _block_text(lines: list[str], block: re.Match) -> str:
+    """Content of a block scalar (| keeps line breaks, > folds lines into paragraphs)."""
+    lines = [line.rstrip("\r") for line in lines]
+    chomping = block.group(2) or block.group(4)
+    indent = int(block.group(3)) if block.group(3) else min(
+        (len(line) - len(line.lstrip(" ")) for line in lines if line.strip()), default=0
+    )
+    content = [line[indent:] if line.strip() else "" for line in lines]
+    if block.group(1) == ">":
+        paragraphs, current = [], []
+        for line in content:
+            if line:
+                current.append(line)
+            else:
+                paragraphs.append(" ".join(current))
+                current = []
+        paragraphs.append(" ".join(current))
+        text = "\n".join(paragraphs)
+    else:
+        text = "\n".join(content)
+    text = text.rstrip("\n")
+    return text if chomping == "-" else text + "\n"
 
 
 def _render(key: str, value) -> list[str]:
     if isinstance(value, (list, tuple)):
         return [f"{key}: [" + ", ".join(_quote(str(item)) for item in value) + "]"]
-    return [f"{key}: {_quote(str(value))}"]
+    value = str(value)
+    if "\n" in value.strip("\n"):
+        # Several lines: a literal block, readable in any editor. An indentation indicator
+        # is needed when the text itself starts with spaces.
+        lines = value.strip("\n").split("\n")
+        indicator = "2" if lines[0][:1] in (" ", "\t") else ""
+        return [f"{key}: |{indicator}-"] + ["  " + line if line.strip() else "" for line in lines]
+    return [f"{key}: {_quote(value.strip(chr(10)))}"]
 
 
 def _empty(value) -> bool:

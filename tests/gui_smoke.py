@@ -586,7 +586,7 @@ def steps(win, app):
     win.lookup_action("inspector").activate(None)
     check(win.inspector_split.get_show_sidebar(), "Properties pane can be shown")
     pages = [page.get_name() for page in inspector.stack.get_pages()]
-    check(pages == ["details", "goal"], f"Properties pane has the tabs Details and Goal ({pages})")
+    check(pages == ["details", "goal", "notes"], f"Properties pane has the tabs Details, Goal and Notes ({pages})")
     inspector.stack.set_visible_child_name("goal")
     from typecase import config as cfg_tabs
 
@@ -659,6 +659,38 @@ def steps(win, app):
     check(not win.content_title.get_subtitle().startswith("9 of"), "Header bar without a goal")
     ed.buffer.set_text("Es war einmal.\nEnde.")
     ed.flush()
+
+    # Notes and attachments (third tab of the properties pane)
+    inspector.stack.set_visible_child_name("notes")
+    notes = inspector.notes_view.get_buffer()
+    notes.set_text("Drache braucht einen Namen.\n\nIdee: Fridolin")
+    check(ed.flush() and parse(split(meta.read_text())[0])["notes"] == "Drache braucht einen Namen.\n\nIdee: Fridolin", "Notes are saved as a block in the front matter")
+    check(body(meta) == "Es war einmal.\nEnde." and "Fridolin" not in text(ed), "Notes stay out of the text")
+    check("cssclass: wide   # fremdes Feld" in meta.read_text(), "Other fields stay untouched when notes are written")
+    select(LIB / "a.md")
+    check(notes.get_text(*notes.get_bounds(), False) == "", "Another sheet shows its own (empty) notes")
+    select(meta)
+    check("Fridolin" in notes.get_text(*notes.get_bounds(), False), "The notes come back with their sheet")
+    notes.set_text("")
+    check(ed.flush() and "notes" not in parse(split(meta.read_text())[0]), "Empty notes disappear from the front matter")
+
+    win.lookup_action("new-sheet").activate(None)
+    sheet = ed.path
+    photo = TMP / "Foto.jpg"
+    photo.write_bytes(b"jpeg")
+    inspector._add_files([Gio.File.new_for_path(str(photo)), Gio.File.new_for_path(str(photo))])
+    folder = sheet.parent / ".attachments" / sheet.stem
+    check(sorted(p.name for p in folder.iterdir()) == ["Foto 2.jpg", "Foto.jpg"] and photo.exists(), "Attachments are copied next to the sheet, never overwritten")
+    check([r.get_title() for r in inspector._attachment_rows] == ["Foto.jpg", "Foto 2.jpg"], "The properties pane lists the attachments")
+    check(win._index_of(sheet.parent / ".attachments") is None, "The attachments folder does not show up in the library")
+    win._do_rename(win._selected_node(), "Beilage")
+    sheet = sheet.with_name("Beilage.md")
+    check((sheet.parent / ".attachments" / "Beilage" / "Foto.jpg").exists() and not folder.exists(), "Attachments follow a renamed sheet")
+    inspector._remove_attachment("Foto 2.jpg")
+    check([r.get_title() for r in inspector._attachment_rows] == ["Foto.jpg"], "Removing an attachment moves it to the trash")
+    win._do_delete(win._selected_node())
+    check(not sheet.exists() and not (sheet.parent / ".attachments").exists(), "Deleting a sheet takes its attachments along into the trash")
+    select(meta)
 
     # Export
     from typecase import export, export_templates
@@ -822,6 +854,20 @@ def steps(win, app):
     select(meta)
     win.inspector_split.set_show_sidebar(inspector_shown)
     win.split.set_show_sidebar(sidebar_shown)
+
+    # Duplicating a sheet and a group (context menu "Duplicate")
+    ed.buffer.insert_at_cursor("Neu: ")
+    win.lookup_action("duplicate").activate(None)
+    meta_copy = LIB / "Meta (Copy).md"
+    check(ed.path == meta_copy and meta_copy.read_text() == meta.read_text() and body(meta).startswith("Neu: "), "Duplicating a sheet saves it first and opens the copy")
+    check(win._index_of(meta_copy) == win._index_of(meta) + 1, "The copy appears right below the original")
+    select(book)
+    win.lookup_action("duplicate").activate(None)
+    book_copy = LIB / "Buch (Copy)"
+    check(gv.group == book_copy and [p.name for p in gv.paths()] == [p.name for p in win._group_sheets(book)], "Duplicating a group copies all of its sheets and shows the copy")
+    for path in (meta_copy, book_copy):
+        win._do_delete(win.tree_model.get_item(win._index_of(path)).get_item().node)
+    select(meta)
 
     # Custom templates: save as a file, import, choose in the export dialog, remove
     from typecase import config as tc_config
