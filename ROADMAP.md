@@ -53,7 +53,8 @@ These apply to every feature:
 - [x] Manual ordering of sheets and groups (drag between rows, or Alt+Up and Alt+Down)
 - [x] Spell checking while you type, offline, in the sheet's language; switched on and off with one click or F7, with its own setting for focus mode
 - [x] English version of the template guide
-- [ ] Testing on Fedora (GNOME), Linux Mint (Cinnamon) and Kubuntu (KDE)
+- [x] Testing on Ubuntu and Fedora 44 (GNOME)
+- [ ] Testing on Linux Mint (Cinnamon) and KDE Plasma
 - [x] Screenshots and a first public release (0.9.0)
 - [ ] Version 1.0 and publishing on Flathub
 - [x] A project website with documentation and downloads: [kleinod.studio/typecase](https://kleinod.studio/typecase/)
