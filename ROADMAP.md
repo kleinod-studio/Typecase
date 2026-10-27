@@ -56,7 +56,8 @@ These apply to every feature:
 - [x] Testing on Ubuntu and Fedora 44 (GNOME)
 - [ ] Testing on Linux Mint (Cinnamon) and KDE Plasma
 - [x] Screenshots and a first public release (0.9.0)
-- [ ] Version 1.0 and publishing on Flathub
+- [x] Version 1.0
+- [ ] Publishing on Flathub
 - [x] A project website with documentation and downloads: [kleinod.studio/typecase](https://kleinod.studio/typecase/)
 
 ## Later

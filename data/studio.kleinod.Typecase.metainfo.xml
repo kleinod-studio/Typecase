@@ -13,10 +13,14 @@
     <p>Typecase is a quiet writing app for Markdown. Your texts live in a library of groups and sheets, stored as plain .md files in a folder of your choice — no database, no account, no network access.</p>
     <ul>
       <li>Markdown styled as you type, with a formatting bar for those who don't want to learn the syntax</li>
-      <li>Focus mode with typewriter scrolling</li>
-      <li>Keywords, sheet properties and writing goals with progress rings</li>
-      <li>Export to PDF, Word and HTML with importable templates</li>
+      <li>Focus mode with typewriter scrolling and dimmed surroundings</li>
+      <li>Group view: read and edit all sheets of a chapter or book as one continuous text</li>
+      <li>Writing goals with progress rings, keywords, notes and attachments per sheet</li>
+      <li>Spell checking while you type, offline and in each sheet's language</li>
+      <li>Editor themes in light and dark, and your own GtkSourceView themes</li>
+      <li>Export single sheets or whole groups to PDF, Word and HTML with importable templates</li>
     </ul>
+    <p>Typecase works completely offline and collects no data.</p>
   </description>
   <launchable type="desktop-id">studio.kleinod.Typecase.desktop</launchable>
   <url type="homepage">https://kleinod.studio/typecase</url>
@@ -27,6 +31,13 @@
     <color type="primary" scheme_preference="dark">#2A2550</color>
   </branding>
   <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
   <screenshots>
     <screenshot type="default" environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-light.png</image>
@@ -62,6 +73,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.0" date="2026-10-27">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.0.0</url>
+      <description>
+        <p>The first stable version.</p>
+        <ul>
+          <li>New screenshots and a fuller description in software centers</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.0" date="2026-10-25">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.10.0</url>
       <description>

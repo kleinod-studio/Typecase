@@ -2,6 +2,14 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 1.0.0 – 2026-10-27
+
+The first stable version. Typecase is complete for everyday writing; the submission to Flathub follows.
+
+- Fuller description for software centers, with the supported input devices and the smallest usable window size
+- New screenshots of the editor, writing goals, focus mode and preferences, in light and dark style
+- A manifest for Flathub that builds Typecase from a release tag
+
 ## 0.10.0 – 2026-10-25
 
 ### Library

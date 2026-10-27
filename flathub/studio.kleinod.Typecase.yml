@@ -1,0 +1,73 @@
+# Manifest for Flathub (github.com/flathub/studio.kleinod.Typecase).
+# Same as ../studio.kleinod.Typecase.yml, but builds a tagged release instead of the local folder.
+# For a new release, update tag and commit below (Flathub's external data checker does this too).
+app-id: studio.kleinod.Typecase
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: typecase
+
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # The library is a folder of plain .md files that the user picks once and keeps, often one synced
+  # by Nextcloud or Syncthing. Typecase watches it for changes made by other programs (so unsaved
+  # text is never overwritten) and creates, renames, moves and trashes files and subfolders in it.
+  # The document portal grants single files and does not deliver change notifications for a whole
+  # folder tree, so the library needs direct access. Deliberately no --share=network.
+  - --filesystem=home
+
+modules:
+  # Export (PDF, DOCX, HTML). Official statically linked Pandoc build; GPL-2.0-or-later.
+  - name: pandoc
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 bin/pandoc /app/bin/pandoc
+    sources:
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-arm64.tar.gz
+        sha256: 445d96fd08801fe636cab1158b4f017ee320ac3b7446328b4fe2f902117b19b9
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/jgm/pandoc/releases/latest
+          version-query: .tag_name
+          url-query: '"https://github.com/jgm/pandoc/releases/download/" + $version + "/pandoc-" + $version + "-linux-arm64.tar.gz"'
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-amd64.tar.gz
+        sha256: d0c90410e90204c9ca83b8539fac5c7aed01fd537207e4585849f8abc5df20b8
+        x-checker-data:
+          type: json
+          url: https://api.github.com/repos/jgm/pandoc/releases/latest
+          version-query: .tag_name
+          url-query: '"https://github.com/jgm/pandoc/releases/download/" + $version + "/pandoc-" + $version + "-linux-amd64.tar.gz"'
+
+  # Spell checking while typing (the library GNOME Text Editor uses); dictionaries come from the
+  # GNOME runtime's language packs. LGPL-2.1-or-later.
+  - name: libspelling
+    buildsystem: meson
+    config-opts:
+      - -Ddocs=false
+      - -Dvapi=false
+      - -Dsysprof=false
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/libspelling/0.4/libspelling-0.4.10.tar.xz
+        sha256: 56e3f01a3a18b575beea4c34349f99cdaba316e1f7c271b1231f7bcf5d9af73b
+        x-checker-data:
+          type: gnome
+          name: libspelling
+
+  - name: typecase
+    buildsystem: meson
+    sources:
+      - type: git
+        url: https://github.com/kleinod-studio/Typecase.git
+        tag: v0.10.0
+        commit: ba2f3523c0d4c7e72a018b840bcca8eef9710291
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$

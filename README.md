@@ -42,7 +42,7 @@ The first command installs Flatpak (on other distributions, use their package ma
 Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
 
 ```bash
-flatpak install --user Typecase-0.10.0-x86_64.flatpak
+flatpak install --user Typecase-1.0.0-x86_64.flatpak
 ```
 
 Bundles don't update by themselves; install the next release the same way. Typecase will come to Flathub with version 1.0.

@@ -9,7 +9,8 @@ finish-args:
   - --socket=fallback-x11
   - --share=ipc
   - --device=dri
-  # The library is a freely chosen folder (Nextcloud/Syncthing too). Deliberately no --share=network.
+  # The library is a freely chosen folder (Nextcloud/Syncthing too) that Typecase watches for
+  # external changes; see flathub/studio.kleinod.Typecase.yml. Deliberately no --share=network.
   - --filesystem=home
 
 modules:
