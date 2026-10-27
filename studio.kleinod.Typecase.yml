@@ -10,7 +10,7 @@ finish-args:
   - --share=ipc
   - --device=dri
   # The library is a freely chosen folder (Nextcloud/Syncthing too) that Typecase watches for
-  # external changes; see flathub/studio.kleinod.Typecase.yml. Deliberately no --share=network.
+  # external changes, so that unsaved text is never overwritten. Deliberately no --share=network.
   - --filesystem=home
 
 modules:
