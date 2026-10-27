@@ -66,8 +66,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/kleinod-studio/Typecase.git
-        tag: v0.10.0
-        commit: ba2f3523c0d4c7e72a018b840bcca8eef9710291
+        tag: v1.0.0
+        commit: 886248f81d02d9a47e3468a7a673e7d853fb01be
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$
