@@ -28,13 +28,37 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <screenshots>
-    <screenshot type="default">
+    <screenshot type="default" environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-light.png</image>
       <caption>A sheet in the editor, with the library and writing goals</caption>
     </screenshot>
-    <screenshot>
+    <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-goal-light.png</image>
+      <caption>Sheet properties with the writing goal and its progress</caption>
+    </screenshot>
+    <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-focus-light.png</image>
+      <caption>Focus mode with typewriter scrolling and the Paper theme</caption>
+    </screenshot>
+    <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-preferences-light.png</image>
+      <caption>Preferences for font, line width and editor theme</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
       <image>https://kleinod.studio/assets/typecase/screenshot-dark.png</image>
-      <caption>Dark style</caption>
+      <caption>A sheet in the editor, with the library and writing goals</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-goal-dark.png</image>
+      <caption>Sheet properties with the writing goal and its progress</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-focus-dark.png</image>
+      <caption>Focus mode with typewriter scrolling and the Paper theme</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-preferences-dark.png</image>
+      <caption>Preferences for font, line width and editor theme</caption>
     </screenshot>
   </screenshots>
   <releases>
