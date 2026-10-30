@@ -66,6 +66,7 @@ Ideas for after 1.0:
 
 - [x] A new sheet takes its first heading as its name (once, while it is still “Untitled”)
 - [x] Card view for plotting: a group shows the notes of its sheets as cards, edited in place; dragging a card (or Alt+arrow keys) changes the order of the sheets
+- [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
