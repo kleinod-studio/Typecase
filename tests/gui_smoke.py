@@ -382,6 +382,9 @@ def steps(win, app):
     check(second.editor.flush(), "Second window has nothing unsaved")
     second.destroy()  # no close(): that would overwrite the test's window size and state
     check(app.get_windows() == [win], "Only the test window is still open")
+    # Give GTK a moment after destroying a window. Going straight on to the next steps made
+    # libadwaita's layout pass touch freed objects now and then (GTK criticals, no Python involved).
+    yield 0.6
     select(LIB / "a.md")
 
     # Context menu: a real right-click on the first row

@@ -266,7 +266,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         tree_scroller.add_controller(root_drop)
         # Attached to the list permanently, so "win.…" actions are found when a menu item is clicked.
         self.row_menu.set_parent(self.list_view)
-        self.connect("destroy", lambda _w: self.row_menu.unparent())
+        self.connect("destroy", self._on_destroy)
 
         self.results = Gtk.ListBox(css_classes=["navigation-sidebar"], activate_on_single_click=True)
         self.results.connect("row-activated", lambda _list, row: self._open_hit(row.hit))
@@ -1068,6 +1068,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         dialog.connect("response", self._on_close_dialog_response)
         dialog.present(self)
         return True
+
+    def _on_destroy(self, _window):
+        """The window is gone (normally after close-request has saved everything). Nothing may go
+        on watching files or counting words for it: that would update widgets that no longer exist."""
+        self.row_menu.unparent()
+        self._unwatch_library()
+        for editor in [self.editor, *self.group_view.editors]:
+            editor.stop()
+        for card in self.group_view.cards.cards:
+            card.close()
 
     def _on_close_dialog_response(self, _dialog, response):
         if response == "discard":

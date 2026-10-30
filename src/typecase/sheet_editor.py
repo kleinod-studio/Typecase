@@ -324,6 +324,18 @@ class SheetEditor(Gtk.Stack):
         self._update_spelling()
         self.emit("metadata-changed")
 
+    def stop(self) -> None:
+        """Stops watching, saving and counting for good, without touching the widgets (the window
+        is being destroyed; call flush() first)."""
+        self._cancel_timer()
+        self._unwatch()
+        if self._count_timer:
+            GLib.source_remove(self._count_timer)
+            self._count_timer = 0
+        if self.view._blink_timer:
+            GLib.source_remove(self.view._blink_timer)
+            self.view._blink_timer = 0
+
     def set_path(self, path: Path) -> None:
         """The open sheet was renamed (possibly with its group); content stays, monitoring moves along."""
         self.path = path
