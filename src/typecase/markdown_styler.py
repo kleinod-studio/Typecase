@@ -2,7 +2,7 @@ import re
 
 from gi.repository import Gdk, GLib, GtkSource, Pango
 
-from .markdown_style import FENCE, fence_language, line_spans
+from .markdown_style import FENCE, fence_language, line_spans, list_text_start
 
 _FENCE_LINES = re.compile(r"^[ \t]{0,3}(?:```|~~~).*$", re.MULTILINE)
 _BARE_ADDRESS = re.compile(r"\b(?:https?://|www\.)\S+|\b[\w.+-]+@[\w-]+\.[\w.-]+")
@@ -56,6 +56,10 @@ class MarkdownStyler:
         # (line of opening fence, last line, closed?); an open block extends to the end of the text
         self.code_blocks: list[tuple[int, int, bool]] = []
         self.on_blocks_changed = None  # callback so the text view redraws the frame
+        # Width in pixels of a piece of text in the editor's font (set by the text view). With it,
+        # wrapped lines of a list item line up with its text instead of with the marker.
+        self.measure = None
+        self._indent_tags: dict[int, object] = {}  # one hanging-indent tag per width
 
         def tag(name, **props):
             self.tags[name] = buffer.create_tag(f"md-{name}", **props)
@@ -188,7 +192,7 @@ class MarkdownStyler:
         before = self._text(buffer.get_start_iter(), start)
         in_code = len(_FENCE_LINES.findall(before)) % 2 == 1
 
-        for tag in list(self.tags.values()) + list(self._source_tags.values()) + [self.no_spell_check]:
+        for tag in [*self.tags.values(), *self._source_tags.values(), *self._indent_tags.values(), self.no_spell_check]:
             buffer.remove_tag(tag, start, end)
 
         offset = start.get_offset()
@@ -201,6 +205,10 @@ class MarkdownStyler:
                         buffer.apply_tag(self.no_spell_check, first_iter, last_iter)
             for match in _BARE_ADDRESS.finditer(line):  # web and mail addresses are no words
                 buffer.apply_tag(self.no_spell_check, buffer.get_iter_at_offset(offset + match.start()), buffer.get_iter_at_offset(offset + match.end()))
+            text_start = None if in_code or self.measure is None else list_text_start(line)
+            if text_start is not None:
+                tag = self._indent_tag(self.measure(line[:text_start]))
+                buffer.apply_tag(tag, buffer.get_iter_at_offset(offset), buffer.get_iter_at_offset(offset + len(line)))
             if FENCE.match(line):
                 in_code = not in_code
             offset += len(line) + 1
@@ -243,6 +251,12 @@ class MarkdownStyler:
                     buffer.get_iter_at_offset(base + following.get_offset()),
                 )
             position = following
+
+    def _indent_tag(self, width: int):
+        """A negative indent leaves the first line where it is and moves the wrapped lines in."""
+        if width not in self._indent_tags:
+            self._indent_tags[width] = self.buffer.create_tag(None, indent=-width)
+        return self._indent_tags[width]
 
     def _language(self, name: str):
         if not name:

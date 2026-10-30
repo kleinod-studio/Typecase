@@ -2,6 +2,11 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 1.1.1 – 2026-10-30
+
+- Wrapped lines of a list item line up with its text, instead of starting under the bullet or number. This works for nested items, numbers of any length and task boxes too.
+- A window that is closed stops watching files at once.
+
 ## 1.1.0 – 2026-10-30
 
 A first feature update.

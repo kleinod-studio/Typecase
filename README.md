@@ -4,7 +4,7 @@ A calm, native Markdown writing app for Linux. Built with GTK 4, libadwaita and 
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 
-> **Status:** 1.1.0. Typecase is stable for everyday writing; a release on Flathub is planned for later. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
+> **Status:** 1.1.1. Typecase is stable for everyday writing; a release on Flathub is planned for later. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
 
 ## Features
 
@@ -42,7 +42,7 @@ The first command installs Flatpak (on other distributions, use their package ma
 Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
 
 ```bash
-flatpak install --user Typecase-1.1.0-x86_64.flatpak
+flatpak install --user Typecase-1.1.1-x86_64.flatpak
 ```
 
 Bundles don't update by themselves; install the next release the same way. A release on Flathub is planned for later.

@@ -31,6 +31,17 @@ def fence_language(line: str) -> str:
     return match.group(2).lower() if match else ""
 
 
+def list_text_start(line: str) -> int | None:
+    """Where the text of a list item begins, after quote marks, indentation, the marker and a
+    task box ("- [ ] "); None if the line is no list item. Wrapped lines are indented to here."""
+    quote = _QUOTE.match(line)
+    start = quote.end() if quote else 0
+    item = _LIST.match(line[start:])
+    if item is None or start + item.end() >= len(line):
+        return None
+    return start + item.end()
+
+
 def line_spans(line: str, in_code_block: bool) -> list[Span]:
     """Styling of a line. in_code_block: the line lies between two ``` fences."""
     if FENCE.match(line):

@@ -35,6 +35,7 @@ class _EditorView(GtkSource.View):
         super().__init__(**kwargs)
         self.line_width_chars = DEFAULT_LINE_WIDTH_CHARS
         self._char_width_cache = (None, 0.0)
+        self._indent_font = None  # font the hanging indents of list items were measured with
         self.styler = None  # provides the lines of code blocks for the frame
         # Text pointer over the wide margins as well, so the caret can be placed precisely.
         self.set_cursor_from_name("text")
@@ -131,6 +132,10 @@ class _EditorView(GtkSource.View):
             self.set_top_margin(top)
             self.set_bottom_margin(bottom)
         GtkSource.View.do_size_allocate(self, width, height, baseline)
+        font = self.get_pango_context().get_font_description().to_string()
+        if font != self._indent_font and self.styler is not None:
+            self._indent_font = font  # new font: list items need indents of a new width
+            GLib.idle_add(lambda: self.styler.restyle_all() and False)
 
     def do_snapshot_layer(self, layer, snapshot):
         GtkSource.View.do_snapshot_layer(self, layer, snapshot)
@@ -193,6 +198,10 @@ class _EditorView(GtkSource.View):
         rect = Graphene.Rect().init(where.x, where.y + where.height - thickness, width, thickness)
         palette = self.styler.palette if self.styler is not None else None
         snapshot.append_color(palette["caret"] if palette else self.get_color(), rect)
+
+    def text_width(self, text: str) -> int:
+        """Width of a piece of text in the editor's font, in pixels."""
+        return self.create_pango_layout(text).get_pixel_size()[0]
 
     def _char_width(self) -> float:
         context = self.get_pango_context()
@@ -270,6 +279,7 @@ class SheetEditor(Gtk.Stack):
         )
         self.view.styler = self.styler
         self.styler.on_blocks_changed = self.view.queue_draw
+        self.styler.measure = self.view.text_width
         if SheetEditor._shared_css is None:
             SheetEditor._shared_css = Gtk.CssProvider()
             Gtk.StyleContext.add_provider_for_display(

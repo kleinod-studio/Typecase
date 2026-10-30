@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase.markdown_style import fence_language, line_spans
+from typecase.markdown_style import fence_language, line_spans, list_text_start
 
 
 def styled(line, in_code=False):
@@ -100,6 +100,20 @@ class BlockTest(unittest.TestCase):
     def test_plain_and_empty(self):
         self.assertEqual(styled("Nur Text."), {})
         self.assertEqual(styled(""), {})
+
+
+
+class ListTextStartTest(unittest.TestCase):
+    def test_where_the_text_begins(self):
+        self.assertEqual(list_text_start("- Punkt"), 2)
+        self.assertEqual(list_text_start("12. Punkt"), 4)
+        self.assertEqual(list_text_start("  - eingerückt"), 4)
+        self.assertEqual(list_text_start("- [ ] Aufgabe"), 6)
+        self.assertEqual(list_text_start("> - im Zitat"), 4)
+
+    def test_no_list_item(self):
+        for line in ("Text", "-", "- ", "-Kein Abstand", "# Überschrift", ""):
+            self.assertIsNone(list_text_start(line), line)
 
 
 if __name__ == "__main__":

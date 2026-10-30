@@ -161,7 +161,19 @@ def steps(win, app):
     yield from wait_until(lambda: second_named.exists())
     check(second_named.exists() and ed.path == LIB / "a.md", "A sheet left on its heading line is named too, with a free name")
     check(win._selected_node().path == LIB / "a.md", "Naming the sheet left behind keeps the new selection")
-    for path in (named, second_named):
+
+    # Wrapped lines of a list item line up with its text, not with the marker
+    win.lookup_action("new-sheet").activate(None)
+    list_sheet = ed.path
+    ed.buffer.insert_at_cursor("Text\n  - Punkt")
+    yield 0.3
+
+    def indent_of(line):
+        tags = ed.buffer.get_iter_at_line(line)[1].get_tags()
+        return next((tag.props.indent for tag in tags if tag.props.indent_set), 0)
+
+    check(indent_of(1) == -ed.view.text_width("  - ") < 0 and indent_of(0) == 0, "A list item gets a hanging indent as wide as its marker")
+    for path in (named, second_named, list_sheet):
         win._do_delete(HeadingNode(path.stem, path))
     yield from wait_until(lambda: win._index_of(named) is None and win._index_of(second_named) is None)
 

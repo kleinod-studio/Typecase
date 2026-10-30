@@ -82,6 +82,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.1" date="2026-10-30">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.1</url>
+      <description>
+        <ul>
+          <li>Wrapped lines of a list item now line up with its text instead of starting under the bullet or number</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-10-30">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.0</url>
       <description>
