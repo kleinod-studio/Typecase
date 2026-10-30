@@ -11,7 +11,7 @@ import stat
 from typecase.fileio import atomic_write_text, read_text
 from typecase.markdown_lists import change_indent, on_enter, renumber
 from typecase.textstats import count_characters, count_words
-from typecase.library import add_attachment, all_groups, attachments, create_group, duplicate, read_order, create_sheet, move, rename, scan, sheet_filename, validate_name
+from typecase.library import add_attachment, all_groups, attachments, create_group, duplicate, heading_name, is_untitled, read_order, create_sheet, move, rename, scan, sheet_filename, validate_name
 
 
 class ScanTest(unittest.TestCase):
@@ -382,6 +382,34 @@ class DuplicateTest(unittest.TestCase):
         self.assertEqual(read_order(copy), ["Intro.md", "Part"], "the manual order inside is copied too")
         self.assertEqual([n.name for n in scan(self.root)], ["Novel", "Novel (Copy)"])
         self.assertEqual([p.name for p in self.root.iterdir() if p.name.startswith(".") and p.name != ".typecase.json"], [])
+
+
+
+class HeadingNameTest(unittest.TestCase):
+    def test_untitled_names(self):
+        bases = ("Unbenannt", "Untitled")
+        for name in ("Unbenannt", "Unbenannt 2", "Untitled 13"):
+            self.assertTrue(is_untitled(name, bases), name)
+        for name in ("Unbenannt Kapitel", "Kapitel 1", "unbenannt", "Unbenannt2"):
+            self.assertFalse(is_untitled(name, bases), name)
+
+    def test_heading_at_the_start(self):
+        self.assertEqual(heading_name("# Kapitel 1\n\nText"), ("Kapitel 1", 0))
+        self.assertEqual(heading_name("\n\n## Der *große* Sturm ##\n"), ("Der große Sturm", 2))
+        self.assertEqual(heading_name("### [Anna](https://example.org) und `Jonas`"), ("Anna und Jonas", 0))
+
+    def test_no_heading_at_the_start(self):
+        for body in ("", "\n\n", "Ein Satz.\n# Später", "#Kein Abstand", "#", "# ***"):
+            self.assertIsNone(heading_name(body), body)
+
+    def test_unusable_characters(self):
+        self.assertEqual(heading_name("# Ein/Aus"), ("Ein-Aus", 0))
+        self.assertEqual(heading_name("# ...und dann"), ("und dann", 0))
+
+    def test_long_headings_are_shortened_at_a_word(self):
+        name, _line = heading_name("# " + "Wort " * 30)
+        self.assertLessEqual(len(name), 80)
+        self.assertTrue(name.endswith("Wort"))
 
 
 if __name__ == "__main__":

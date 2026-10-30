@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -134,6 +135,36 @@ def unique_path(folder: Path, base: str, suffix: str = "") -> Path:
         candidate = folder / f"{base} {number}{suffix}"
         number += 1
     return candidate
+
+
+_HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")  # [text](url) and images
+_MARKUP = re.compile(r"<[^>]+>|[*_`~=]")
+MAX_HEADING_NAME = 80
+
+
+def is_untitled(name: str, bases: tuple[str, ...]) -> bool:
+    """True for the name a new sheet gets automatically: "Untitled", "Untitled 2" …"""
+    return any(re.fullmatch(re.escape(base) + r"(?: \d+)?", name) for base in bases)
+
+
+def heading_name(body: str) -> tuple[str, int] | None:
+    """A sheet name from the heading the text starts with (its first line that is not blank),
+    with the number of that line. None if the text does not start with a heading.
+    Markdown is left out, and a slash, which a file name cannot have, becomes a dash."""
+    for number, line in enumerate(body.split("\n")):
+        if not line.strip():
+            continue
+        match = _HEADING.match(line.rstrip("\r"))
+        if not match:
+            return None
+        name = _MARKUP.sub("", _LINK.sub(r"\1", match.group(1))).replace("/", "-").replace("\0", "")
+        name = " ".join(name.split()).lstrip(".").strip()
+        if len(name) > MAX_HEADING_NAME:
+            cut = name[:MAX_HEADING_NAME]
+            name = (cut.rsplit(" ", 1)[0] if " " in cut else cut).rstrip(" ,;:-–")
+        return (name, number) if name else None
+    return None
 
 
 def create_sheet(folder: Path, base: str) -> Path:

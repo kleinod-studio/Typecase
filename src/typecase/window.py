@@ -12,7 +12,7 @@ from . import frontmatter
 from . import spelling, themes
 from .export_dialog import ExportDialog
 from .find_bar import FindBar
-from .fileio import atomic_write_text
+from .fileio import atomic_write_text, read_text
 from .goal import GoalIndex, fraction, parse_goal
 from .goal_ring import GoalBadge, ProgressRing
 from .group_view import GroupView
@@ -20,7 +20,7 @@ from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
 from .keywords import sheets as all_sheets
 from .preferences import PreferencesDialog
-from .library import Node, all_groups, attachments, attachments_folder, create_group, create_sheet, duplicate, move, ordered_names, place, remove_empty_attachments_dir, rename, rename_in_order, scan
+from .library import Node, all_groups, attachments, attachments_folder, create_group, create_sheet, duplicate, heading_name, is_untitled, move, ordered_names, place, remove_empty_attachments_dir, rename, rename_in_order, scan, unique_path
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
 
@@ -130,6 +130,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.editor.connect("counts-changed", self._on_counts_changed)
         self.editor.connect("external-change", self._on_external_change)
         self.editor.connect("dictionary-missing", self._on_dictionary_missing)
+        self.editor.buffer.connect("notify::cursor-position", self._on_editor_cursor_moved)
         self.group_view.connect("dictionary-missing", self._on_dictionary_missing)
         self.group_view.connect("save-failed", self._on_save_failed)
         self.group_view.connect("counts-changed", self._on_group_counts_changed)
@@ -772,6 +773,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         if not self._flush():
             self._reselect(self._open_row)  # Switch refused, the previous sheet stays open.
             return
+        left = self.editor.path
+        if left is not None:  # the sheet left behind may still take its heading as its name
+            GLib.idle_add(lambda: self._name_after_heading(left) and False)
         if node.is_group:
             self._show_group(row)
             return
@@ -1051,6 +1055,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _on_close_request(self, _window):
         if self._flush():
+            if self.editor.path is not None:
+                self._name_after_heading(self.editor.path)
             self._save_state()
             return False
         dialog = Adw.AlertDialog(
@@ -1547,6 +1553,47 @@ class TypecaseWindow(Adw.ApplicationWindow):
             pass  # the order file is a convenience; the rename itself has worked
         self._follow_rename(node.path, new_path)
         self._reload(select_path=new_path, renamed=(node.path, new_path))
+
+    def _on_editor_cursor_moved(self, buffer, _pspec):
+        """The caret has left the heading an untitled sheet starts with: the heading becomes its name."""
+        path = self.editor.path
+        if path is None or not self._is_untitled(path):
+            return
+        _found, end = buffer.get_iter_at_line(50)  # the heading is at the start; no need to copy a long text
+        found = heading_name(buffer.get_text(buffer.get_start_iter(), end, True))
+        if found is not None and buffer.get_iter_at_mark(buffer.get_insert()).get_line() != found[1]:
+            GLib.idle_add(lambda: self._name_after_heading(path) and False)  # not while GTK moves the caret
+
+    def _is_untitled(self, path: Path) -> bool:
+        return path.suffix == ".md" and is_untitled(path.stem, (_("Untitled"), "Untitled"))
+
+    def _name_after_heading(self, path: Path) -> bool:
+        """A sheet that still has its automatic name ("Untitled") is named after the heading its
+        text starts with – only once: with a real name it is never renamed automatically again.
+        Returns True if it was renamed."""
+        if not (self._inside_library(path) and self._is_untitled(path)):
+            return False
+        if path == self.editor.path and not self.editor.flush():
+            return False
+        try:
+            found = heading_name(frontmatter.split(read_text(path))[1])
+        except (OSError, UnicodeDecodeError):
+            return False
+        if found is None:
+            return False
+        name = unique_path(path.parent, found[0], ".md").stem  # "Chapter 2" if "Chapter" exists
+        try:
+            new_path = rename(path, name)
+        except (ValueError, OSError):
+            return False  # it simply stays "Untitled"; renaming by hand still works
+        try:
+            rename_in_order(path.parent, path.name, new_path.name)
+        except OSError:
+            pass
+        selected = self._selected_node()
+        self._follow_rename(path, new_path)
+        self._reload(select_path=new_path if selected is not None and selected.path == path else None, renamed=(path, new_path))
+        return True
 
     def _on_duplicate(self):
         """A copy of the selected sheet or group right below it; the copy is then selected."""

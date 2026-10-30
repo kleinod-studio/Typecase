@@ -135,6 +135,36 @@ def steps(win, app):
     win.lookup_action("new-sheet").activate(None)
     check((LIB / "Untitled 2.md").exists(), "Second new sheet gets an unused name")
 
+    # An untitled sheet takes its first heading as its name, once the caret leaves that line
+    from typecase.library import Node as HeadingNode
+
+    win.lookup_action("new-sheet").activate(None)
+    ed.buffer.insert_at_cursor("# Kapitel Eins")
+    yield 0.3
+    check(ed.path == LIB / "Untitled 3.md", "While the heading is being typed, the sheet keeps its name")
+    ed.buffer.insert_at_cursor("\nText")
+    named = LIB / "Kapitel Eins.md"
+    yield from wait_until(lambda: ed.path == named)
+    check(ed.path == named and named.exists() and not (LIB / "Untitled 3.md").exists(), "Leaving the heading line names the sheet after it")
+    check(body(named) == "# Kapitel Eins\nText" and win._selected_node().path == named, "The renamed sheet keeps its text and stays selected")
+    check(win.content_title.get_title() == "Kapitel Eins", "The title follows the new name")
+    start = ed.buffer.get_start_iter()
+    start.forward_chars(2)
+    ed.buffer.insert(start, "Neues ")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    yield 0.3
+    check(ed.path == named, "A named sheet is not renamed again when its heading changes")
+    win.lookup_action("new-sheet").activate(None)
+    ed.buffer.insert_at_cursor("# Kapitel Eins")
+    select(LIB / "a.md")
+    second_named = LIB / "Kapitel Eins 2.md"
+    yield from wait_until(lambda: second_named.exists())
+    check(second_named.exists() and ed.path == LIB / "a.md", "A sheet left on its heading line is named too, with a free name")
+    check(win._selected_node().path == LIB / "a.md", "Naming the sheet left behind keeps the new selection")
+    for path in (named, second_named):
+        win._do_delete(HeadingNode(path.stem, path))
+    yield from wait_until(lambda: win._index_of(named) is None and win._index_of(second_named) is None)
+
     win.lookup_action("new-group").activate(None)
     check((LIB / "New Group").is_dir(), "New group is created")
     win._do_rename(win._selected_node(), "Romane")
