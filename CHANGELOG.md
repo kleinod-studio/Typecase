@@ -2,6 +2,13 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 1.1.0 – 2026-10-30
+
+A first feature update.
+
+- Card view for plotting: a switch in the header bar (or Ctrl+Alt+C) shows the sheets of a group as cards with title, status, keywords, notes and word count. Notes are edited right on the card, and dragging a card or pressing Alt+arrow keys changes the order of the sheets. Each group remembers whether it shows text or cards.
+- A new sheet takes its first heading as its name as soon as you leave the heading line, but only while it is still called “Untitled”; renaming by hand works as before.
+
 ## 1.0.0 – 2026-10-27
 
 The first stable version. Typecase is complete for everyday writing; the submission to Flathub follows.

@@ -309,6 +309,7 @@ class CardBoard(Gtk.Box):
                     self.append(title)
                 flow = Gtk.FlowBox(
                     selection_mode=Gtk.SelectionMode.NONE,
+                    css_classes=["typecase-cards"],
                     homogeneous=True,
                     min_children_per_line=1,
                     max_children_per_line=12,

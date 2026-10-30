@@ -15,6 +15,7 @@
       <li>Markdown styled as you type, with a formatting bar for those who don't want to learn the syntax</li>
       <li>Focus mode with typewriter scrolling and dimmed surroundings</li>
       <li>Group view: read and edit all sheets of a chapter or book as one continuous text</li>
+      <li>Card view for plotting: the notes of all sheets as cards, reordered by dragging</li>
       <li>Writing goals with progress rings, keywords, notes and attachments per sheet</li>
       <li>Spell checking while you type, offline and in each sheet's language</li>
       <li>Editor themes in light and dark, and your own GtkSourceView themes</li>
@@ -44,6 +45,10 @@
       <caption>A sheet in the editor, with the library and writing goals</caption>
     </screenshot>
     <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-cards-light.png</image>
+      <caption>Card view: the notes of all chapters as cards</caption>
+    </screenshot>
+    <screenshot environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-goal-light.png</image>
       <caption>Sheet properties with the writing goal and its progress</caption>
     </screenshot>
@@ -60,6 +65,10 @@
       <caption>A sheet in the editor, with the library and writing goals</caption>
     </screenshot>
     <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-cards-dark.png</image>
+      <caption>Card view: the notes of all chapters as cards</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
       <image>https://kleinod.studio/assets/typecase/screenshot-goal-dark.png</image>
       <caption>Sheet properties with the writing goal and its progress</caption>
     </screenshot>
@@ -73,6 +82,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.0" date="2026-10-30">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.0</url>
+      <description>
+        <p>A first feature update.</p>
+        <ul>
+          <li>Card view: a group shows the notes of its sheets as cards, edited in place; dragging a card or Alt+arrow keys change the order</li>
+          <li>A new sheet takes its first heading as its name</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-27">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.0.0</url>
       <description>

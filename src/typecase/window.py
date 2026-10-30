@@ -69,6 +69,8 @@ def _install_css():
         treeexpander.drop-into { background-color: alpha(var(--accent-bg-color), 0.15); border-radius: 6px; }
         /* Cards of a group: notes on the card's own background; where a dragged card lands. */
         .typecase-card { padding: 8px 10px 10px; }
+        .typecase-cards > flowboxchild { padding: 0; background: none; outline: none; }
+        .typecase-card-title { padding-left: 6px; padding-right: 6px; }  /* text in line with the rest of the card */
         .typecase-card-notes, .typecase-card-notes > text { background: none; }
         .typecase-card-status { padding: 1px 8px; border-radius: 99px; background-color: alpha(currentColor, 0.1); }
         .typecase-card.drop-before { box-shadow: inset 3px 0 0 0 var(--accent-bg-color); }
@@ -301,13 +303,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         header.pack_start(self.sidebar_button)
         # A group shows its sheets as one text or as cards with their notes.
         self.group_mode = Adw.ToggleGroup(visible=False)
-        # Kept referenced here: PyGObject would otherwise free the toggles the group still uses.
-        self._group_toggles = [
-            Adw.Toggle(name="text", label=_("Text"), tooltip=_("All sheets as one text")),
-            Adw.Toggle(name="cards", label=_("Cards"), tooltip=_("The notes of all sheets as cards")),
-        ]
-        for toggle in self._group_toggles:
-            self.group_mode.add(toggle)
+        self.group_mode.add(Adw.Toggle(name="text", label=_("Text"), tooltip=_("All sheets as one text")))
+        self.group_mode.add(Adw.Toggle(name="cards", label=_("Cards"), tooltip=_("The notes of all sheets as cards")))
         self.group_mode.connect("notify::active-name", self._on_group_mode_toggled)
         header.pack_start(self.group_mode)
 
