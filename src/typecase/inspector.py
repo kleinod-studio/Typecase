@@ -29,7 +29,7 @@ def language_name(code: str) -> str:
     return names.get(code, code)
 
 
-def _status_name(value: str) -> str:
+def status_name(value: str) -> str:
     return {"draft": _("Draft"), "revision": _("Revision"), "final": _("Final")}.get(value, value)
 
 
@@ -221,7 +221,7 @@ class Inspector(Adw.Bin):
         self.author_row.set_text(text("author"))
         self.author_default.set_label(defaults["author"] or "")
         self.keywords_row.set_text(text("keywords"))
-        self._fill_choice(self.status_row, "status", list(STATUSES), [_status_name(s) for s in STATUSES], text("status"))
+        self._fill_choice(self.status_row, "status", list(STATUSES), [status_name(s) for s in STATUSES], text("status"))
         self._fill_choice(self.lang_row, "lang", list(config.LANGUAGES), [language_name(c) for c in config.LANGUAGES], text("lang"))
         self._created = text("created")
         goal = parse_goal(data.get("goal"))

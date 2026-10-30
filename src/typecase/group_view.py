@@ -3,6 +3,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, GLib, GObject, Graphene, Gtk
 
+from .card_view import CardBoard
 from .sheet_editor import SheetEditor
 
 
@@ -13,6 +14,8 @@ class GroupView(Gtk.ScrolledWindow):
     external changes and undo work per file exactly as in the single-sheet view. The view only
     stacks them, separated by a line with the sheet's name, and lets the arrow keys move on from
     the end of one sheet to the start of the next.
+
+    Instead of the text, the view can show the sheets as cards with their notes (CardBoard).
 
     Like SheetEditor, whoever leaves the view calls flush() first and continues only on True."""
 
@@ -25,6 +28,9 @@ class GroupView(Gtk.ScrolledWindow):
         "open-sheet": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         # A section has spell checking on but no dictionary for its language.
         "dictionary-missing": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        # From the cards: something to tell the user, and a card put before or after another one.
+        "message": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "move-sheet": (GObject.SignalFlags.RUN_FIRST, None, (str, str, bool)),
     }
 
     def __init__(self):
@@ -40,15 +46,27 @@ class GroupView(Gtk.ScrolledWindow):
             title=_("No Sheets in This Group"),
             description=_("Sheets you add to the group appear here one after another."),
         )
+        self.cards = CardBoard()
+        self.showing_cards = False
+        self.cards.connect("save-failed", lambda _b, message: self.emit("save-failed", message))
+        self.cards.connect("message", lambda _b, text: self.emit("message", text))
+        self.cards.connect("open-sheet", lambda _b, path: self.emit("open-sheet", path))
+        self.cards.connect("move-sheet", lambda _b, *move: self.emit("move-sheet", *move))
+        self.cards.connect("counts-changed", lambda _b, words, characters: self.emit("counts-changed", words, characters))
         self.set_child(self._box)
 
     # --- Opening and closing ---------------------------------------------
 
-    def open(self, group: Path, sheets: list[Path]) -> list[str]:
-        """Shows the sheets of a group. The caller must have flushed whatever was open before.
-        Returns the names of sheets that could not be opened (they are left out)."""
+    def open(self, group: Path, sheets: list[Path], cards: bool = False) -> list[str]:
+        """Shows the sheets of a group, as text or as cards. The caller must have flushed whatever
+        was open before. Returns the names of sheets that could not be opened (they are left out)."""
         self.close()
         self.group = group
+        if cards:
+            self.showing_cards = True
+            failed = self.cards.open(sheets, self.subgroup_title)
+            self.set_child(self.cards if self.cards.cards else self._empty)
+            return failed
         failed = []
         nested = len({path.parent for path in sheets}) > 1
         folder = None
@@ -83,13 +101,15 @@ class GroupView(Gtk.ScrolledWindow):
         self.editors = []
         self._counts = {}
         self._active = None
+        self.cards.close()
+        self.showing_cards = False
         self.group = None
         self._emit_counts()
 
     def flush(self) -> bool:
         """Saves every section. True only if nothing is pending anywhere (a refused save, e.g. in
         a conflict, keeps the view open)."""
-        ok = True
+        ok = self.cards.flush()
         for editor in self.editors:
             ok = editor.flush() and ok
         return ok
@@ -109,12 +129,17 @@ class GroupView(Gtk.ScrolledWindow):
         self._active = editor
 
     def paths(self) -> list[Path]:
+        if self.showing_cards:
+            return self.cards.paths()
         return [editor.path for editor in self.editors]
 
     def editor_for(self, path: Path) -> SheetEditor | None:
         return next((editor for editor in self.editors if editor.path == path), None)
 
     def focus_start(self) -> None:
+        if self.showing_cards:
+            self.cards.focus_card()
+            return
         target = self.active or (self.editors[0] if self.editors else None)
         if target is not None:
             target.focus_editor()

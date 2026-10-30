@@ -1,3 +1,5 @@
+src/typecase/card_view.py
+src/typecase/cards.py
 src/typecase/export_dialog.py
 src/typecase/export_templates.py
 src/typecase/find_bar.py

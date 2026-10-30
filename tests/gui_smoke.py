@@ -899,7 +899,61 @@ def steps(win, app):
     check(dialog.page_break_row.get_visible() and dialog.page_break_row.get_active(), "A group with subgroups offers a new page for each one")
     check(export.PAGE_BREAK in dialog._page_break_text and export.PAGE_BREAK not in dialog._text, "Only the page-break version contains page breaks")
     dialog.force_close()
+
+    # Card view: the notes of all sheets as cards, edited in place and moved like the sheets
+    from typecase.cards import read_card
+
+    win.lookup_action("cards").change_state(GLib.Variant.new_boolean(True))
+    board = gv.cards
+    check(gv.group == book and gv.showing_cards and win.group_mode.get_active_name() == "cards", "The switch shows the group as cards")
+    check(board.paths() == win._group_sheets(book) and not gv.editors, "One card per sheet in the manual order, subgroups included")
+    check(win._active_editor() is None and not win.format_revealer.get_reveal_child(), "No formatting bar on the cards")
+    prologue = book / "Prologue.md"
+    card = next(c for c in board.cards if c.path == prologue)
+    prologue_body = body(prologue)
+    card.notes.get_buffer().set_text("Idee: Sturm")
+    yield from wait_until(lambda: read_card(prologue).notes == "Idee: Sturm")
+    check(read_card(prologue).notes == "Idee: Sturm" and body(prologue) == prologue_body, "Notes typed on a card are saved; the text stays as it is")
+    prologue.write_text(prologue.read_text().replace("Idee: Sturm", "Idee: Regen"), encoding="utf-8")
+    yield from wait_until(lambda: card.text() == "Idee: Regen")
+    check(card.text() == "Idee: Regen", "Notes changed elsewhere appear on the card")
+    card.notes.get_buffer().set_text("Meine Idee")
+    prologue.write_text(prologue.read_text().replace("Idee: Regen", "Fremde Idee"), encoding="utf-8")
+    yield 0.5
+    check(card.text() == "Meine Idee", "An external change never replaces unsaved notes")
+    check(win._flush(), "Saving the card works despite the external change")
+    copies = [p for p in book.iterdir() if "conflict" in p.name]
+    check(read_card(prologue).notes == "Meine Idee" and len(copies) == 1 and read_card(copies[0]).notes == "Fremde Idee", "Notes changed on both sides: the other version is kept as a copy")
+    for copy in copies:
+        copy.unlink()
+    yield from wait_until(lambda: board.paths() == win._group_sheets(book))
+
+    in_book = [p for p in board.paths() if p.parent == book]
+    card = board.cards[0]
+    card.notes.get_buffer().set_text("Erst speichern")
+    board.move_step(card, 1)
+    check(read_card(in_book[0]).notes == "Erst speichern", "Moving a card saves unsaved notes first")
+    check([p for p in board.paths() if p.parent == book] == [in_book[1], in_book[0], *in_book[2:]], "Alt+Right moves the card one place forward")
+    check(order()[:2] == [in_book[1].name, in_book[0].name], "Moving a card changes the order of the sheets")
+    check(board.focused_path() == in_book[0], "The moved card keeps the focus")
+    board.request_move(in_book[-1], in_book[1], after=False)
+    board.run_pending_drop()
+    yield from wait_until(lambda: board.paths()[0] == in_book[-1])
+    check(board.paths()[0] == in_book[-1], "Dropping a card before another one puts it there")
+    sources = book / "Appendix" / "Sources.md"
+    board.move_step(board.cards[-1], 1)
+    check(board.paths()[-1] == sources, "Alt+arrow keys stay within the subgroup")
+
     select(meta)
+    select(book)
+    check(gv.showing_cards and win.lookup_action("cards").get_state().get_boolean(), "The group remembers that it shows cards")
+    board.cards[0].notes.get_buffer().set_text("Beim Wechsel")
+    win.group_mode.set_active_name("text")
+    check(not gv.showing_cards and len(gv.editors) == len(win._group_sheets(book)), "The switch goes back to the text")
+    check(read_card(gv.paths()[0]).notes == "Beim Wechsel", "Switching to the text saves the notes first")
+    check(not win._cards_wanted(book), "The group remembers the text again")
+    select(meta)
+    check(not win.group_mode.get_visible() and not win.lookup_action("cards").get_enabled(), "A single sheet has no switch for cards")
     win.inspector_split.set_show_sidebar(inspector_shown)
     win.split.set_show_sidebar(sidebar_shown)
 

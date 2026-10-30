@@ -67,6 +67,12 @@ def _install_css():
         treeexpander.drop-before { box-shadow: inset 0 2px 0 0 var(--accent-bg-color); }
         treeexpander.drop-after { box-shadow: inset 0 -2px 0 0 var(--accent-bg-color); }
         treeexpander.drop-into { background-color: alpha(var(--accent-bg-color), 0.15); border-radius: 6px; }
+        /* Cards of a group: notes on the card's own background; where a dragged card lands. */
+        .typecase-card { padding: 8px 10px 10px; }
+        .typecase-card-notes, .typecase-card-notes > text { background: none; }
+        .typecase-card-status { padding: 1px 8px; border-radius: 99px; background-color: alpha(currentColor, 0.1); }
+        .typecase-card.drop-before { box-shadow: inset 3px 0 0 0 var(--accent-bg-color); }
+        .typecase-card.drop-after { box-shadow: inset -3px 0 0 0 var(--accent-bg-color); }
         .goal-badge:hover { background-image: image(alpha(currentColor, 0.05)); }
         .goal-badge:active { background-image: image(alpha(currentColor, 0.1)); }
         """
@@ -129,6 +135,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.group_view.connect("counts-changed", self._on_group_counts_changed)
         self.group_view.connect("external-change", lambda _view, editor, kind: self._on_external_change(editor, kind))
         self.group_view.connect("open-sheet", lambda _view, path: self._open_sheet(Path(path)))
+        self.group_view.connect("message", lambda _view, text: self._toast(text))
+        self.group_view.connect("move-sheet", lambda _view, source, anchor, after: self._move_card(Path(source), Path(anchor), after))
         self.connect("close-request", self._on_close_request)
 
         style = Adw.StyleManager.get_default()
@@ -290,11 +298,23 @@ class TypecaseWindow(Adw.ApplicationWindow):
             tooltip_text=_("Show Sidebar"),
         )
         header.pack_start(self.sidebar_button)
+        # A group shows its sheets as one text or as cards with their notes.
+        self.group_mode = Adw.ToggleGroup(visible=False)
+        # Kept referenced here: PyGObject would otherwise free the toggles the group still uses.
+        self._group_toggles = [
+            Adw.Toggle(name="text", label=_("Text"), tooltip=_("All sheets as one text")),
+            Adw.Toggle(name="cards", label=_("Cards"), tooltip=_("The notes of all sheets as cards")),
+        ]
+        for toggle in self._group_toggles:
+            self.group_mode.add(toggle)
+        self.group_mode.connect("notify::active-name", self._on_group_mode_toggled)
+        header.pack_start(self.group_mode)
 
         file_section = Gio.Menu()
         file_section.append(_("Export…"), "win.export")
         view_section = Gio.Menu()
         view_section.append(_("Focus Mode"), "win.focus-mode")
+        view_section.append(_("Cards"), "win.cards")
         if spelling.available():
             view_section.append(_("Check Spelling"), "win.spell-check")
         view_section.append(_("Show Sidebar"), "win.toggle-sidebar")
@@ -798,10 +818,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
         node = row.get_item().node
         self.editor.close_sheet()
         self.find_bar.set_search_mode(False)  # find and replace work on a single sheet
-        failed = self.group_view.open(node.path, self._group_sheets(node.path))
+        failed = self.group_view.open(node.path, self._group_sheets(node.path), cards=self._cards_wanted(node.path))
         for editor in self.group_view.editors:
             self._style_editor(editor)
         self.content_stack.set_visible_child_name("group")
+        self._sync_group_mode()
         self.content_title.set_title(node.name)
         self._open_row = row
         self._update_format_bar()
@@ -817,8 +838,83 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         self.group_view.close()
         self.content_stack.set_visible_child_name("sheet")
+        self._sync_group_mode()
         self._update_format_bar()
         self._update_export_action()
+
+    def _cards_wanted(self, group: Path) -> bool:
+        return self._group_key(group) in config.load().get("card_groups", [])
+
+    def _group_key(self, group: Path) -> str:
+        return str(group.relative_to(self.library_path))
+
+    def _remember_cards(self, group: Path, cards: bool, old: Path | None = None):
+        """Stores which groups show cards (by their path in the library); old: the group's previous path."""
+        keys = [key for key in config.load().get("card_groups", []) if isinstance(key, str)]
+        keys = [key for key in keys if key not in (self._group_key(group), old and self._group_key(old))]
+        if cards:
+            keys.append(self._group_key(group))
+        try:
+            config.update(card_groups=sorted(keys))
+        except OSError:
+            pass  # only a convenience
+
+    def _sync_group_mode(self):
+        """Switch in the header bar and menu entry follow the group shown (hidden for a sheet)."""
+        shown = self.group_view.group is not None
+        cards = shown and self.group_view.showing_cards
+        action = self.lookup_action("cards")
+        action.set_enabled(shown)
+        action.set_state(GLib.Variant.new_boolean(cards))
+        self.group_mode.set_visible(shown)
+        self.group_mode.set_active_name("cards" if cards else "text")
+
+    def _on_group_mode_toggled(self, toggles, _pspec):
+        cards = toggles.get_active_name() == "cards"
+        if self.group_view.group is not None and cards != self.group_view.showing_cards:
+            self.lookup_action("cards").change_state(GLib.Variant.new_boolean(cards))
+
+    def _on_cards_changed(self, _action, value):
+        """Switches the group shown between text and cards; unsaved input is saved first."""
+        group = self.group_view.group
+        cards = value.get_boolean()
+        if group is None or cards == self.group_view.showing_cards:
+            return
+        if not self.group_view.flush():
+            self._sync_group_mode()  # refused: the view stays as it is
+            return
+        had_focus = self._content_has_focus()
+        failed = self.group_view.open(group, self._group_sheets(group), cards=cards)
+        for editor in self.group_view.editors:
+            self._style_editor(editor)
+        if failed:
+            self._toast(_("Could not open: %s") % ", ".join(failed))
+        self._remember_cards(group, cards)
+        self._sync_group_mode()
+        self._update_format_bar()
+        if had_focus:
+            self.group_view.focus_start()
+
+    def _content_has_focus(self) -> bool:
+        focus = self.get_focus()
+        return focus is not None and (focus is self.group_view or focus.is_ancestor(self.group_view))
+
+    def _move_card(self, source: Path, anchor: Path, after: bool):
+        """A card was put before or after another one: the same as moving the sheet in the library."""
+        if not (self._inside_library(source) and self._inside_library(anchor)) or source == anchor or not source.exists():
+            return
+        if not self._flush():
+            return
+        try:
+            target = place(source, anchor, after)
+        except FileExistsError:
+            self._toast(_("“%s” already exists there.") % source.name)
+            return
+        except OSError as error:
+            self._toast(_("Could not move: %s") % (error.strerror or error))
+            return
+        self._reload()
+        self.group_view.cards.focus_card(target)
 
     def _refresh_group(self):
         """Keeps the group view in step with its folder: sheets added, removed, renamed or reordered."""
@@ -830,6 +926,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
         sheets = self._group_sheets(group)
         if sheets == self.group_view.paths() or not self.group_view.flush():
             return  # unchanged, or unsaved text that must not be dropped; the next change tries again
+        if self.group_view.showing_cards:
+            focused = self.group_view.cards.focused_path()
+            scroll = self.group_view.get_vadjustment().get_value()
+            failed = self.group_view.open(group, sheets, cards=True)
+            if failed:
+                self._toast(_("Could not open: %s") % ", ".join(failed))
+            GLib.idle_add(lambda: self.group_view.get_vadjustment().set_value(scroll) and False)
+            if focused is not None:
+                self.group_view.cards.focus_card(focused)
+            return
         active = self.group_view.active
         active_path = active.path if active is not None else None
         had_focus = active is not None and active.view.has_focus()
@@ -1004,6 +1110,12 @@ class TypecaseWindow(Adw.ApplicationWindow):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda _a, _p, r=replace: self._find_in_sheet(r))
             self.add_action(action)
+
+        # Cards instead of text for the group shown; remembered per group.
+        cards_action = Gio.SimpleAction.new_stateful("cards", None, GLib.Variant.new_boolean(False))
+        cards_action.connect("change-state", self._on_cards_changed)
+        cards_action.set_enabled(False)
+        self.add_action(cards_action)
 
         export_action = Gio.SimpleAction.new("export", None)
         export_action.connect("activate", lambda _a, _p: self._export())
@@ -1234,6 +1346,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Rename"), "F2"),
                     (_("Move Up"), "<Alt>Up"),
                     (_("Move Down"), "<Alt>Down"),
+                    (_("Move Card"), "<Alt>Left <Alt>Right"),
                     (_("Search Library"), "<Primary><Shift>f"),
                 ],
             ),
@@ -1262,6 +1375,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 _("Window"),
                 [
                     (_("Focus Mode"), "<Primary><Shift>Return"),
+                    (_("Group as Text or Cards"), "<Primary><Alt>c"),
                     (_("Leave Focus Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Properties"), "<Alt>Return"),
@@ -1665,6 +1779,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         group = self.group_view.group
         if group is not None and (group == old or old in group.parents):
             self.group_view.group = new / group.relative_to(old)
+            if self.group_view.showing_cards:
+                self._remember_cards(self.group_view.group, True, old=group)
 
     def _on_move_to(self):
         node = self._selected_node()

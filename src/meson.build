@@ -5,6 +5,8 @@ install_data(
     'typecase/__init__.py',
     'typecase/__main__.py',
     'typecase/main.py',
+    'typecase/card_view.py',
+    'typecase/cards.py',
     'typecase/config.py',
     'typecase/export.py',
     'typecase/export_dialog.py',
