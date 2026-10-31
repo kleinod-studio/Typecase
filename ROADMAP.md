@@ -67,6 +67,9 @@ Ideas for after 1.0:
 - [x] A new sheet takes its first heading as its name (once, while it is still “Untitled”)
 - [x] Card view for plotting: a group shows the notes of its sheets as cards, edited in place; dragging a card (or Alt+arrow keys) changes the order of the sheets
 - [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
+- [ ] Table of contents: generated from the headings, for the export and as an overview of long texts
+- [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
+- [ ] Footnotes: inserted with a shortcut, styled in the editor and placed at the page bottom in the export
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
