@@ -70,6 +70,7 @@ Ideas for after 1.0:
 - [ ] Table of contents: generated from the headings, for the export and as an overview of long texts
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
 - [ ] Footnotes: inserted with a shortcut, styled in the editor and placed at the page bottom in the export
+- [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
@@ -86,7 +87,7 @@ Typecase stays a local writing place. Anything that needs an account, a server o
 - No built-in cloud sync and no user accounts. Sync the folder with Nextcloud, Syncthing or similar instead.
 - No real-time collaboration.
 - No desktop publishing or page layout like a word processor; Markdown stays the format.
-- No mobile version.
+- No separate mobile app for Android or iOS.
 - No plugin interface.
 - No proprietary file format.
 
