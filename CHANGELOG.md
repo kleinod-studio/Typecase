@@ -2,6 +2,10 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## 1.1.2 – 2026-11-01
+
+- The keyword filter button shows its icon on every system. It used an icon that the default Adwaita theme lacks, so the button was empty unless another icon theme filled the gap. Thanks to Akash Mondal for reporting it ([#1](https://github.com/kleinod-studio/Typecase/issues/1)).
+
 ## 1.1.1 – 2026-10-31
 
 - Wrapped lines of a list item line up with its text, instead of starting under the bullet or number. This works for nested items, numbers of any length and task boxes too.
