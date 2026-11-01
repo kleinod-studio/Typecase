@@ -68,9 +68,10 @@ Ideas for after 1.0:
 - [x] Card view for plotting: a group shows the notes of its sheets as cards, edited in place; dragging a card (or Alt+arrow keys) changes the order of the sheets
 - [x] Clickable links: Ctrl+click (or the context menu) opens a link in the browser, and hovering shows its address; bare web addresses are recognized too
 - [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
-- [ ] Table of contents: generated from the headings, for the export and as an overview of long texts
+- [x] Outline: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O)
+- [ ] Table of contents in the export, generated from the headings
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
-- [ ] Footnotes: inserted with a shortcut, styled in the editor and placed at the page bottom in the export
+- [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in the export
 - [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library

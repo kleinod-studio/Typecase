@@ -4,7 +4,7 @@ from gettext import gettext as _
 from gettext import ngettext
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
 
 from . import config
 from . import export
@@ -20,6 +20,7 @@ from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
 from .keywords import sheets as all_sheets
 from .preferences import PreferencesDialog
+from .markdown_style import outline
 from .library import Node, all_groups, attachments, attachments_folder, create_group, create_sheet, duplicate, heading_name, is_untitled, move, ordered_names, place, remove_empty_attachments_dir, rename, rename_in_order, scan, unique_path
 from .search import Hit, LibrarySearch
 from .sheet_editor import SheetEditor
@@ -190,8 +191,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
             child=self.keyword_list, propagate_natural_height=True, max_content_height=420, propagate_natural_width=True
         ))
         keyword_popover.connect("show", lambda _p: self._fill_keyword_list())
+        # The icon theme's own tag icon matches its other icons; Adwaita has none, so ours fills in.
+        tag_icon = Gio.ThemedIcon.new_from_names(["tag-symbolic", "typecase-tag-symbolic"])
         self.keyword_button = Gtk.MenuButton(
-            icon_name="typecase-tag-symbolic", tooltip_text=_("Filter by Keyword"), popover=keyword_popover
+            child=Gtk.Image(gicon=tag_icon),
+            css_classes=["image-button"],
+            tooltip_text=_("Filter by Keyword"),
+            popover=keyword_popover,
         )
         header.pack_end(self.keyword_button)
 
@@ -307,6 +313,18 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.group_mode.add(Adw.Toggle(name="cards", label=_("Cards"), tooltip=_("The notes of all sheets as cards")))
         self.group_mode.connect("notify::active-name", self._on_group_mode_toggled)
         header.pack_start(self.group_mode)
+        # Outline: the headings of the sheet (or of all sheets of a group), to jump to
+        self.outline_list = Gtk.ListBox(css_classes=["navigation-sidebar"], activate_on_single_click=True)
+        self.outline_list.connect("row-activated", self._on_outline_chosen)
+        self.outline_popover = Gtk.Popover(child=Gtk.ScrolledWindow(
+            child=self.outline_list, propagate_natural_height=True, max_content_height=480,
+            propagate_natural_width=True, max_content_width=420, hscrollbar_policy=Gtk.PolicyType.NEVER,
+        ))
+        self.outline_popover.connect("show", lambda _p: self._fill_outline())
+        self.outline_button = Gtk.MenuButton(
+            icon_name="view-list-symbolic", tooltip_text=_("Outline"), popover=self.outline_popover, visible=False
+        )
+        header.pack_start(self.outline_button)
 
         file_section = Gio.Menu()
         file_section.append(_("Export…"), "win.export")
@@ -420,6 +438,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("strike", _("Strikethrough"), icon="format-text-strikethrough-symbolic")
         button("code", _("Code"), label="</>")
         button("link", _("Link"), icon="insert-link-symbolic")
+        button("footnote", _("Footnote"), label="x¹")
         separator()
         headings = Gio.Menu()
         for level in (1, 2, 3):
@@ -668,6 +687,86 @@ class TypecaseWindow(Adw.ApplicationWindow):
             row = Gtk.ListBoxRow(child=box)
             row.keyword = keyword
             self.keyword_list.append(row)
+
+    def _outline_entries(self) -> list[tuple[SheetEditor, int, int, str, bool]]:
+        """(editor, line, depth, title, is_group) in text order. A sheet lists its headings, its
+        highest level at depth 0. A group starts with its name, then each subgroup where it begins,
+        indented by how deep it lies; the headings of the sheets sit one step below their group."""
+        if self.group_view.group is None:
+            if self.editor.path is None:
+                return []
+            headings = outline(self._editor_text(self.editor))
+            top = min((level for _l, level, _t in headings), default=1)
+            return [(self.editor, line, level - top, title, False) for line, level, title in headings]
+        if self.group_view.showing_cards or not self.group_view.editors:
+            return []
+        group = self.group_view.group
+        entries = []
+        named = set()  # folders (as parts below the group) that already have their entry
+        for editor in self.group_view.editors:
+            parts = editor.path.parent.relative_to(group).parts
+            # The group itself first, then every folder level that opens with this sheet
+            for depth in range(len(parts) + 1):
+                if parts[:depth] not in named:
+                    named.add(parts[:depth])
+                    entries.append((editor, 0, depth, parts[depth - 1] if depth else group.name, True))
+            headings = outline(self._editor_text(editor))
+            top = min((level for _l, level, _t in headings), default=1)
+            entries += [(editor, line, len(parts) + 1 + level - top, title, False) for line, level, title in headings]
+        return entries
+
+    @staticmethod
+    def _editor_text(editor: SheetEditor) -> str:
+        return editor.buffer.get_text(editor.buffer.get_start_iter(), editor.buffer.get_end_iter(), True)
+
+    def _fill_outline(self):
+        self.outline_list.remove_all()
+        entries = self._outline_entries()
+        if not entries:
+            hint = Gtk.Label(
+                label=_("No headings yet. Start a line with # to add one."),
+                wrap=True, max_width_chars=28, margin_top=12, margin_bottom=12, margin_start=12, margin_end=12,
+                css_classes=["dim-label"],
+            )
+            self.outline_list.append(Gtk.ListBoxRow(child=hint, activatable=False, selectable=False))
+            return
+        # The row for the caret: the last entry at or before it, in text order
+        active = self._active_editor()
+        order = {editor: index for index, editor in enumerate(dict.fromkeys(e[0] for e in entries))}
+        caret = (order.get(active, -1), active.buffer.get_iter_at_mark(active.buffer.get_insert()).get_line()) if active else (-1, -1)
+        current = None
+        for editor, line, depth, title, is_group in entries:
+            label = Gtk.Label(
+                label=title, xalign=0, ellipsize=Pango.EllipsizeMode.END, max_width_chars=40,
+                margin_start=6 + 16 * depth,
+                margin_top=4, margin_bottom=4, margin_end=6,
+                css_classes=["heading"] if is_group else [],
+            )
+            row = Gtk.ListBoxRow(child=label, tooltip_text=title)
+            row.target = (editor, line)
+            self.outline_list.append(row)
+            if (order[editor], line) <= caret:
+                current = row
+        if current is not None:
+            self.outline_list.select_row(current)
+            GLib.idle_add(lambda: self.outline_popover.get_visible() and current.grab_focus() and False)
+
+    def _on_outline_chosen(self, _list, row):
+        self.outline_popover.popdown()
+        # After the popover has closed and given back the focus, so the editor keeps it
+        GLib.idle_add(self._jump_to_line, *row.target)
+
+    def _jump_to_line(self, editor: SheetEditor, line: int):
+        if self.group_view.group is not None:
+            self.group_view.active = editor
+        editor.view.grab_focus()
+        buffer = editor.buffer
+        buffer.place_cursor(buffer.get_iter_at_line(line)[1])
+        if self.group_view.group is not None:
+            self.group_view.reveal_caret(editor)
+        else:
+            editor.view.scroll_to_mark(buffer.get_insert(), 0.0, True, 0.0, 0.2)
+        return GLib.SOURCE_REMOVE
 
     def _on_keyword_chosen(self, _list, row):
         self.keyword_button.popdown()
@@ -1111,6 +1210,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.add_action(Gio.PropertyAction.new("inspector", self.inspector_split, "show-sidebar"))
         self.add_action(Gio.PropertyAction.new("fullscreen", self, "fullscreened"))
 
+        outline_action = Gio.SimpleAction.new("outline", None)
+        outline_action.connect("activate", lambda *_a: self._show_outline())
+        self.add_action(outline_action)
+
         focus_action = Gio.SimpleAction.new_stateful("focus-mode", None, GLib.Variant.new_boolean(False))
         focus_action.connect("change-state", self._on_focus_mode_changed)
         self.add_action(focus_action)
@@ -1319,8 +1422,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         self._toast(_("No spelling dictionary for %s is installed, so spelling is not checked.") % language_name(lang))
 
+    def _show_outline(self):
+        if not self.outline_button.get_visible():
+            return
+        if self.focus_mode:
+            self.content_view.set_reveal_top_bars(True)
+        self.outline_button.popup()
+
     def _update_format_bar(self):
         self.format_revealer.set_reveal_child(self._format_bar_wanted() and self._active_editor() is not None)
+        self.outline_button.set_visible(self._active_editor() is not None and not self.group_view.showing_cards)
 
     def _format_bar_wanted(self) -> bool:
         """Show the formatting bar permanently? Editor and focus mode each have their own setting."""
@@ -1332,7 +1443,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         if y < 8:
             self.content_view.set_reveal_top_bars(True)
-        elif y > 120 and not self.find_bar.get_search_mode():
+        elif y > 120 and not self.find_bar.get_search_mode() and not self.outline_popover.get_visible():
             self.content_view.set_reveal_top_bars(False)
         # A hidden formatting bar appears at the bottom edge, like the header bar at the top.
         if not self._format_bar_wanted():
@@ -1374,6 +1485,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Italic"), "<Primary>i"),
                     (_("Underline"), "<Primary>u"),
                     (_("Link"), "<Primary>k"),
+                    (_("Footnote"), "<Primary><Alt>f"),
                     (_("Context Menu, for Example to Open a Link"), "Menu <Shift>F10"),
                     (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),
                     (_("Normal Text"), "<Primary>0"),
@@ -1390,6 +1502,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                 [
                     (_("Focus Mode"), "<Primary><Shift>Return"),
                     (_("Group as Text or Cards"), "<Primary><Alt>c"),
+                    (_("Outline"), "<Primary><Shift>o"),
                     (_("Leave Focus Mode"), "Escape"),
                     (_("Show Sidebar"), "F9 <Primary><Shift>l"),
                     (_("Properties"), "<Alt>Return"),

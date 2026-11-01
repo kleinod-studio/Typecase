@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase.formatting import BOLD, CODE, ITALIC, STRIKE, UNDERLINE, insert_code_block, insert_link, toggle_inline, toggle_lines
+from typecase.formatting import BOLD, CODE, ITALIC, STRIKE, UNDERLINE, insert_code_block, insert_footnote, insert_link, toggle_inline, toggle_lines
 
 
 def apply(text, start, end, markers):
@@ -71,6 +71,12 @@ class InsertTest(unittest.TestCase):
         self.assertEqual((new, new[a:b]), ("[Text](https://example.org)", "Text"))
         new, a, b = insert_link("", 0, 0, "Text", "https://")
         self.assertEqual((new, new[a:b]), ("[Text](https://)", "Text"))
+
+    def test_footnote_at_cursor(self):
+        self.assertEqual(insert_footnote("Satz. Weiter", 5, 5), ("Satz.^[] Weiter", 7, 7))
+
+    def test_footnote_after_selection(self):
+        self.assertEqual(insert_footnote("ein Begriff hier", 4, 11), ("ein Begriff^[] hier", 13, 13))
 
     def test_code_block(self):
         new, a, b = insert_code_block("x = 1\ny = 2", 0, 11)

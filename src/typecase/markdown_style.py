@@ -16,6 +16,11 @@ _LIST = re.compile(r"^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)(\[[ xX]\][ \t]+)?")
 
 _CODE = re.compile(r"(`+)(.+?)\1")
 _IMAGE_OR_LINK = re.compile(r"(!?\[)([^\]\n]+)(\]\([^)\s]*(?:[ \t]+\"[^\"]*\")?\))")
+# Footnotes: inline ^[text] (the note may hold links and other brackets one level deep),
+# references [^label] and their definitions "[^label]: text" at the start of a line.
+_INLINE_NOTE = re.compile(r"(\^\[)((?:[^\[\]\n]|\[[^\[\]\n]*\])*)(\])")
+_NOTE_REFERENCE = re.compile(r"\[\^[^\]\s]+\](?!:)")
+_NOTE_DEFINITION = re.compile(r"^\[\^[^\]\s]+\]:[ \t]?")
 _AUTOLINK = re.compile(r"(<)((?:https?://|mailto:)[^>\s]+)(>)")
 # A bare web address ends before trailing punctuation, so "see https://example.org." works.
 _BARE_URL = re.compile(r"(?<![\w/])(?:https?://|www\.)[^\s<>]*[^\s<>.,;:!?\"')\]]")
@@ -44,6 +49,31 @@ def list_text_start(line: str) -> int | None:
     if item is None or start + item.end() >= len(line):
         return None
     return start + item.end()
+
+
+_TITLE_LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
+_TITLE_MARKUP = re.compile(r"<[^>]+>|[*_`~=]")
+_TITLE_NOTE = re.compile(r"\^\[(?:[^\[\]\n]|\[[^\[\]\n]*\])*\]|\[\^[^\]\s]+\]")
+
+
+def outline(text: str) -> list[tuple[int, int, str]]:
+    """The headings of a text as (line number, level, title), without those in code blocks.
+    Titles are plain text: footnotes are left out, links keep their text, markup goes."""
+    entries = []
+    in_code_block = False
+    for number, line in enumerate(text.split("\n")):
+        if FENCE.match(line):
+            in_code_block = not in_code_block
+            continue
+        heading = None if in_code_block else _HEADING.match(line)
+        if heading is None:
+            continue
+        title = _TITLE_NOTE.sub("", line[heading.end():])
+        title = _TITLE_MARKUP.sub("", _TITLE_LINK.sub(r"\1", title))
+        title = " ".join(title.rstrip("#").split())
+        if title:
+            entries.append((number, len(heading.group(1)), title))
+    return entries
 
 
 def link_at(line: str, offset: int) -> str | None:
@@ -84,6 +114,13 @@ def line_spans(line: str, in_code_block: bool) -> list[Span]:
         if heading.end() < len(line):
             spans.append((heading.end(), len(line), f"h{level}"))
         return spans + _inline(line, heading.end())
+
+    definition = _NOTE_DEFINITION.match(line)
+    if definition:
+        spans = [(0, definition.end(), "syntax")]
+        if definition.end() < len(line):
+            spans.append((definition.end(), len(line), "footnote"))
+        return spans + _inline(line, definition.end())
 
     spans: list[Span] = []
     start = 0
@@ -126,6 +163,19 @@ def _inline(line: str, start: int) -> list[Span]:
             (match.start() + ticks, match.end() - ticks, "code"),
             (match.end() - ticks, match.end(), "syntax"),
         ]
+        hide(match.start(), match.end())
+
+    for match in _INLINE_NOTE.finditer(masked()):
+        spans += [
+            (match.start(1), match.end(1), "syntax"),
+            (match.start(2), match.end(2), "footnote"),
+            (match.start(3), match.end(3), "syntax"),
+        ]
+        hide(match.start(1), match.end(1))
+        hide(match.start(3), match.end(3))
+
+    for match in _NOTE_REFERENCE.finditer(masked()):
+        spans.append((match.start(), match.end(), "syntax"))
         hide(match.start(), match.end())
 
     for match in _IMAGE_OR_LINK.finditer(masked()):

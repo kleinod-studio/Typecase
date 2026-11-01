@@ -92,6 +92,9 @@ def steps(win, app):
         widget = todo.pop()
         if isinstance(widget, (Gtk.Button, Gtk.MenuButton, Gtk.Image)) and widget.props.icon_name:
             names.add(widget.props.icon_name)
+        if isinstance(widget, Gtk.Image) and isinstance(widget.props.gicon, Gio.ThemedIcon):
+            fallbacks = widget.props.gicon.get_names()
+            names.add(next((n for n in fallbacks if icon_theme.has_icon(n)), fallbacks[0]))
         if isinstance(widget, Gtk.MenuButton) and widget.get_popover():
             todo.append(widget.get_popover())
         child = widget.get_first_child()
@@ -209,6 +212,32 @@ def steps(win, app):
     check(ed.view.link_at_point(x, y) == "https://gnome.org", "The link under the pointer is found")
     x, y = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, area.x, area.y + area.height // 2)
     check(ed.view.link_at_point(x + 2000, y) is None, "Space after the end of a line is no link")
+
+    # Footnotes: inserted after the selection, the cursor inside, styled small
+    ed.buffer.set_text("Ein Satz.")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    win.lookup_action("format").activate(GLib.Variant.new_string("footnote"))
+    ed.buffer.insert_at_cursor("Quelle")
+    yield 0.3
+    check(text(ed) == "Ein Satz.^[Quelle]", "Footnote is inserted with the cursor inside")
+    note_tags = [t.props.name for t in ed.buffer.get_iter_at_offset(12).get_tags()]
+    check("md-footnote" in note_tags, "Footnote text is styled as a note")
+
+    # Outline: the headings of the sheet, the current one selected, a click jumps there
+    ed.buffer.set_text("# Eins\nText\n## Zwei\n```\n# kein\n```\n## Drei *fett*\nEnde")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
+    check(win.outline_button.get_visible(), "The outline button is shown for a sheet")
+    win.lookup_action("outline").activate(None)
+    yield 0.3
+    rows = list(win.outline_list)
+    titles = [row.get_child().get_label() for row in rows]
+    check(titles == ["Eins", "Zwei", "Drei fett"], "The outline lists the headings, without code blocks and markup")
+    check(win.outline_list.get_selected_row() is rows[1], "The heading at the caret is selected")
+    check(rows[2].get_child().get_margin_start() > rows[0].get_child().get_margin_start(), "Lower headings are indented")
+    rows[2].activate()
+    yield 0.2
+    caret = ed.buffer.get_iter_at_mark(ed.buffer.get_insert())
+    check(caret.get_line() == 6 and not win.outline_popover.get_visible(), "Choosing a heading jumps to it and closes the outline")
     for path in (named, second_named, list_sheet):
         win._do_delete(HeadingNode(path.stem, path))
     yield from wait_until(lambda: win._index_of(named) is None and win._index_of(second_named) is None)
@@ -908,6 +937,18 @@ def steps(win, app):
     first.buffer.place_cursor(first.buffer.get_start_iter())
     check(not gv._on_key_pressed(None, Gdk.KEY_Down, 0, 0, first), "Down inside a sheet stays in the sheet")
 
+    entries = win._outline_entries()
+    titles = [title for _e, _l, _d, title, _g in entries]
+    check(entries[0][2:] == (0, "Book", True) and "Prologue" not in titles, "The outline of a group starts with its name, without file names")
+    check([t for t in titles[1:]] == ["Chapter 1", "Chapter 2", "Chapter 10"] and all(e[2] == 1 for e in entries[1:]), "The headings of all sheets sit below the group name")
+    target = next(entry for entry in entries if entry[0] is third)
+    win._fill_outline()
+    next(row for row in win.outline_list if row.target == (third, target[1])).activate()
+    yield 0.2
+    check(gv.active is third and third.view.has_focus(), "Choosing a sheet in the outline jumps into its section")
+    first.buffer.place_cursor(first.buffer.get_start_iter())
+    first.view.grab_focus()
+
     start = second.buffer.get_iter_at_offset(text(second).index("Text 2"))
     end = start.copy()
     end.forward_chars(4)
@@ -975,6 +1016,8 @@ def steps(win, app):
             headings.append(child.get_label())
         child = child.get_next_sibling()
     check(headings == ["Buch", "Appendix"], f"The group view marks where each subgroup starts ({headings})")
+    groups = [(depth, title) for _e, _l, depth, title, is_group in win._outline_entries() if is_group]
+    check(groups == [(0, "Buch"), (1, "Appendix")], f"The outline names the group and each subgroup, indented ({groups})")
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
     check(dialog.page_break_row.get_visible() and dialog.page_break_row.get_active(), "A group with subgroups offers a new page for each one")

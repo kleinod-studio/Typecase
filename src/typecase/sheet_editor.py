@@ -546,6 +546,8 @@ class SheetEditor(Gtk.Stack):
                 new, a, b = formatting.insert_link(text, a, b, _("Text"), "https://")
             elif kind == "codeblock":
                 new, a, b = formatting.insert_code_block(text, a, b)
+            elif kind == "footnote":
+                new, a, b = formatting.insert_footnote(text, a, b)
             else:
                 return False
             buffer.begin_user_action()

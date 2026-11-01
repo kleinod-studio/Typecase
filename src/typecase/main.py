@@ -70,6 +70,7 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.fullscreen", ["F11"])
         self.set_accels_for_action("win.focus-mode", ["<Primary><Shift>Return"])
         self.set_accels_for_action("win.cards", ["<Primary><Alt>c"])
+        self.set_accels_for_action("win.outline", ["<Primary><Shift>o"])
         self.set_accels_for_action("win.show-shortcuts", ["<Primary>question"])
         self.set_accels_for_action("app.quit", ["<Primary>q"])
         self.set_accels_for_action("win.preferences", ["<Primary>comma"])
@@ -81,6 +82,7 @@ class TypecaseApplication(Adw.Application):
             ("italic", ["<Primary>i"]),
             ("underline", ["<Primary>u"]),
             ("link", ["<Primary>k"]),
+            ("footnote", ["<Primary><Alt>f"]),
             ("h1", ["<Primary>1"]),
             ("h2", ["<Primary>2"]),
             ("h3", ["<Primary>3"]),

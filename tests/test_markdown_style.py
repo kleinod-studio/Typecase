@@ -58,6 +58,22 @@ class InlineTest(unittest.TestCase):
         self.assertEqual(s["link"], ["die Seite"])
         self.assertEqual(s["syntax"], ["[", "](https://example.org)"])
 
+    def test_inline_footnote(self):
+        s = styled("Satz.^[Quelle: [Buch](https://x.org), S. 12] weiter")
+        self.assertEqual(s["footnote"], ["Quelle: [Buch](https://x.org), S. 12"])
+        self.assertEqual(s["link"], ["Buch"])
+        self.assertEqual(sorted(s["syntax"]), sorted(["^[", "[", "](https://x.org)", "]"]))
+
+    def test_footnote_reference_and_definition(self):
+        self.assertEqual(styled("Text[^1] mehr")["syntax"], ["[^1]"])
+        s = styled("[^1]: Die *Notiz*")
+        self.assertEqual(s["syntax"][0], "[^1]: ")
+        self.assertEqual(s["footnote"], ["Die *Notiz*"])
+        self.assertEqual(s["italic"], ["Notiz"])
+
+    def test_unclosed_footnote_is_plain_text(self):
+        self.assertNotIn("footnote", styled("a ^[offen"))
+
     def test_bare_and_angle_addresses_are_links(self):
         s = styled("Siehe https://example.org/a_b_c. und <https://gnome.org>")
         self.assertEqual(sorted(s["link"]), ["https://example.org/a_b_c", "https://gnome.org"])

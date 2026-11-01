@@ -122,6 +122,12 @@ def insert_link(text: str, start: int, end: int, placeholder_text: str, placehol
     return text[:start] + link + text[end:], url_start, url_start + len(placeholder_url)
 
 
+def insert_footnote(text: str, start: int, end: int) -> Result:
+    """Inserts an inline footnote ^[] after the selection (or at the cursor), cursor inside."""
+    note = "^[]"
+    return text[:end] + note + text[end:], end + 2, end + 2
+
+
 def insert_code_block(text: str, start: int, end: int) -> Result:
     """Wraps the selected lines in ```; without a selection, an empty block with the cursor inside."""
     line_start = text.rfind("\n", 0, start) + 1

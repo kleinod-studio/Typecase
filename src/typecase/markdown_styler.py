@@ -78,6 +78,7 @@ class MarkdownStyler:
         tag("code", family="monospace")
         tag("codeblock", family="monospace")
         tag("link", underline=Pango.Underline.SINGLE)
+        tag("footnote", scale=0.85)
         tag("list-marker")
         tag("syntax")
         self.no_spell_check = buffer.create_tag(NO_SPELL_CHECK_TAG)
@@ -102,6 +103,9 @@ class MarkdownStyler:
         self.tags["syntax"].props.foreground_rgba = palette["syntax"]
         self.tags["code"].props.background_rgba = palette["code"]
         self.tags["link"].props.foreground_rgba = palette["link"]
+        note = palette["text"].copy()
+        note.alpha *= 0.7
+        self.tags["footnote"].props.foreground_rgba = note
         self.tags["list-marker"].props.foreground_rgba = palette["list-marker"]
         for level in range(1, 7):
             tag = self.tags[f"h{level}"]

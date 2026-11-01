@@ -215,12 +215,16 @@ class GroupView(Gtk.ScrolledWindow):
         editor.view.grab_focus()
         self._queue_caret_visible(editor)
 
+    def reveal_caret(self, editor: SheetEditor) -> None:
+        """Scrolls so the caret of a section is near the top, for example after a jump."""
+        GLib.idle_add(self._show_caret, editor, True)
+
     def _queue_caret_visible(self, editor: SheetEditor) -> None:
         # After layout, so the caret's position is final.
         if editor.view.has_focus():
             GLib.idle_add(self._show_caret, editor)
 
-    def _show_caret(self, editor: SheetEditor):
+    def _show_caret(self, editor: SheetEditor, at_top: bool = False):
         """The sections do not scroll themselves; this view keeps the caret on screen while writing."""
         if editor not in self.editors:
             return GLib.SOURCE_REMOVE
@@ -233,7 +237,7 @@ class GroupView(Gtk.ScrolledWindow):
         adjustment = self.get_vadjustment()
         margin = 48
         top, bottom = point.y - margin, point.y + rect.height + margin
-        if top < adjustment.get_value():
+        if at_top or top < adjustment.get_value():
             adjustment.set_value(max(0, top))
         elif bottom > adjustment.get_value() + adjustment.get_page_size():
             adjustment.set_value(bottom - adjustment.get_page_size())
