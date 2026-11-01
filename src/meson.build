@@ -24,6 +24,7 @@ install_data(
     'typecase/markdown_lists.py',
     'typecase/markdown_style.py',
     'typecase/markdown_styler.py',
+    'typecase/pdf_render.py',
     'typecase/preferences.py',
     'typecase/search.py',
     'typecase/sheet_editor.py',
@@ -39,6 +40,7 @@ install_data(
 install_subdir('typecase/templates', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/themes', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/icons', install_dir: pkgdatadir / 'typecase')
+install_subdir('typecase/filters', install_dir: pkgdatadir / 'typecase')
 
 launcher = configuration_data()
 launcher.set('pkgdatadir', pkgdatadir)

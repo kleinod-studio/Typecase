@@ -850,14 +850,14 @@ def steps(win, app):
 
     # Export
     from typecase import export, export_templates
-    from typecase.export_dialog import ExportDialog, pdf_available, run_export
+    from typecase.export_dialog import ExportDialog, pdf_available, pdf_missing_text, run_export
 
     check(win.lookup_action("export").get_enabled(), "Export is available with an open sheet")
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
     check(isinstance(dialog, ExportDialog) and dialog.template_row.get_model().get_n_items() >= 1, "Export dialog offers format and template")
     dialog.format_row.set_selected(export.FORMATS.index("pdf"))
-    check(dialog.export_button.get_sensitive() == pdf_available() and bool(dialog.format_row.get_subtitle()) != pdf_available(), "Without WebKitGTK, the dialog says so before exporting a PDF")
+    check(dialog.export_button.get_sensitive() == pdf_available() and bool(dialog.format_row.get_subtitle()) != pdf_available(), "Without WeasyPrint, the dialog says so before exporting a PDF")
     dialog.force_close()
     if export.pandoc_path() is None:
         print("      (Pandoc is missing here; export files are only checked in the Flatpak)")
@@ -874,7 +874,7 @@ def steps(win, app):
         if pdf_available():
             check(results["pdf"][1] is None and (TMP / "export.pdf").read_bytes()[:4] == b"%PDF", "PDF is created")
         else:
-            check(results["pdf"][1] == "PDF export needs WebKitGTK 6.0." and not (TMP / "export.pdf").exists(), "Without WebKit, a clear message instead of a PDF")
+            check(results["pdf"][1] == pdf_missing_text() and not (TMP / "export.pdf").exists(), "Without WeasyPrint, a clear message instead of a PDF")
         check((TMP / "export.docx").read_bytes()[:2] == b"PK", "DOCX is created")
         check("Der Drache" in (TMP / "export.html").read_text(encoding="utf-8"), "HTML contains the title")
         check(not [p for p in TMP.iterdir() if "typecase-tmp" in p.name], "No partial export files left behind")

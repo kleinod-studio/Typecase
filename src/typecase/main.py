@@ -38,7 +38,7 @@ def _setup_translations(localedir: str | None = None):
 
 def _fall_back_to_utf8():
     """The system locale is missing (in the Flatpak, when its locale data is not installed).
-    Then don't run in plain ASCII "C", or umlauts and PDF printing (WebKit) fail, but in
+    Then don't run in plain ASCII "C", or umlauts fail, but in
     C.UTF-8 instead; the translations still follow the requested language."""
     wanted = os.environ.get("LC_ALL") or os.environ.get("LC_MESSAGES") or os.environ.get("LANG", "")
     if wanted and not os.environ.get("LANGUAGE"):

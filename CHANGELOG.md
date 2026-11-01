@@ -5,8 +5,9 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 ## Unreleased
 
 - Links open in the browser with Ctrl+click, or from the context menu while the caret is in a link. Hovering over a link shows its address. Bare web addresses and addresses in angle brackets are styled as links too, and underscores in them no longer turn into italics.
-- Footnotes: Ctrl+Alt+F or the new button in the formatting bar inserts a note right in the text (`^[note]`). Notes are set smaller and dimmed in the editor, and the export places them at the bottom of the page. Classic `[^1]` footnotes are styled too.
+- Footnotes: Ctrl+Alt+F or the new button in the formatting bar inserts a note right in the text (`^[note]`). Notes are set smaller and dimmed in the editor, PDF and Word exports put them at the bottom of their page; web pages collect them at the end. Classic `[^1]` footnotes are styled too.
 - Outline: a new button in the header bar (or Ctrl+Shift+O) lists the headings of the sheet, indented by level, with the current one selected. Choosing one jumps there. In a group, it starts with the group's name and shows each subgroup, such as the parts of a novel, with the headings of its sheets below.
+- PDFs are now laid out by WeasyPrint instead of being printed by WebKit. They look as before, with text at exactly the size the template sets (WebKit printed it slightly larger), and real pages open the way to footnotes on their page and, later, page numbers and a table of contents.
 - The keyword filter uses the icon theme's own tag icon where there is one, and an outline icon of its own otherwise, so it matches the other icons.
 
 ## 1.1.2 – 2026-11-01

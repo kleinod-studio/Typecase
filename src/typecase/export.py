@@ -1,7 +1,7 @@
 """Exporting a sheet via Pandoc, without GTK.
 
-Pandoc produces DOCX and HTML directly. For PDF, Pandoc produces HTML, which the editor then
-prints to a PDF file with WebKit (HTML template with CSS, no LaTeX required).
+Pandoc produces DOCX and HTML directly. For PDF, Pandoc produces HTML, which WeasyPrint then
+lays out as pages (HTML template with CSS, no LaTeX required; see pdf_render.py).
 How templates are structured is described in export_templates.py."""
 
 import base64
@@ -26,6 +26,16 @@ INPUT_FORMAT = "markdown+hard_line_breaks"
 _UNDERLINE = re.compile(r"<u>(.*?)</u>", re.DOTALL)
 _FONT_TYPES = {".woff2": "font/woff2", ".woff": "font/woff", ".otf": "font/otf", ".ttf": "font/ttf"}
 _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
+FOOTNOTE_FILTER = Path(__file__).resolve().parent / "filters" / "page-footnotes.lua"
+
+# Defaults for PDF pages, before the template's CSS so a template can restyle them:
+# footnotes at the bottom of their page, called by a small raised number.
+PDF_BASE_CSS = """\
+.footnote { float: footnote; font-size: 0.85em; }
+::footnote-call { content: counter(footnote); vertical-align: super; font-size: 0.65em; line-height: 0; }
+::footnote-marker { content: counter(footnote) "\\00a0\\00a0"; }
+@page { @footnote { margin-top: 1em; padding-top: 0.5em; border-top: 0.5pt solid #bbbbbb; } }
+"""
 
 
 def export_date(today: datetime.date | None = None, time_locale: str | None = None, language: str | None = None) -> str:
@@ -127,15 +137,20 @@ def pandoc_args(
             args += ["--include-in-header", str(header_file)]
         if fmt == "pdf":
             args += ["--variable", "pdf"]  # lets the template tell the screen and print versions apart
+            # Footnotes stay in place for the page layout; no line wrapping, since inside a
+            # footnote WeasyPrint would keep Pandoc's source line breaks.
+            args += ["--lua-filter", str(FOOTNOTE_FILTER), "--wrap", "none"]
     return args
 
 
-def style_header(template: Template) -> str:
+def style_header(template: Template, pdf: bool = False) -> str:
     """The template's CSS as a <style> block for embedding. Fonts and images of the template that
     the CSS references with url(…) are embedded too: that way the HTML file is self-contained, and
     PDF printing finds them as well, even though it loads from the sheet's folder."""
     css = template.css.read_text(encoding="utf-8") if template.css.is_file() else ""
     css = _CSS_URL.sub(lambda match: _embed(template, match), css)
+    if pdf:
+        css = PDF_BASE_CSS + "\n" + css
     return "<style>\n" + css.replace("</style", "<\\/style") + "\n</style>\n"
 
 

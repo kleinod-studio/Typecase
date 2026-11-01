@@ -79,12 +79,19 @@ The Flatpak includes Pandoc, so export works out of the box.
 
 ## Development
 
-Requirements: Python 3, PyGObject, GTK 4, libadwaita and GtkSourceView 5. Export also needs Pandoc, PDF export needs WebKitGTK 6.0, and spell checking needs libspelling with Hunspell dictionaries (all included in the Flatpak).
+Requirements: Python 3, PyGObject, GTK 4, libadwaita and GtkSourceView 5. Export also needs Pandoc, PDF export needs WeasyPrint, and spell checking needs libspelling with Hunspell dictionaries (all included in the Flatpak).
 
 Run Typecase from the source tree without building:
 
 ```bash
 ./run-dev.sh
+```
+
+If WeasyPrint is not installed system-wide, put it into a local virtual environment that still sees the system's PyGObject; `run-dev.sh` uses it automatically:
+
+```bash
+python3 -m venv --system-site-packages .venv
+.venv/bin/python -m pip install weasyprint
 ```
 
 Tests:

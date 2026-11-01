@@ -71,7 +71,7 @@ Ideas for after 1.0:
 - [x] Outline: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O)
 - [ ] Table of contents in the export, generated from the headings
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
-- [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in the export
+- [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in PDF and Word exports
 - [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library

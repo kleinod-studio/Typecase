@@ -11,4 +11,8 @@ if command -v msgfmt >/dev/null; then
   done
 fi
 
-PYTHONPATH=src exec python3 -m typecase "$@"
+# A local .venv (created with --system-site-packages, holding WeasyPrint for PDF export) is used if present
+python=python3
+[ -x .venv/bin/python ] && python=.venv/bin/python
+
+PYTHONPATH=src exec "$python" -m typecase "$@"

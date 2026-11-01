@@ -4,7 +4,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase import export, export_templates
+import shutil
+import subprocess
+import tempfile
+
+from typecase import export, export_templates, pdf_render
 
 
 class ExportTest(unittest.TestCase):
@@ -36,6 +40,14 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(pdf[pdf.index("--to") + 1], "html5")
         self.assertIn("pdf", pdf)
         self.assertFalse(any(a.startswith("pagetitle=") for a in pdf), "no fallback title when the front matter has a title")
+        self.assertIn(str(export.FOOTNOTE_FILTER), pdf)
+        self.assertTrue(export.FOOTNOTE_FILTER.is_file())
+        self.assertNotIn(str(export.FOOTNOTE_FILTER), html, "web pages keep their notes at the end")
+
+    def test_pdf_base_css_comes_before_the_template(self):
+        header = export.style_header(self.template, pdf=True)
+        self.assertLess(header.index("float: footnote"), header.index("font-family"))
+        self.assertNotIn("float: footnote", export.style_header(self.template))
 
     def test_defaults_only_when_given(self):
         args = export.pandoc_args("docx", self.template, Path("/x/o.docx"), None, defaults={"author": "Anna", "lang": None})
@@ -87,6 +99,45 @@ class ExportTest(unittest.TestCase):
     def test_style_header(self):
         header = export.style_header(self.template)
         self.assertTrue(header.startswith("<style>") and header.rstrip().endswith("</style>"))
+
+
+class PdfRenderTest(unittest.TestCase):
+    def test_page_css(self):
+        css = pdf_render.page_css(210, 297, {"top": 25, "right": 50, "bottom": 20, "left": 30})
+        self.assertEqual(css, "@page { size: 210mm 297mm; margin: 25mm 50mm 20mm 30mm; }")
+
+    @unittest.skipUnless(pdf_render.available(), "WeasyPrint is not installed")
+    def test_network_is_never_used(self):
+        with self.assertRaises(ValueError):
+            pdf_render._local_only("https://example.org/image.png")
+
+    @unittest.skipUnless(pdf_render.available() and shutil.which("pandoc"), "WeasyPrint or Pandoc is missing")
+    def test_footnotes_end_up_on_their_page(self):
+        import weasyprint
+
+        template = next(t for t in export_templates.available(None) if t.id == "text")
+        with tempfile.TemporaryDirectory() as folder:
+            work = Path(folder)
+            (work / "style.html").write_text(export.style_header(template, pdf=True), encoding="utf-8")
+            html = work / "doc.html"
+            text = "Erste Seite.^[Note eins]\n\n" + "\n\n".join(["Fülltext. " * 60] * 8) + "\n\nLetzte.^[Note zwei]\n"
+            args = export.pandoc_args("pdf", template, html, "Probe", work / "style.html")
+            subprocess.run(args, input=text, text=True, check=True)
+            margins = dict.fromkeys(("top", "right", "bottom", "left"), 25)
+            page = weasyprint.CSS(string=pdf_render.page_css(210, 297, margins))
+            document = weasyprint.HTML(filename=str(html)).render(stylesheets=[page])
+            pages = ["".join(box.text for box in _texts(page._page_box)) for page in document.pages]
+        self.assertGreater(len(pages), 1)
+        self.assertIn("Note eins", pages[0])
+        self.assertIn("Note zwei", pages[-1])
+        self.assertNotIn("Note zwei", pages[0])
+
+
+def _texts(box):
+    if hasattr(box, "text"):
+        yield box
+    for child in getattr(box, "children", []):
+        yield from _texts(child)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,13 @@
 import os
 import shutil
+import sys
 import tempfile
 from gettext import gettext as _
 from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from . import config, export, export_templates
+from . import config, export, export_templates, pdf_render
 
 def format_name(fmt: str) -> str:
     return {"pdf": _("PDF"), "docx": _("Word Document (DOCX)"), "html": _("Web Page (HTML)")}[fmt]
@@ -77,7 +78,7 @@ class ExportDialog(Adw.Dialog):
         self._check_format()
 
     def _check_format(self):
-        """Tells right away when a format cannot be exported here (PDF without WebKitGTK)."""
+        """Tells right away when a format cannot be exported here (PDF without WeasyPrint)."""
         missing = self.fmt == "pdf" and not pdf_available()
         self.format_row.set_subtitle(pdf_missing_text() if missing else "")
         self.export_button.set_sensitive(not missing)
@@ -138,7 +139,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         on_done(path, error)
 
     header = work / "style.html"
-    header.write_text(export.style_header(template), encoding="utf-8")
+    header.write_text(export.style_header(template, pdf=fmt == "pdf"), encoding="utf-8")
     pandoc_output = work / ("document.html" if fmt == "pdf" else "document" + export.EXTENSIONS[fmt])
     args = export.pandoc_args(fmt, template, pandoc_output, None if title else sheet_path.stem, header, defaults)
     # Relative image paths in the text refer to the sheet's folder.
@@ -179,83 +180,48 @@ def _move_into_place(source: Path, output: Path, done):
     done(output, None)
 
 
-def _webkit():
-    try:
-        import gi
-
-        gi.require_version("WebKit", "6.0")
-        from gi.repository import WebKit
-    except (ImportError, ValueError):
-        return None
-    return WebKit
-
-
 def pdf_missing_text() -> str:
-    # Translators: shown when the system lacks the library for PDF export (only outside the Flatpak)
-    return _("PDF export needs WebKitGTK 6.0, which is not installed. The Flatpak version of Typecase includes it.")
+    # Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
+    return _("PDF export needs WeasyPrint, which is not installed. The Flatpak version of Typecase includes it.")
 
 
 def pdf_available() -> bool:
-    return _webkit() is not None
+    return pdf_render.available()
 
 
 def _print_pdf(html: Path, base_dir: Path, output: Path, work: Path, template, done):
-    """Loads the HTML into an invisible WebKit view and prints it to a PDF file without a dialog."""
-    WebKit = _webkit()
-    if WebKit is None:
+    """Lays out the HTML as PDF pages with WeasyPrint, in a process of its own."""
+    if not pdf_available():
         done(None, pdf_missing_text())
         return
-
-    view = WebKit.WebView()
-    settings = view.get_settings()
-    settings.set_enable_javascript(False)  # text and CSS only; run nothing from the document
+    # The template sets paper and margins; if unspecified, paper by system language and 25 mm margins.
+    paper = Gtk.PaperSize.new(template.pdf_paper or Gtk.PaperSize.get_default())
+    margins = template.pdf_margins_mm
     pdf = work / "document.pdf"
-    holder = {"view": view}  # keep a reference until the end, otherwise Python garbage-collects the view
-
-    def on_load(web_view, event):
-        if event != WebKit.LoadEvent.FINISHED:
-            return
-        print_settings = Gtk.PrintSettings()
-        # The file "printer" is named whatever GTK calls it in the interface language.
-        print_settings.set_printer(GLib.dgettext("gtk40", "Print to File"))
-        print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_FILE_FORMAT, "pdf")
-        print_settings.set(Gtk.PRINT_SETTINGS_OUTPUT_URI, Gio.File.new_for_path(str(pdf)).get_uri())
-        # The template sets paper and margins; if unspecified, paper by system language and 25 mm margins.
-        page_setup = Gtk.PageSetup()
-        page_setup.set_paper_size(Gtk.PaperSize.new(template.pdf_paper or Gtk.PaperSize.get_default()))
-        margins = template.pdf_margins_mm
-        page_setup.set_top_margin(margins["top"], Gtk.Unit.MM)
-        page_setup.set_right_margin(margins["right"], Gtk.Unit.MM)
-        page_setup.set_bottom_margin(margins["bottom"], Gtk.Unit.MM)
-        page_setup.set_left_margin(margins["left"], Gtk.Unit.MM)
-        operation = WebKit.PrintOperation.new(web_view)
-        operation.set_print_settings(print_settings)
-        operation.set_page_setup(page_setup)
-        holder["operation"] = operation
-
-        def on_finished(_op):
-            failed = holder.get("failed")
-            holder.clear()
-            if failed:
-                return  # already reported
-            if pdf.is_file():
-                _move_into_place(pdf, output, done)
-            else:
-                done(None, _("The PDF could not be created."))
-
-        def on_failed(_op, error):
-            holder["failed"] = True
-            done(None, error.message)
-
-        operation.connect("failed", on_failed)
-        operation.connect("finished", on_finished)
-        operation.print_()
-
-    def on_load_failed(_view, _event, _uri, error):
-        holder.clear()
+    args = [
+        sys.executable, "-m", "typecase.pdf_render", str(html), str(base_dir), str(pdf),
+        "--paper-mm", f"{paper.get_width(Gtk.Unit.MM):.2f},{paper.get_height(Gtk.Unit.MM):.2f}",
+        "--margins-mm", ",".join(str(margins[side]) for side in ("top", "right", "bottom", "left")),
+    ]
+    launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.STDERR_PIPE)
+    package_root = str(Path(__file__).resolve().parent.parent)  # where "typecase" can be imported from
+    launcher.setenv("PYTHONPATH", os.pathsep.join(filter(None, [package_root, os.environ.get("PYTHONPATH")])), True)
+    try:
+        process = launcher.spawnv(args)
+    except GLib.Error as error:
         done(None, error.message)
-        return True
+        return
 
-    view.connect("load-changed", on_load)
-    view.connect("load-failed", on_load_failed)
-    view.load_html(html.read_text(encoding="utf-8"), Gio.File.new_for_path(str(base_dir)).get_uri() + "/")
+    def on_finished(proc, result):
+        try:
+            _ok, _stdout, stderr = proc.communicate_utf8_finish(result)
+        except GLib.Error as error:
+            done(None, error.message)
+            return
+        if proc.get_successful() and pdf.is_file():
+            _move_into_place(pdf, output, done)
+        else:
+            lines = (stderr or "").strip().splitlines()
+            done(None, lines[-1] if lines else _("The PDF could not be created."))
+
+    process.communicate_utf8_async(None, None, on_finished)
