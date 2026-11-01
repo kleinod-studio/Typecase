@@ -191,7 +191,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         ))
         keyword_popover.connect("show", lambda _p: self._fill_keyword_list())
         self.keyword_button = Gtk.MenuButton(
-            icon_name="tag-symbolic", tooltip_text=_("Filter by Keyword"), popover=keyword_popover
+            icon_name="typecase-tag-symbolic", tooltip_text=_("Filter by Keyword"), popover=keyword_popover
         )
         header.pack_end(self.keyword_button)
 

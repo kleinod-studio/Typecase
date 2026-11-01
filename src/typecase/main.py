@@ -11,7 +11,7 @@ gi.require_version("GtkSource", "5")
 
 from gettext import gettext as _
 
-from gi.repository import Adw, Gio, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, Gtk, GtkSource
 
 from .window import TypecaseWindow
 
@@ -57,6 +57,8 @@ class TypecaseApplication(Adw.Application):
     def do_startup(self):
         Adw.Application.do_startup(self)
         GtkSource.init()
+        # Icons that the Adwaita theme lacks ship with the app
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(str(Path(__file__).parent / "icons"))
         self.set_accels_for_action("win.new-sheet", ["<Primary>n"])
         self.set_accels_for_action("win.new-group", ["<Primary><Shift>n"])
         self.set_accels_for_action("win.rename", ["F2"])

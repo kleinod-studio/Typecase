@@ -38,6 +38,7 @@ install_data(
 # Built-in export templates
 install_subdir('typecase/templates', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/themes', install_dir: pkgdatadir / 'typecase')
+install_subdir('typecase/icons', install_dir: pkgdatadir / 'typecase')
 
 launcher = configuration_data()
 launcher.set('pkgdatadir', pkgdatadir)

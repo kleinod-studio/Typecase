@@ -82,6 +82,26 @@ def steps(win, app):
     ed = win.editor
     sel = win.selection
 
+    # Other icon themes (Yaru, Papirus) may hide icons that plain Adwaita lacks
+    settings = Gtk.Settings.get_default()
+    user_theme = settings.props.gtk_icon_theme_name
+    settings.props.gtk_icon_theme_name = "Adwaita"
+    icon_theme = Gtk.IconTheme.get_for_display(win.get_display())
+    names, todo = set(), [win]
+    while todo:
+        widget = todo.pop()
+        if isinstance(widget, (Gtk.Button, Gtk.MenuButton, Gtk.Image)) and widget.props.icon_name:
+            names.add(widget.props.icon_name)
+        if isinstance(widget, Gtk.MenuButton) and widget.get_popover():
+            todo.append(widget.get_popover())
+        child = widget.get_first_child()
+        while child:
+            todo.append(child)
+            child = child.get_next_sibling()
+    missing = sorted(n for n in names if not icon_theme.has_icon(n))
+    check(not missing, f"All icons exist in the Adwaita theme (missing: {missing})")
+    settings.props.gtk_icon_theme_name = user_theme
+
     sel.set_selected(0)
     check(ed.path == LIB / "a.md", "Selecting sheet a opens it")
     check(not win.list_view.get_single_click_activate(), "Hovering with the mouse does not select a sheet")
