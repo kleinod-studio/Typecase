@@ -1374,6 +1374,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Italic"), "<Primary>i"),
                     (_("Underline"), "<Primary>u"),
                     (_("Link"), "<Primary>k"),
+                    (_("Context Menu, for Example to Open a Link"), "Menu <Shift>F10"),
                     (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),
                     (_("Normal Text"), "<Primary>0"),
                     (_("Indent List Item"), "Tab"),

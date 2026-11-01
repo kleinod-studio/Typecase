@@ -2,6 +2,11 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- Links open in the browser with Ctrl+click, or from the context menu while the caret is in a link. Hovering over a link shows its address. Bare web addresses and addresses in angle brackets are styled as links too, and underscores in them no longer turn into italics.
+- The keyword filter icon is drawn as an outline, like the other icons.
+
 ## 1.1.2 – 2026-11-01
 
 - The keyword filter button shows its icon on every system. It used an icon that the default Adwaita theme lacks, so the button was empty unless another icon theme filled the gap. Thanks to Akash Mondal for reporting it ([#1](https://github.com/kleinod-studio/Typecase/issues/1)).

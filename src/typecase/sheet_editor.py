@@ -9,6 +9,7 @@ from . import formatting, frontmatter, spelling
 from .fileio import atomic_write_text, read_text
 from .library import unique_path
 from .markdown_lists import change_indent, on_enter, renumber
+from .markdown_style import link_at
 from .markdown_styler import MarkdownStyler
 from .textstats import count_characters, count_words
 
@@ -65,6 +66,116 @@ class _EditorView(GtkSource.View):
         focus.connect("enter", lambda _c: self._restart_blink())
         focus.connect("leave", lambda _c: self.queue_draw())
         self.add_controller(focus)
+
+        # Links: Ctrl+click opens them, hovering shows the address. From the keyboard, the
+        # context menu (Menu key) offers "Open Link" while the caret is in one.
+        self._pointer = None
+        self.set_has_tooltip(True)
+        self.connect("query-tooltip", self._on_query_tooltip)
+        click = Gtk.GestureClick(button=1, propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        click.connect("pressed", self._on_click)
+        self.add_controller(click)
+        # A right-click moves the caret there (unless it hits the selection), so the context
+        # menu offers "Open Link" for the link under the pointer.
+        menu_click = Gtk.GestureClick(button=3, propagation_phase=Gtk.PropagationPhase.CAPTURE)
+        menu_click.connect("pressed", self._on_menu_click)
+        self.add_controller(menu_click)
+        motion = Gtk.EventControllerMotion()
+        motion.connect("motion", lambda c, x, y: self._update_pointer(c, x, y))
+        motion.connect("leave", lambda _c: setattr(self, "_pointer", None))
+        self.add_controller(motion)
+        ctrl_keys = Gtk.EventControllerKey()
+        ctrl_keys.connect("key-pressed", self._on_ctrl_key)
+        ctrl_keys.connect("key-released", self._on_ctrl_key)
+        self.add_controller(ctrl_keys)
+        self.link_actions = Gio.SimpleActionGroup()
+        self._open_link = Gio.SimpleAction(name="open-link", enabled=False)
+        self._open_link.connect("activate", lambda *_a: self.open_link(self.link_at_iter(self._caret_iter())))
+        self.link_actions.add_action(self._open_link)
+        self.insert_action_group("editor", self.link_actions)
+        buffer.connect(
+            "mark-set",
+            lambda b, _i, mark: mark == b.get_insert()
+            and self._open_link.set_enabled(self.link_at_iter(self._caret_iter()) is not None),
+        )
+
+    def _caret_iter(self):
+        buffer = self.get_buffer()
+        return buffer.get_iter_at_mark(buffer.get_insert())
+
+    def link_at_iter(self, where) -> str | None:
+        """Address of the link at a text position, or None (also inside code)."""
+        if self.styler is not None and any(
+            where.has_tag(self.styler.tags[name]) for name in ("code", "codeblock")
+        ):
+            return None
+        start = where.copy()
+        start.set_line_offset(0)
+        end = start.copy()
+        if not end.ends_line():
+            end.forward_to_line_end()
+        return link_at(start.get_text(end), where.get_line_offset())
+
+    def link_at_point(self, x: float, y: float) -> str | None:
+        bx, by = self.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, int(x), int(y))
+        found, where = self.get_iter_at_location(bx, by)
+        if not found:
+            return None
+        # Past the end of a line, the iter is the line end; only count it when over text.
+        area = self.get_iter_location(where)
+        if not area.x <= bx < area.x + max(area.width, 1):
+            return None
+        return self.link_at_iter(where)
+
+    def open_link(self, address: str | None) -> None:
+        if address:
+            Gtk.UriLauncher.new(address).launch(self.get_root(), None, self._on_launched)
+
+    @staticmethod
+    def _on_launched(launcher, result):
+        try:
+            launcher.launch_finish(result)
+        except GLib.Error:
+            pass  # no browser, or the user cancelled the portal dialog
+
+    def _on_click(self, gesture, n_press, x, y):
+        if n_press != 1 or not gesture.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK:
+            return
+        address = self.link_at_point(x, y)
+        if address:
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+            self.open_link(address)
+
+    def _on_menu_click(self, _gesture, _n_press, x, y):
+        bx, by = self.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, int(x), int(y))
+        found, where = self.get_iter_at_location(bx, by)
+        buffer = self.get_buffer()
+        bounds = buffer.get_selection_bounds()
+        if found and not (bounds and where.in_range(*bounds)):
+            buffer.place_cursor(where)
+
+    def _update_pointer(self, controller, x, y):
+        self._pointer = (x, y)
+        ctrl = bool(controller.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK)
+        self._set_link_cursor(ctrl)
+
+    def _on_ctrl_key(self, controller, keyval, _keycode, state):
+        if keyval in (Gdk.KEY_Control_L, Gdk.KEY_Control_R):
+            # The state still describes the moment before this key event
+            self._set_link_cursor(not state & Gdk.ModifierType.CONTROL_MASK)
+        return False
+
+    def _set_link_cursor(self, ctrl: bool):
+        over_link = self._pointer is not None and self.link_at_point(*self._pointer) is not None
+        self.set_cursor_from_name("pointer" if ctrl and over_link else "text")
+
+    def _on_query_tooltip(self, _view, x, y, keyboard_mode, tooltip):
+        address = self.link_at_iter(self._caret_iter()) if keyboard_mode else self.link_at_point(x, y)
+        if address is None:
+            return False
+        # Translators: tooltip over a link in the editor; {address} is the web address
+        tooltip.set_text(_("{address}\nCtrl+click to open").format(address=address))
+        return True
 
     def set_focus_effects(self, typewriter: bool, dim_others: bool) -> None:
         self.typewriter = typewriter
@@ -278,6 +389,11 @@ class SheetEditor(Gtk.Stack):
             css_classes=["typecase-editor"],
         )
         self.view.styler = self.styler
+        self.context_menu = Gio.Menu()
+        link_item = Gio.MenuItem.new(_("Open Link"), "editor.open-link")
+        link_item.set_attribute_value("hidden-when", GLib.Variant.new_string("action-disabled"))
+        self.context_menu.append_item(link_item)
+        self.view.set_extra_menu(self.context_menu)
         self.styler.on_blocks_changed = self.view.queue_draw
         self.styler.measure = self.view.text_width
         if SheetEditor._shared_css is None:
@@ -298,7 +414,7 @@ class SheetEditor(Gtk.Stack):
             checker = spelling.Spelling.Checker.new(provider, provider.get_default_code())
             self.spell_adapter = spelling.Spelling.TextBufferAdapter.new(self.buffer, checker)
             self.spell_adapter.set_enabled(False)
-            self.view.set_extra_menu(self.spell_adapter.get_menu_model())
+            self.context_menu.append_section(None, self.spell_adapter.get_menu_model())
             self.view.insert_action_group("spelling", self.spell_adapter)
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key_pressed)

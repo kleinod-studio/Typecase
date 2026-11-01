@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase.markdown_style import fence_language, line_spans, list_text_start
+from typecase.markdown_style import fence_language, line_spans, link_at, list_text_start
 
 
 def styled(line, in_code=False):
@@ -57,6 +57,12 @@ class InlineTest(unittest.TestCase):
         s = styled("Siehe [die Seite](https://example.org) dort")
         self.assertEqual(s["link"], ["die Seite"])
         self.assertEqual(s["syntax"], ["[", "](https://example.org)"])
+
+    def test_bare_and_angle_addresses_are_links(self):
+        s = styled("Siehe https://example.org/a_b_c. und <https://gnome.org>")
+        self.assertEqual(sorted(s["link"]), ["https://example.org/a_b_c", "https://gnome.org"])
+        self.assertEqual(s["syntax"], ["<", ">"])
+        self.assertNotIn("italic", s)  # underscores in an address are no emphasis
 
     def test_underline(self):
         s = styled("ein <u>wichtiges **fettes**</u> Wort")
@@ -118,3 +124,33 @@ class ListTextStartTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LinkAtTest(unittest.TestCase):
+    LINE = 'Die [Seite](https://example.org "Titel"), <mailto:a@b.de> und www.gnome.org. ![Bild](b.png) [Datei](notes.md)'
+
+    def at(self, word):
+        return link_at(self.LINE, self.LINE.index(word))
+
+    def test_markdown_link_anywhere_in_it(self):
+        for word in ("[Seite", "Seite", "example", "Titel"):
+            self.assertEqual(self.at(word), "https://example.org", word)
+
+    def test_angle_and_bare_addresses(self):
+        self.assertEqual(self.at("mailto"), "mailto:a@b.de")
+        self.assertEqual(self.at("gnome"), "https://www.gnome.org")
+
+    def test_trailing_punctuation_is_not_part_of_the_address(self):
+        self.assertIsNone(link_at(self.LINE, self.LINE.index("org. ") + 3))
+
+    def test_no_link(self):
+        self.assertIsNone(self.at("Die"))
+        self.assertIsNone(self.at("und"))
+
+    def test_images_and_files_are_not_opened(self):
+        self.assertIsNone(self.at("Bild"))
+        self.assertIsNone(self.at("Datei"))
+
+    def test_other_schemes_are_not_opened(self):
+        self.assertIsNone(link_at("[x](javascript:alert(1))", 1))
+        self.assertIsNone(link_at("[x](file:///etc/passwd)", 1))

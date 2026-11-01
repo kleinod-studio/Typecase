@@ -193,6 +193,22 @@ def steps(win, app):
         return next((tag.props.indent for tag in tags if tag.props.indent_set), 0)
 
     check(indent_of(1) == -ed.view.text_width("  - ") < 0 and indent_of(0) == 0, "A list item gets a hanging indent as wide as its marker")
+
+    # Links: found at the caret and under the pointer, never inside code
+    ed.buffer.set_text("Siehe [GNOME](https://gnome.org) hier\n```\nhttps://code.example\n```")
+    yield 0.3
+    open_link = ed.view.link_actions.lookup_action("open-link")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(0, 8)[1])
+    check(open_link.get_enabled(), "Open Link is offered while the caret is in a link")
+    check(ed.view.link_at_iter(ed.view._caret_iter()) == "https://gnome.org", "The link at the caret has its address")
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    check(not open_link.get_enabled(), "Open Link is hidden outside links")
+    check(ed.view.link_at_iter(ed.buffer.get_iter_at_line_offset(2, 3)[1]) is None, "Addresses in code blocks are no links")
+    area = ed.view.get_iter_location(ed.buffer.get_iter_at_line_offset(0, 8)[1])
+    x, y = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, area.x + 1, area.y + area.height // 2)
+    check(ed.view.link_at_point(x, y) == "https://gnome.org", "The link under the pointer is found")
+    x, y = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, area.x, area.y + area.height // 2)
+    check(ed.view.link_at_point(x + 2000, y) is None, "Space after the end of a line is no link")
     for path in (named, second_named, list_sheet):
         win._do_delete(HeadingNode(path.stem, path))
     yield from wait_until(lambda: win._index_of(named) is None and win._index_of(second_named) is None)

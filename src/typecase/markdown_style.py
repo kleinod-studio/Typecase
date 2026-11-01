@@ -16,6 +16,10 @@ _LIST = re.compile(r"^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)(\[[ xX]\][ \t]+)?")
 
 _CODE = re.compile(r"(`+)(.+?)\1")
 _IMAGE_OR_LINK = re.compile(r"(!?\[)([^\]\n]+)(\]\([^)\s]*(?:[ \t]+\"[^\"]*\")?\))")
+_AUTOLINK = re.compile(r"(<)((?:https?://|mailto:)[^>\s]+)(>)")
+# A bare web address ends before trailing punctuation, so "see https://example.org." works.
+_BARE_URL = re.compile(r"(?<![\w/])(?:https?://|www\.)[^\s<>]*[^\s<>.,;:!?\"')\]]")
+_OPENABLE = ("http://", "https://", "mailto:")
 _STRONG_EMPHASIS = re.compile(r"(\*\*\*|___)(?=\S)(.+?)(?<=\S)\1")
 _STRONG = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
 _EMPHASIS = re.compile(r"(?<![\w*])(\*|_)(?=[^\s*_])(.+?)(?<=[^\s*_])\1(?![\w*])")
@@ -40,6 +44,28 @@ def list_text_start(line: str) -> int | None:
     if item is None or start + item.end() >= len(line):
         return None
     return start + item.end()
+
+
+def link_at(line: str, offset: int) -> str | None:
+    """Address of the link at character offset in line, ready to open; None if there is none.
+
+    Covers [text](address), <address> and bare web addresses. Images and links to anything
+    but web pages and e-mail are left out."""
+    for match in _IMAGE_OR_LINK.finditer(line):
+        if match.start() <= offset < match.end():
+            address = re.match(r"\]\(([^)\s]*)", match.group(3)).group(1)
+            return None if match.group(1) == "![" else _openable(address)
+    for pattern, group in ((_AUTOLINK, 2), (_BARE_URL, 0)):
+        for match in pattern.finditer(line):
+            if match.start() <= offset < match.end():
+                return _openable(match.group(group))
+    return None
+
+
+def _openable(address: str) -> str | None:
+    if address.startswith("www."):
+        return "https://" + address
+    return address if address.lower().startswith(_OPENABLE) else None
 
 
 def line_spans(line: str, in_code_block: bool) -> list[Span]:
@@ -110,6 +136,19 @@ def _inline(line: str, start: int) -> list[Span]:
         ]
         hide(match.start(1), match.end(1))
         hide(match.start(3), match.end(3))
+
+    for match in _AUTOLINK.finditer(masked()):
+        spans += [
+            (match.start(1), match.end(1), "syntax"),
+            (match.start(2), match.end(2), "link"),
+            (match.start(3), match.end(3), "syntax"),
+        ]
+        hide(match.start(), match.end())
+
+    # Hidden afterwards, so underscores in an address do not turn into italics
+    for match in _BARE_URL.finditer(masked()):
+        spans.append((match.start(), match.end(), "link"))
+        hide(match.start(), match.end())
 
     for match in _UNDERLINE.finditer(masked()):
         spans += [

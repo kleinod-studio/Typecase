@@ -66,6 +66,7 @@ Ideas for after 1.0:
 
 - [x] A new sheet takes its first heading as its name (once, while it is still “Untitled”)
 - [x] Card view for plotting: a group shows the notes of its sheets as cards, edited in place; dragging a card (or Alt+arrow keys) changes the order of the sheets
+- [x] Clickable links: Ctrl+click (or the context menu) opens a link in the browser, and hovering shows its address; bare web addresses are recognized too
 - [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
 - [ ] Table of contents: generated from the headings, for the export and as an overview of long texts
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
