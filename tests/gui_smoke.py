@@ -905,7 +905,8 @@ def steps(win, app):
     win.lookup_action("export-selection").activate(None)
     dialog = win.get_visible_dialog()
     check(isinstance(dialog, ExportDialog) and dialog.title_row.get_visible() and dialog.title_row.get_text() == "Book", "Exporting a group asks for a title (the group name)")
-    combined = dialog._text
+    folder, sheets = dialog._group
+    combined = export.combine_sheets(sheets, folder)
     dialog.force_close()
     check(combined.index("Chapter 1") < combined.index("Chapter 2") < combined.index("Chapter 10"), "The group is combined in the manual order")
     if export.pandoc_path() is not None:
@@ -1001,9 +1002,9 @@ def steps(win, app):
     gv.editor_for(book / "Epilogue.md").buffer.insert_at_cursor("Ganz ")
     select(meta)
     check(ed.path == meta and gv.group is None and body(book / "Epilogue.md") == "Ganz Zuletzt Ende.", "Selecting a sheet leaves the group view and saves it")
-    win.lookup_action("export").activate(None)  # a single sheet: no switch for subgroups
+    win.lookup_action("export").activate(None)  # a single sheet: no choice for parts
     dialog = win.get_visible_dialog()
-    check(not dialog.page_break_row.get_visible(), "Exporting a sheet offers no page breaks for subgroups")
+    check(not dialog.parts_row.get_visible() and dialog.toc_row.get_visible() and dialog.cover_row.get_visible(), "Exporting a sheet offers contents and cover, but no parts")
     dialog.force_close()
     (book / "Appendix").mkdir()
     (book / "Appendix" / "Sources.md").write_text("Quellen.", encoding="utf-8")
@@ -1020,9 +1021,15 @@ def steps(win, app):
     check(groups == [(0, "Buch"), (1, "Appendix")], f"The outline names the group and each subgroup, indented ({groups})")
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
-    check(dialog.page_break_row.get_visible() and dialog.page_break_row.get_active(), "A group with subgroups offers a new page for each one")
-    check(export.PAGE_BREAK in dialog._page_break_text and export.PAGE_BREAK not in dialog._text, "Only the page-break version contains page breaks")
+    check(dialog.parts_row.get_visible() and export.PARTS[dialog.parts_row.get_selected()] == "new-page", "A group with subgroups offers parts, each on a new page by default")
     dialog.force_close()
+    if export.pandoc_path() is not None:
+        results = {}
+        combined = export.with_title(export.combine_sheets(win._group_sheets(book), book, "title-page"), "Buch")
+        run_export(combined, "html", export_templates.available(None)[0], TMP / "parts.html", book / "Buch.md", "Buch", {}, lambda path, error: results.__setitem__("html", error), toc_title="Inhalt", cover=True)
+        yield from wait_until(lambda: results, timeout=30)
+        page = (TMP / "parts.html").read_text(encoding="utf-8")
+        check(results["html"] is None and 'class="cover"' in page and 'id="TOC"' in page and 'class="part title-page"' in page, "Export with cover, contents and parts")
 
     # Card view: the notes of all sheets as cards, edited in place and moved like the sheets
     from typecase.cards import read_card

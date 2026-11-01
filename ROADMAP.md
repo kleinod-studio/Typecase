@@ -69,7 +69,7 @@ Ideas for after 1.0:
 - [x] Clickable links: Ctrl+click (or the context menu) opens a link in the browser, and hovering shows its address; bare web addresses are recognized too
 - [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
 - [x] Outline: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O)
-- [ ] Table of contents in the export, generated from the headings
+- [x] Table of contents, cover page and parts in the export: a table of contents from the headings (with page numbers in the PDF), a cover page, and the subgroups of a group as parts with their own heading or title page; PDFs get page numbers
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
 - [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in PDF and Word exports
 - [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers

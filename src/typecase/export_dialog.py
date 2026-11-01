@@ -24,12 +24,13 @@ class ExportDialog(Adw.Dialog):
         defaults: dict,
         on_done,
         editable_title: bool = False,
-        page_break_text: str | None = None,
+        group: tuple[Path, list[Path]] | None = None,
     ):
-        """page_break_text: for a group with subgroups, the same text with a new page for every subgroup."""
+        """group: (folder, sheets) to export a whole group; the text is then put together on export,
+        with its subgroups as parts. text is the sheet's file content otherwise."""
         super().__init__(title=_("Export"), content_width=420)
         self._text = text
-        self._page_break_text = page_break_text
+        self._group = group
         self._editable_title = editable_title
         self._sheet_path = sheet_path
         self._title = title
@@ -56,13 +57,32 @@ class ExportDialog(Adw.Dialog):
         # Exporting a group: its sheets have no common front matter, so the title is asked here.
         self.title_row = Adw.EntryRow(title=_("Title"), text=title or "", visible=editable_title)
         group.add(self.title_row)
-        self.page_break_row = Adw.SwitchRow(
-            title=_("Start Each Subgroup on a New Page"),
-            active=saved.get("export_page_breaks") is not False,
-            visible=page_break_text is not None,
-        )
-        group.add(self.page_break_row)
         page.add(group)
+
+        structure = Adw.PreferencesGroup()
+        self.toc_row = Adw.SwitchRow(
+            title=_("Table of Contents"),
+            subtitle=_("From the headings, with page numbers in the PDF"),
+            active=saved.get("export_toc") is True,
+        )
+        structure.add(self.toc_row)
+        self.cover_row = Adw.SwitchRow(
+            title=_("Cover Page"),
+            subtitle=_("Title, subtitle, author and date on a page of their own"),
+            active=saved.get("export_cover") is True,
+        )
+        structure.add(self.cover_row)
+        # A group with subgroups: each subgroup is a part, its name a heading above its sheets.
+        self.parts_row = Adw.ComboRow(
+            title=_("Parts"),
+            subtitle=_("Subgroups become parts with their name as heading"),
+            model=Gtk.StringList.new([_("Continuous"), _("Each on a New Page"), _("With a Title Page")]),
+            visible=self._group is not None and export.has_subgroups(self._group[1]),
+        )
+        parts = saved.get("export_parts")
+        self.parts_row.set_selected(export.PARTS.index(parts) if parts in export.PARTS else 1)
+        structure.add(self.parts_row)
+        page.add(structure)
 
         self.export_button = Gtk.Button(label=_("Export…"), css_classes=["suggested-action", "pill"], halign=Gtk.Align.CENTER)
         self.export_button.connect("clicked", lambda _b: self._choose_file())
@@ -108,30 +128,42 @@ class ExportDialog(Adw.Dialog):
         template = self._templates[self.template_row.get_selected()]
         config.update(export_template=template.id)
         text, title = self._text, self._title
-        if self._page_break_text is not None:
-            config.update(export_page_breaks=self.page_break_row.get_active())
-            if self.page_break_row.get_active():
-                text = self._page_break_text
+        toc, cover = self.toc_row.get_active(), self.cover_row.get_active()
+        config.update(export_toc=toc, export_cover=cover)
+        if self._group is not None:
+            parts = export.PARTS[self.parts_row.get_selected()]
+            if self.parts_row.get_visible():
+                config.update(export_parts=parts)
+            folder, sheets = self._group
+            text = export.combine_sheets(sheets, folder, parts)
         if self._editable_title:
             title = self.title_row.get_text().strip() or None
             text = export.with_title(text, title)
-        run_export(text, self.fmt, template, output, self._sheet_path, title, self._defaults, self._finished)
+        run_export(
+            text, self.fmt, template, output, self._sheet_path, title, self._defaults, self._finished,
+            toc_title=_("Contents") if toc else None, cover=cover,
+        )
 
     def _finished(self, output: Path | None, error: str | None):
         self.close()
         self._on_done(output, error)
 
 
-def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done):
+def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done, toc_title=None, cover=False):
     """Exports in the background. Output goes to a temporary file first; only once everything has
-    worked does it replace the target. So an error never leaves a half-written file behind."""
+    worked does it replace the target. So an error never leaves a half-written file behind.
+    toc_title: a table of contents with this heading; cover: a cover page."""
     if export.pandoc_path() is None:
         on_done(None, _("Pandoc is not installed."))
         return
-    if fmt == "docx":
+    if fmt == "docx" and not cover:
         # Pandoc writes a "date" as its own paragraph under the title in Word files. The export date
-        # is only meant for HTML templates that ask for $date$; a date set in the sheet stays.
+        # is only meant for HTML templates that ask for $date$ and for the cover page; a date set in
+        # the sheet stays.
         defaults = {key: value for key, value in defaults.items() if key != "date"}
+    if cover and not title:
+        # The cover needs a title; without one in the front matter, the file's name stands in.
+        defaults = {**defaults, "title": sheet_path.stem}
     work = Path(tempfile.mkdtemp(prefix="typecase-export-"))
 
     def done(path, error):
@@ -141,7 +173,9 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
     header = work / "style.html"
     header.write_text(export.style_header(template, pdf=fmt == "pdf"), encoding="utf-8")
     pandoc_output = work / ("document.html" if fmt == "pdf" else "document" + export.EXTENSIONS[fmt])
-    args = export.pandoc_args(fmt, template, pandoc_output, None if title else sheet_path.stem, header, defaults)
+    args = export.pandoc_args(
+        fmt, template, pandoc_output, None if title else sheet_path.stem, header, defaults, toc_title=toc_title, cover=cover
+    )
     # Relative image paths in the text refer to the sheet's folder.
     launcher = Gio.SubprocessLauncher.new(Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDERR_PIPE)
     launcher.set_cwd(str(sheet_path.parent))

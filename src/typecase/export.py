@@ -27,10 +27,36 @@ _UNDERLINE = re.compile(r"<u>(.*?)</u>", re.DOTALL)
 _FONT_TYPES = {".woff2": "font/woff2", ".woff": "font/woff", ".otf": "font/otf", ".ttf": "font/ttf"}
 _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
 FOOTNOTE_FILTER = Path(__file__).resolve().parent / "filters" / "page-footnotes.lua"
+STRUCTURE_FILTER = Path(__file__).resolve().parent / "filters" / "structure.lua"
+TOC_DEPTH = 2  # parts and chapters, or chapters and sections
 
-# Defaults for PDF pages, before the template's CSS so a template can restyle them:
-# footnotes at the bottom of their page, called by a small raised number.
+# Defaults for the cover page, table of contents and parts, before the template's CSS so a
+# template can restyle them. They apply to HTML and PDF.
+BASE_CSS = """\
+.cover { text-align: center; margin: 4em 0; }
+.cover .title { font-size: 2em; font-weight: bold; line-height: 1.2; }
+.cover .subtitle { font-size: 1.25em; margin-top: 0.4em; }
+.cover .author { margin-top: 2em; }
+.cover .date { margin-top: 0.5em; }
+.toc { margin: 2em 0; }
+.toc .toc-title { font-size: 1.3em; font-weight: bold; margin-bottom: 0.8em; }
+.toc ul { list-style: none; padding-left: 0; margin: 0; }
+.toc ul ul { padding-left: 1.5em; }
+.toc li { margin: 0.25em 0; }
+.toc a { color: inherit; text-decoration: none; }
+"""
+
+# PDF pages: footnotes at the bottom of their page, called by a small raised number; the cover,
+# the contents and the title page of a part each on pages of their own, without a page number;
+# page numbers in the table of contents.
 PDF_BASE_CSS = """\
+.cover { page: cover; break-after: page; margin: 0; padding-top: 30vh; }
+@page cover { @top-center { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }
+.toc { break-after: page; margin-top: 0; }
+.toc a::after { content: leader(". ") target-counter(attr(href url), page); }
+.part.new-page { break-before: page; }
+.part.title-page { page: part; break-before: page; break-after: page; padding-top: 30vh; text-align: center; }
+@page part { @top-center { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }
 .footnote { float: footnote; font-size: 0.85em; }
 ::footnote-call { content: counter(footnote); vertical-align: super; font-size: 0.65em; line-height: 0; }
 ::footnote-marker { content: counter(footnote) "\\00a0\\00a0"; }
@@ -59,32 +85,70 @@ def export_date(today: datetime.date | None = None, time_locale: str | None = No
     return today.isoformat()
 
 
-# A page break that Pandoc keeps for the format at hand and drops for the others: CSS for HTML
-# (and the PDF printed from it), a Word page break for DOCX.
-PAGE_BREAK = (
-    '```{=html}\n<div style="break-before: page; page-break-before: always"></div>\n```\n\n'
-    '```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```'
-)
+# Breaks for Word, as raw OpenXML that only the DOCX writer keeps. In HTML and PDF, CSS classes
+# on the part headings do the same (see BASE_CSS), so no empty element can cause a blank page.
+DOCX_PAGE_BREAK = '```{=openxml}\n<w:p><w:r><w:br w:type="page"/></w:r></w:p>\n```'
+
+PARTS = ("continuous", "new-page", "title-page")  # how the parts (subgroups) of a group begin
+_FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)")
+_ATX = re.compile(r"^(#{1,6})(?=[ \t]|$)")
+_MARKDOWN_SPECIAL = re.compile(r"([\\`*_{}\[\]<>#|~^])")
 
 
-def combine_sheets(paths: list[Path], page_breaks: bool = False) -> str:
+def shift_headings(text: str, levels: int) -> str:
+    """Moves every heading down by levels (# becomes ##), up to level 6; code blocks stay as they are."""
+    if levels <= 0:
+        return text
+    lines = text.split("\n")
+    in_code = False
+    for index, line in enumerate(lines):
+        if _FENCE.match(line):
+            in_code = not in_code
+        elif not in_code:
+            heading = _ATX.match(line)
+            if heading:
+                level = min(len(heading.group(1)) + levels, 6)
+                lines[index] = "#" * level + line[heading.end():]
+    return "\n".join(lines)
+
+
+def combine_sheets(paths: list[Path], group: Path | None = None, parts: str = "continuous") -> str:
     """Joins sheets into one Markdown text for exporting a group: each sheet's text without its
     front matter, in the given order, separated by a blank line. Unreadable files are skipped.
-    page_breaks: a new page wherever the folder changes, so every subgroup starts on its own page."""
-    parts = []
-    folder = None
+
+    With subgroups, each one becomes a part: its name is a heading of the level of its depth
+    (class "part"), and the headings of its sheets move down below it. Sheets directly in the
+    group keep their levels. parts: "new-page" starts each part on a new page, "title-page"
+    gives its name a page of its own."""
+    nested = group is not None and has_subgroups(paths)
+    blocks = []
+    named: set[tuple[str, ...]] = set()
     for path in paths:
         try:
             _header, body = frontmatter.split(read_text(path))
         except (OSError, UnicodeDecodeError):
             continue
         body = body.strip("\n")
+        depth = len(path.parent.relative_to(group).parts) if nested else 0
+        if nested:
+            folders = path.parent.relative_to(group).parts
+            for level in range(1, len(folders) + 1):
+                if folders[:level] not in named:
+                    named.add(folders[:level])
+                    blocks += _part_heading(folders[level - 1], level, parts, blocks)
         if body.strip():
-            if page_breaks and folder is not None and path.parent != folder:
-                parts.append(PAGE_BREAK)
-            folder = path.parent
-            parts.append(body)
-    return "\n\n".join(parts) + "\n"
+            blocks.append(shift_headings(body, depth))
+    return "\n\n".join(blocks) + "\n"
+
+
+def _part_heading(name: str, level: int, parts: str, blocks: list[str]) -> list[str]:
+    """The heading that opens a part, with Word page breaks around it as the mode asks; none at
+    the very start and none twice in a row (a part that directly follows another one's title page)."""
+    classes = {"continuous": ".part", "new-page": ".part .new-page", "title-page": ".part .title-page"}[parts]
+    heading = f"{'#' * level} {_MARKDOWN_SPECIAL.sub(r'\\\1', name)} {{{classes}}}"
+    before = [] if parts == "continuous" or not blocks or blocks[-1] == DOCX_PAGE_BREAK else [DOCX_PAGE_BREAK]
+    after = [DOCX_PAGE_BREAK] if parts == "title-page" else []
+    return before + [heading] + after
 
 
 def has_subgroups(paths: list[Path]) -> bool:
@@ -115,15 +179,24 @@ def pandoc_args(
     fallback_title: str | None,
     header_file: Path | None = None,
     defaults: dict | None = None,
+    toc_title: str | None = None,
+    cover: bool = False,
 ) -> list[str]:
     """Command line for Pandoc; the text is passed via standard input.
     fmt "pdf" produces the intermediate HTML for PDF printing. header_file contains the CSS
     as a <style> block, so the HTML file needs no accompanying files. defaults are
-    default values (author, language) for fields the front matter does not set itself."""
+    default values (author, language) for fields the front matter does not set itself.
+    toc_title: put a table of contents with this heading in front of the text; cover: a cover page."""
     args = [pandoc_path() or "pandoc", "--from", INPUT_FORMAT, "--output", str(output)]
     for key, value in (defaults or {}).items():
         if value:
             args += ["--metadata", f"{key}={value}"]
+    if toc_title or cover:
+        args += ["--lua-filter", str(STRUCTURE_FILTER)]
+        if toc_title:
+            args += ["--metadata", f"typecase-toc={TOC_DEPTH}", "--metadata", f"typecase-toc-title={toc_title}"]
+        if cover:
+            args += ["--metadata", "typecase-cover=true"]
     if fmt == "docx":
         args += ["--to", "docx"]
         if template.reference_docx:
@@ -149,8 +222,7 @@ def style_header(template: Template, pdf: bool = False) -> str:
     PDF printing finds them as well, even though it loads from the sheet's folder."""
     css = template.css.read_text(encoding="utf-8") if template.css.is_file() else ""
     css = _CSS_URL.sub(lambda match: _embed(template, match), css)
-    if pdf:
-        css = PDF_BASE_CSS + "\n" + css
+    css = BASE_CSS + (PDF_BASE_CSS if pdf else "") + "\n" + css
     return "<style>\n" + css.replace("</style", "<\\/style") + "\n</style>\n"
 
 

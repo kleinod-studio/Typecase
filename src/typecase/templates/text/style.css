@@ -21,6 +21,16 @@ body {
   padding: 0 1.5em;
 }
 
+/* Page numbers at the bottom centre (PDF). The cover and part title pages have none. */
+@page {
+  @bottom-center {
+    content: counter(page);
+    font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+    font-size: 9pt;
+    color: #5e5e5e;
+  }
+}
+
 /* In the PDF the page determines the width; printing sets the margins. */
 body.pdf {
   max-width: none;

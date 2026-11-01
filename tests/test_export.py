@@ -43,6 +43,11 @@ class ExportTest(unittest.TestCase):
         self.assertIn(str(export.FOOTNOTE_FILTER), pdf)
         self.assertTrue(export.FOOTNOTE_FILTER.is_file())
         self.assertNotIn(str(export.FOOTNOTE_FILTER), html, "web pages keep their notes at the end")
+        self.assertNotIn(str(export.STRUCTURE_FILTER), pdf)
+        both = export.pandoc_args("docx", self.template, Path("/x/o.docx"), None, toc_title="Inhalt", cover=True)
+        self.assertIn(str(export.STRUCTURE_FILTER), both)
+        self.assertIn("typecase-toc-title=Inhalt", both)
+        self.assertIn("typecase-cover=true", both)
 
     def test_pdf_base_css_comes_before_the_template(self):
         header = export.style_header(self.template, pdf=True)
@@ -74,23 +79,38 @@ class ExportTest(unittest.TestCase):
             combined = export.combine_sheets([a, empty, b, Path(tmp) / "missing.md"])
         self.assertEqual(combined, "# One\n\nText.\n\n# Two\nMore.\n")
 
-    def test_combine_sheets_page_breaks(self):
+    def test_combine_sheets_parts(self):
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "Part 1").mkdir()
-            (root / "Part 2").mkdir()
-            sheets = [root / "Preface.md", root / "Part 1" / "a.md", root / "Part 1" / "b.md", root / "Part 2" / "c.md"]
-            for sheet, content in zip(sheets, ["P", "A", "B", "C"]):
+            (root / "Part 2" / "Scenes").mkdir(parents=True)
+            sheets = [root / "Preface.md", root / "Part 1" / "a.md", root / "Part 1" / "b.md", root / "Part 2" / "Scenes" / "c.md"]
+            for sheet, content in zip(sheets, ["# P", "# A\n## a", "B", "# C"]):
                 sheet.write_text(content, encoding="utf-8")
             self.assertTrue(export.has_subgroups(sheets))
             self.assertFalse(export.has_subgroups(sheets[1:3]))
-            self.assertEqual(export.combine_sheets(sheets), "P\n\nA\n\nB\n\nC\n")
-            breaks = export.combine_sheets(sheets, page_breaks=True)
-        brk = export.PAGE_BREAK
-        # A new page where the folder changes, none before the first sheet and none inside a subgroup.
-        self.assertEqual(breaks, f"P\n\n{brk}\n\nA\n\nB\n\n{brk}\n\nC\n")
+            self.assertEqual(export.combine_sheets(sheets), "# P\n\n# A\n## a\n\nB\n\n# C\n", "without the group: no parts")
+            continuous = export.combine_sheets(sheets, root)
+            title_pages = export.combine_sheets(sheets, root, "title-page")
+            new_pages = export.combine_sheets(sheets, root, "new-page")
+        # Each subgroup is a heading at its depth; its sheets' headings move below it
+        self.assertEqual(
+            continuous,
+            "# P\n\n# Part 1 {.part}\n\n## A\n### a\n\nB\n\n# Part 2 {.part}\n\n## Scenes {.part}\n\n### C\n",
+        )
+        brk = export.DOCX_PAGE_BREAK
+        self.assertEqual(new_pages.count(brk), 3, "a Word break before each part, none at the start")
+        # Title pages: a break before and after, but never two in a row
+        self.assertEqual(title_pages.count(brk), 5)
+        self.assertNotIn(f"{brk}\n\n{brk}", title_pages)
+        self.assertIn("# Part 1 {.part .title-page}", title_pages)
+
+    def test_shift_headings(self):
+        text = "# One\ntext\n```\n# code\n```\n###### Six"
+        self.assertEqual(export.shift_headings(text, 1), "## One\ntext\n```\n# code\n```\n###### Six")
+        self.assertEqual(export.shift_headings("#hashtag", 1), "#hashtag")
 
     def test_with_title(self):
         self.assertEqual(export.with_title("Text\n", "My Novel"), "---\ntitle: My Novel\n---\nText\n")
@@ -99,6 +119,41 @@ class ExportTest(unittest.TestCase):
     def test_style_header(self):
         header = export.style_header(self.template)
         self.assertTrue(header.startswith("<style>") and header.rstrip().endswith("</style>"))
+
+
+@unittest.skipUnless(shutil.which("pandoc"), "Pandoc is missing")
+class StructureFilterTest(unittest.TestCase):
+    TEXT = "---\ntitle: Buch\nauthor: Anna\n---\n## Eins\n\n### Unter\n\n#### Tief\n\nText.\n"
+
+    def run_pandoc(self, fmt: str, **options) -> str:
+        args = ["pandoc", "--from", export.INPUT_FORMAT, "--to", fmt, "--lua-filter", str(export.STRUCTURE_FILTER)]
+        for key, value in options.items():
+            args += ["--metadata", f"{key}={value}"]
+        if fmt == "docx":
+            with tempfile.TemporaryDirectory() as folder:
+                out = Path(folder) / "o.docx"
+                subprocess.run(args + ["-o", str(out)], input=self.TEXT, text=True, check=True)
+                import zipfile
+
+                with zipfile.ZipFile(out) as docx:
+                    return docx.read("word/document.xml").decode("utf-8")
+        return subprocess.run(args, input=self.TEXT, text=True, check=True, capture_output=True).stdout
+
+    def test_contents_count_levels_from_the_top_heading(self):
+        html = self.run_pandoc("html5", **{"typecase-toc": 2, "typecase-toc-title": "Inhalt"})
+        self.assertIn('<div class="toc-title">\nInhalt', html)
+        self.assertIn('href="#unter"', html)
+        self.assertNotIn('href="#tief"', html)
+        self.assertIn('TOC \\o "2-3"', self.run_pandoc("docx", **{"typecase-toc": 2, "typecase-toc-title": "Inhalt"}))
+
+    def test_cover_takes_over_the_title(self):
+        html = self.run_pandoc("html5", **{"typecase-cover": "true"})
+        self.assertIn('<div class="cover">', html)
+        self.assertIn('<div class="title">', html)
+        self.assertIn('<div class="author">', html)
+        docx = self.run_pandoc("docx", **{"typecase-cover": "true"})
+        self.assertEqual(docx.count('w:val="Title"'), 1, "the title appears once, on the cover")
+        self.assertIn('w:type="page"', docx)
 
 
 class PdfRenderTest(unittest.TestCase):

@@ -8,6 +8,9 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 - Footnotes: Ctrl+Alt+F or the new button in the formatting bar inserts a note right in the text (`^[note]`). Notes are set smaller and dimmed in the editor, PDF and Word exports put them at the bottom of their page; web pages collect them at the end. Classic `[^1]` footnotes are styled too.
 - Outline: a new button in the header bar (or Ctrl+Shift+O) lists the headings of the sheet, indented by level, with the current one selected. Choosing one jumps there. In a group, it starts with the group's name and shows each subgroup, such as the parts of a novel, with the headings of its sheets below.
 - PDFs are now laid out by WeasyPrint instead of being printed by WebKit. They look as before, with text at exactly the size the template sets (WebKit printed it slightly larger), and real pages open the way to footnotes on their page and, later, page numbers and a table of contents.
+- Export options for a table of contents and a cover page. The table of contents lists two levels of headings, with page numbers in PDFs; Word fills it in when the document is opened. The cover page puts title, subtitle, author and date on a page of their own.
+- Exporting a group with subgroups treats them as parts: each subgroup's name becomes a heading above its sheets, whose headings move one level down. Parts can run on, start on a new page, or get a title page of their own.
+- PDFs exported with the built-in template have page numbers at the bottom centre, except on the cover and on part title pages.
 - The keyword filter uses the icon theme's own tag icon where there is one, and an outline icon of its own otherwise, so it matches the other icons.
 
 ## 1.1.2 – 2026-11-01

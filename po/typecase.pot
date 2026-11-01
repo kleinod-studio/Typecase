@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 23:18+0100\n"
+"POT-Creation-Date: 2026-11-01 23:40+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -72,52 +72,88 @@ msgstr ""
 msgid "Web Page (HTML)"
 msgstr ""
 
-#: src/typecase/export_dialog.py:30 src/typecase/export_dialog.py:93
+#: src/typecase/export_dialog.py:31 src/typecase/export_dialog.py:113
 #: src/typecase/window.py:1483
 msgid "Export"
 msgstr ""
 
-#: src/typecase/export_dialog.py:43
+#: src/typecase/export_dialog.py:44
 msgid "Format"
 msgstr ""
 
-#: src/typecase/export_dialog.py:48
+#: src/typecase/export_dialog.py:49
 msgid "Template"
 msgstr ""
 
-#: src/typecase/export_dialog.py:49
+#: src/typecase/export_dialog.py:50
 msgid "Import more templates in the preferences"
 msgstr ""
 
-#: src/typecase/export_dialog.py:57 src/typecase/inspector.py:94
+#: src/typecase/export_dialog.py:58 src/typecase/inspector.py:94
 msgid "Title"
 msgstr ""
 
-#: src/typecase/export_dialog.py:60
-msgid "Start Each Subgroup on a New Page"
+#: src/typecase/export_dialog.py:64
+msgid "Table of Contents"
 msgstr ""
 
-#: src/typecase/export_dialog.py:67 src/typecase/window.py:232
+#: src/typecase/export_dialog.py:65
+msgid "From the headings, with page numbers in the PDF"
+msgstr ""
+
+#: src/typecase/export_dialog.py:70
+msgid "Cover Page"
+msgstr ""
+
+#: src/typecase/export_dialog.py:71
+msgid "Title, subtitle, author and date on a page of their own"
+msgstr ""
+
+#: src/typecase/export_dialog.py:77
+msgid "Parts"
+msgstr ""
+
+#: src/typecase/export_dialog.py:78
+msgid "Subgroups become parts with their name as heading"
+msgstr ""
+
+#: src/typecase/export_dialog.py:79
+msgid "Continuous"
+msgstr ""
+
+#: src/typecase/export_dialog.py:79
+msgid "Each on a New Page"
+msgstr ""
+
+#: src/typecase/export_dialog.py:79
+msgid "With a Title Page"
+msgstr ""
+
+#: src/typecase/export_dialog.py:87 src/typecase/window.py:232
 #: src/typecase/window.py:330
 msgid "Export…"
 msgstr ""
 
-#: src/typecase/export_dialog.py:129
+#: src/typecase/export_dialog.py:144
+msgid "Contents"
+msgstr ""
+
+#: src/typecase/export_dialog.py:157
 msgid "Pandoc is not installed."
 msgstr ""
 
-#: src/typecase/export_dialog.py:161
+#: src/typecase/export_dialog.py:195
 msgid "Pandoc could not convert the text."
 msgstr ""
 
 #. Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
-#: src/typecase/export_dialog.py:185
+#: src/typecase/export_dialog.py:219
 msgid ""
 "PDF export needs WeasyPrint, which is not installed. The Flatpak version of "
 "Typecase includes it."
 msgstr ""
 
-#: src/typecase/export_dialog.py:225
+#: src/typecase/export_dialog.py:259
 msgid "The PDF could not be created."
 msgstr ""
 

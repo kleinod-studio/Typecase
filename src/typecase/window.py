@@ -1589,13 +1589,13 @@ class TypecaseWindow(Adw.ApplicationWindow):
         # A virtual sheet path inside the group: the group's name for the file, its folder for resources.
         virtual = group / f"{group.name}.md"
         dialog = ExportDialog(
-            export.combine_sheets(sheets),
+            None,
             virtual,
             group.name,
             missing,
             self._on_exported,
             editable_title=True,
-            page_break_text=export.combine_sheets(sheets, page_breaks=True) if export.has_subgroups(sheets) else None,
+            group=(group, sheets),
         )
         dialog.present(self)
 

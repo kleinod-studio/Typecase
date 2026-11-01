@@ -34,7 +34,7 @@ def _local_only(url: str, *args, **kwargs):
 def render(html: Path, base_dir: Path, output: Path, css: str) -> None:
     import weasyprint
 
-    document = weasyprint.HTML(filename=str(html), base_url=base_dir.as_uri() + "/", url_fetcher=_local_only)
+    document = weasyprint.HTML(filename=str(html), base_url=base_dir.resolve().as_uri() + "/", url_fetcher=_local_only)
     document.write_pdf(str(output), stylesheets=[weasyprint.CSS(string=css)])
 
 
