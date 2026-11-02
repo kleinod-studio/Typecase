@@ -43,6 +43,8 @@ try:  # as on a real start: without matching locale data (Flatpak), use C.UTF-8 
 except locale.Error:
     _fall_back_to_utf8()
 
+HIDDEN_PATIENCE = 60  # seconds to wait for a hidden test window before giving up
+
 failures = []
 checked = []
 
@@ -1404,8 +1406,26 @@ def on_activate(app):
     win = TypecaseWindow(application=app)  # do_activate then uses this window
     win.present()
     gen = steps(win, app)
+    hidden_for = 0.0
 
     def advance():
+        nonlocal hidden_for
+        # A window on another workspace gets no layout, so checks would fail for no real reason.
+        # The run pauses until the window is visible again.
+        if win.is_suspended():
+            if not hidden_for:
+                print("...... Test window is not visible (another workspace?), waiting for it")
+            hidden_for += 0.2
+            if hidden_for >= HIDDEN_PATIENCE:
+                check(False, "Test window stayed hidden, the remaining checks did not run")
+                app.quit()
+                return GLib.SOURCE_REMOVE
+            GLib.timeout_add(200, advance)
+            return GLib.SOURCE_REMOVE
+        if hidden_for:
+            hidden_for = 0.0
+            GLib.timeout_add(500, advance)  # time for the layout to catch up
+            return GLib.SOURCE_REMOVE
         try:
             delay = next(gen)
         except StopIteration:
