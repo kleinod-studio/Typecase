@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-01 23:40+0100\n"
+"POT-Creation-Date: 2026-11-02 21:03+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -60,100 +60,100 @@ msgstr ""
 msgid "%(name)s (conflict %(date)s)"
 msgstr ""
 
-#: src/typecase/export_dialog.py:13
+#: src/typecase/export_dialog.py:14
 msgid "PDF"
 msgstr ""
 
-#: src/typecase/export_dialog.py:13
+#: src/typecase/export_dialog.py:14
 msgid "Word Document (DOCX)"
 msgstr ""
 
-#: src/typecase/export_dialog.py:13
+#: src/typecase/export_dialog.py:14
 msgid "Web Page (HTML)"
 msgstr ""
 
-#: src/typecase/export_dialog.py:31 src/typecase/export_dialog.py:113
+#: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:114
 #: src/typecase/window.py:1483
 msgid "Export"
 msgstr ""
 
-#: src/typecase/export_dialog.py:44
+#: src/typecase/export_dialog.py:45
 msgid "Format"
 msgstr ""
 
-#: src/typecase/export_dialog.py:49
+#: src/typecase/export_dialog.py:50
 msgid "Template"
 msgstr ""
 
-#: src/typecase/export_dialog.py:50
+#: src/typecase/export_dialog.py:51
 msgid "Import more templates in the preferences"
 msgstr ""
 
-#: src/typecase/export_dialog.py:58 src/typecase/inspector.py:94
+#: src/typecase/export_dialog.py:59 src/typecase/inspector.py:94
 msgid "Title"
 msgstr ""
 
-#: src/typecase/export_dialog.py:64
+#: src/typecase/export_dialog.py:65
 msgid "Table of Contents"
 msgstr ""
 
-#: src/typecase/export_dialog.py:65
+#: src/typecase/export_dialog.py:66
 msgid "From the headings, with page numbers in the PDF"
 msgstr ""
 
-#: src/typecase/export_dialog.py:70
+#: src/typecase/export_dialog.py:71
 msgid "Cover Page"
 msgstr ""
 
-#: src/typecase/export_dialog.py:71
+#: src/typecase/export_dialog.py:72
 msgid "Title, subtitle, author and date on a page of their own"
 msgstr ""
 
-#: src/typecase/export_dialog.py:77
+#: src/typecase/export_dialog.py:78
 msgid "Parts"
 msgstr ""
 
-#: src/typecase/export_dialog.py:78
+#: src/typecase/export_dialog.py:79
 msgid "Subgroups become parts with their name as heading"
 msgstr ""
 
-#: src/typecase/export_dialog.py:79
+#: src/typecase/export_dialog.py:80
 msgid "Continuous"
 msgstr ""
 
-#: src/typecase/export_dialog.py:79
+#: src/typecase/export_dialog.py:80
 msgid "Each on a New Page"
 msgstr ""
 
-#: src/typecase/export_dialog.py:79
+#: src/typecase/export_dialog.py:80
 msgid "With a Title Page"
 msgstr ""
 
-#: src/typecase/export_dialog.py:87 src/typecase/window.py:232
+#: src/typecase/export_dialog.py:88 src/typecase/window.py:232
 #: src/typecase/window.py:330
 msgid "Export…"
 msgstr ""
 
-#: src/typecase/export_dialog.py:144
+#: src/typecase/export_dialog.py:145
 msgid "Contents"
 msgstr ""
 
-#: src/typecase/export_dialog.py:157
+#: src/typecase/export_dialog.py:158
 msgid "Pandoc is not installed."
 msgstr ""
 
-#: src/typecase/export_dialog.py:195
+#: src/typecase/export_dialog.py:198
 msgid "Pandoc could not convert the text."
 msgstr ""
 
 #. Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
-#: src/typecase/export_dialog.py:219
+#: src/typecase/export_dialog.py:228
 msgid ""
 "PDF export needs WeasyPrint, which is not installed. The Flatpak version of "
 "Typecase includes it."
 msgstr ""
 
-#: src/typecase/export_dialog.py:259
+#: src/typecase/export_dialog.py:268
 msgid "The PDF could not be created."
 msgstr ""
 
@@ -211,7 +211,7 @@ msgid "Next Match"
 msgstr ""
 
 #: src/typecase/find_bar.py:36 src/typecase/find_bar.py:40
-#: src/typecase/preferences.py:292
+#: src/typecase/preferences.py:314
 msgid "Replace"
 msgstr ""
 
@@ -338,7 +338,7 @@ msgstr ""
 msgid "Subtitle"
 msgstr ""
 
-#: src/typecase/inspector.py:96 src/typecase/preferences.py:201
+#: src/typecase/inspector.py:96 src/typecase/preferences.py:202
 msgid "Author"
 msgstr ""
 
@@ -354,7 +354,7 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: src/typecase/inspector.py:108 src/typecase/preferences.py:207
+#: src/typecase/inspector.py:108 src/typecase/preferences.py:208
 msgid "Language"
 msgstr ""
 
@@ -408,7 +408,7 @@ msgstr ""
 msgid "Default (%s)"
 msgstr ""
 
-#: src/typecase/inspector.py:205
+#: src/typecase/inspector.py:205 src/typecase/template_dialog.py:41
 msgid "None"
 msgstr ""
 
@@ -461,351 +461,366 @@ msgstr ""
 msgid "Source Code"
 msgstr ""
 
-#: src/typecase/preferences.py:40 src/typecase/preferences.py:56
+#: src/typecase/preferences.py:41 src/typecase/preferences.py:57
+#: src/typecase/template_dialog.py:45 src/typecase/template_dialog.py:53
 msgid "Font"
 msgstr ""
 
-#: src/typecase/preferences.py:42
+#: src/typecase/preferences.py:43
 msgid "Use System Font"
 msgstr ""
 
-#: src/typecase/preferences.py:43
+#: src/typecase/preferences.py:44
 msgid "The same font as the rest of the desktop"
 msgstr ""
 
-#: src/typecase/preferences.py:49
+#: src/typecase/preferences.py:50
 msgid "Choose Font"
 msgstr ""
 
-#: src/typecase/preferences.py:66
+#: src/typecase/preferences.py:67
 msgid "Font Size"
 msgstr ""
 
-#: src/typecase/preferences.py:67
+#: src/typecase/preferences.py:68
 msgid "In points"
 msgstr ""
 
-#: src/typecase/preferences.py:72
+#: src/typecase/preferences.py:73
 msgid "Text Block"
 msgstr ""
 
-#: src/typecase/preferences.py:75
+#: src/typecase/preferences.py:76
 msgid "Line Width"
 msgstr ""
 
-#: src/typecase/preferences.py:76
+#: src/typecase/preferences.py:77
 msgid "Maximum characters per line; the text stays centered"
 msgstr ""
 
-#: src/typecase/preferences.py:81
+#: src/typecase/preferences.py:82 src/typecase/template_dialog.py:47
 msgid "Line Spacing"
 msgstr ""
 
-#: src/typecase/preferences.py:82
+#: src/typecase/preferences.py:83
 msgid "Compact"
 msgstr ""
 
-#: src/typecase/preferences.py:82
+#: src/typecase/preferences.py:83
 msgid "Normal"
 msgstr ""
 
-#: src/typecase/preferences.py:82
+#: src/typecase/preferences.py:83
 msgid "Relaxed"
 msgstr ""
 
-#: src/typecase/preferences.py:88
+#: src/typecase/preferences.py:89
 msgid "Appearance"
 msgstr ""
 
-#: src/typecase/preferences.py:90
+#: src/typecase/preferences.py:91
 msgid "Style"
 msgstr ""
 
-#: src/typecase/preferences.py:91
+#: src/typecase/preferences.py:92
 msgid "Follow System"
 msgstr ""
 
-#: src/typecase/preferences.py:91
+#: src/typecase/preferences.py:92
 msgid "Light"
 msgstr ""
 
-#: src/typecase/preferences.py:91
+#: src/typecase/preferences.py:92
 msgid "Dark"
 msgstr ""
 
-#: src/typecase/preferences.py:111
+#: src/typecase/preferences.py:112
 msgid "Restore Defaults"
 msgstr ""
 
-#: src/typecase/preferences.py:193
+#: src/typecase/preferences.py:194
 msgid "Sheets"
 msgstr ""
 
-#: src/typecase/preferences.py:197
+#: src/typecase/preferences.py:198
 msgid "Defaults"
 msgstr ""
 
-#: src/typecase/preferences.py:198
+#: src/typecase/preferences.py:199
 msgid ""
 "Used for every sheet that does not set its own value, for example when "
 "exporting. They are not written into your files."
 msgstr ""
 
-#: src/typecase/preferences.py:223
+#: src/typecase/preferences.py:224
 msgid "Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:226
+#: src/typecase/preferences.py:227
 msgid "Export Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:228
+#: src/typecase/preferences.py:229
 msgid ""
-"Choose a template when exporting. To build your own, save a template as a "
-"file and use it as a starting point."
+"Choose a template when exporting. Create your own with a few settings, or "
+"import a template file."
 msgstr ""
 
-#: src/typecase/preferences.py:231 src/typecase/preferences.py:353
+#: src/typecase/preferences.py:232 src/typecase/preferences.py:375
 msgid "Import…"
 msgstr ""
 
-#: src/typecase/preferences.py:245 src/typecase/preferences.py:367
+#: src/typecase/preferences.py:234 src/typecase/window.py:183
+msgid "New…"
+msgstr ""
+
+#: src/typecase/preferences.py:251 src/typecase/preferences.py:389
 msgid "Built-in"
 msgstr ""
 
-#: src/typecase/preferences.py:247 src/typecase/preferences.py:369
+#: src/typecase/preferences.py:253 src/typecase/preferences.py:391
 msgid "Save as File…"
 msgstr ""
 
-#: src/typecase/preferences.py:253 src/typecase/preferences.py:374
+#: src/typecase/preferences.py:259
+msgid "Edit"
+msgstr ""
+
+#: src/typecase/preferences.py:265 src/typecase/preferences.py:396
 msgid "Remove"
 msgstr ""
 
-#: src/typecase/preferences.py:263
+#: src/typecase/preferences.py:275 src/typecase/preferences.py:342
+msgid "Template Not Saved"
+msgstr ""
+
+#: src/typecase/preferences.py:280
+#, python-format
+msgid "Template “%s” saved"
+msgstr ""
+
+#: src/typecase/preferences.py:285
 msgid "Typecase Templates"
 msgstr ""
 
-#: src/typecase/preferences.py:270
+#: src/typecase/preferences.py:292
 msgid "Import Template"
 msgstr ""
 
-#: src/typecase/preferences.py:281 src/typecase/preferences.py:301
+#: src/typecase/preferences.py:303 src/typecase/preferences.py:323
 msgid "Template Not Imported"
 msgstr ""
 
-#: src/typecase/preferences.py:288
+#: src/typecase/preferences.py:310
 msgid "Replace Template?"
 msgstr ""
 
-#: src/typecase/preferences.py:289
+#: src/typecase/preferences.py:311
 #, python-format
 msgid ""
 "A template “%s” is already installed. It will be replaced by the new file."
 msgstr ""
 
-#: src/typecase/preferences.py:291 src/typecase/window.py:1647
+#: src/typecase/preferences.py:313 src/typecase/window.py:1647
 #: src/typecase/window.py:1745 src/typecase/window.py:1975
+#: src/typecase/template_dialog.py:61
 msgid "Cancel"
 msgstr ""
 
-#: src/typecase/preferences.py:304
+#: src/typecase/preferences.py:326
 #, python-format
 msgid "Template “%s” imported"
 msgstr ""
 
-#: src/typecase/preferences.py:309
+#: src/typecase/preferences.py:331
 msgid "Save Template"
 msgstr ""
 
-#: src/typecase/preferences.py:320
-msgid "Template Not Saved"
-msgstr ""
-
-#: src/typecase/preferences.py:322
+#: src/typecase/preferences.py:344
 #, python-format
 msgid "Saved “%s”"
 msgstr ""
 
-#: src/typecase/preferences.py:329
+#: src/typecase/preferences.py:351
 msgid "Template Not Removed"
 msgstr ""
 
-#: src/typecase/preferences.py:332
+#: src/typecase/preferences.py:354
 #, python-format
 msgid "Template “%s” moved to the trash"
 msgstr ""
 
-#: src/typecase/preferences.py:336 src/typecase/preferences.py:401
-#: src/typecase/preferences.py:426 src/typecase/preferences.py:442
+#: src/typecase/preferences.py:358 src/typecase/preferences.py:423
+#: src/typecase/preferences.py:448 src/typecase/preferences.py:464
 #: src/typecase/window.py:1605
 msgid "Close"
 msgstr ""
 
-#: src/typecase/preferences.py:349
+#: src/typecase/preferences.py:371
 msgid ""
 "Themes are style scheme files (.xml), the format of GNOME Text Editor. "
 "Import the light and the dark variant to get both."
 msgstr ""
 
-#: src/typecase/preferences.py:364
+#: src/typecase/preferences.py:386
 msgid "Light and dark"
 msgstr ""
 
-#: src/typecase/preferences.py:364
+#: src/typecase/preferences.py:386
 msgid "One variant for light and dark"
 msgstr ""
 
-#: src/typecase/preferences.py:380
+#: src/typecase/preferences.py:402
 msgid "How to Build Your Own Theme"
 msgstr ""
 
-#: src/typecase/preferences.py:388
+#: src/typecase/preferences.py:410
 msgid "Save Theme"
 msgstr ""
 
 #. Translators: file and theme name of a built-in theme saved as a starting point
-#: src/typecase/preferences.py:398
+#: src/typecase/preferences.py:420
 #, python-format
 msgid "%(name)s (custom)"
 msgstr ""
 
-#: src/typecase/preferences.py:400
+#: src/typecase/preferences.py:422
 msgid "Theme Not Saved"
 msgstr ""
 
-#: src/typecase/preferences.py:404
+#: src/typecase/preferences.py:426
 #, python-format
 msgid "Saved %s"
 msgstr ""
 
-#: src/typecase/preferences.py:407
+#: src/typecase/preferences.py:429
 msgid "Style Schemes"
 msgstr ""
 
-#: src/typecase/preferences.py:411
+#: src/typecase/preferences.py:433
 msgid "Import Theme"
 msgstr ""
 
-#: src/typecase/preferences.py:425
+#: src/typecase/preferences.py:447
 msgid "Theme Not Imported"
 msgstr ""
 
-#: src/typecase/preferences.py:433
+#: src/typecase/preferences.py:455
 #, python-format
 msgid "Imported %s"
 msgstr ""
 
-#: src/typecase/preferences.py:441
+#: src/typecase/preferences.py:463
 msgid "Theme Not Removed"
 msgstr ""
 
-#: src/typecase/preferences.py:447
+#: src/typecase/preferences.py:469
 #, python-format
 msgid "Theme “%s” moved to the trash"
 msgstr ""
 
-#: src/typecase/preferences.py:458 src/typecase/window.py:340
+#: src/typecase/preferences.py:480 src/typecase/window.py:340
 #: src/typecase/window.py:1510
 msgid "Preferences"
 msgstr ""
 
-#: src/typecase/preferences.py:462
+#: src/typecase/preferences.py:484
 msgid "Writing"
 msgstr ""
 
-#: src/typecase/preferences.py:463 src/typecase/window.py:1478
+#: src/typecase/preferences.py:485 src/typecase/window.py:1478
 msgid "Editor"
 msgstr ""
 
-#: src/typecase/preferences.py:463
+#: src/typecase/preferences.py:485
 msgid "How your text looks while you write as usual."
 msgstr ""
 
-#: src/typecase/preferences.py:465 src/typecase/preferences.py:522
+#: src/typecase/preferences.py:487 src/typecase/preferences.py:544
 msgid "Tools"
 msgstr ""
 
-#: src/typecase/preferences.py:467
+#: src/typecase/preferences.py:489
 msgid "Formatting Bar"
 msgstr ""
 
-#: src/typecase/preferences.py:468
+#: src/typecase/preferences.py:490
 msgid "Buttons below the text for bold, lists, headings and more"
 msgstr ""
 
-#: src/typecase/preferences.py:474
+#: src/typecase/preferences.py:496
 msgid "Underline Cursor"
 msgstr ""
 
-#: src/typecase/preferences.py:475
+#: src/typecase/preferences.py:497
 msgid ""
 "Show the text cursor as a line below the character instead of a vertical bar"
 msgstr ""
 
-#: src/typecase/preferences.py:485 src/typecase/preferences.py:539
+#: src/typecase/preferences.py:507 src/typecase/preferences.py:561
 #: src/typecase/window.py:335 src/typecase/window.py:462
 #: src/typecase/window.py:1496
 msgid "Check Spelling"
 msgstr ""
 
-#: src/typecase/preferences.py:486
+#: src/typecase/preferences.py:508
 msgid ""
 "Underline misspelled words, in the sheet’s language; F7 switches it on and "
 "off"
 msgstr ""
 
-#: src/typecase/preferences.py:497 src/typecase/window.py:332
+#: src/typecase/preferences.py:519 src/typecase/window.py:332
 #: src/typecase/window.py:1503
 msgid "Focus Mode"
 msgstr ""
 
-#: src/typecase/preferences.py:498
+#: src/typecase/preferences.py:520
 msgid ""
 "Focus mode hides the sidebar and toolbars and shows only your text, full "
 "screen."
 msgstr ""
 
-#: src/typecase/preferences.py:503
+#: src/typecase/preferences.py:525
 msgid "Use Editor Settings"
 msgstr ""
 
-#: src/typecase/preferences.py:504
+#: src/typecase/preferences.py:526
 msgid "Switch off to give focus mode its own font, size and style"
 msgstr ""
 
-#: src/typecase/preferences.py:524
+#: src/typecase/preferences.py:546
 msgid "Show Formatting Bar"
 msgstr ""
 
-#: src/typecase/preferences.py:525
+#: src/typecase/preferences.py:547
 msgid "When off, it appears when you move the pointer to the bottom edge"
 msgstr ""
 
-#: src/typecase/preferences.py:531
+#: src/typecase/preferences.py:553
 msgid "Typewriter Scrolling"
 msgstr ""
 
-#: src/typecase/preferences.py:531
+#: src/typecase/preferences.py:553
 msgid "Keep the line you are writing in the middle of the screen"
 msgstr ""
 
-#: src/typecase/preferences.py:532
+#: src/typecase/preferences.py:554
 msgid "Dim Surroundings"
 msgstr ""
 
-#: src/typecase/preferences.py:532
+#: src/typecase/preferences.py:554
 msgid "Fade everything except the paragraph you are writing"
 msgstr ""
 
-#: src/typecase/preferences.py:540
+#: src/typecase/preferences.py:562
 msgid "Off by default, so that nothing distracts you"
 msgstr ""
 
-#: src/typecase/preferences.py:551
+#: src/typecase/preferences.py:573
 msgid "Themes"
 msgstr ""
 
-#: src/typecase/preferences.py:551
+#: src/typecase/preferences.py:573
 msgid ""
 "Import themes for the editor and focus mode, or save a built-in one as a "
 "starting point."
@@ -832,6 +847,7 @@ msgid "Open Link"
 msgstr ""
 
 #: src/typecase/sheet_editor.py:546 src/typecase/window.py:312
+#: src/typecase/template_dialog.py:44
 msgid "Text"
 msgstr ""
 
@@ -843,7 +859,7 @@ msgstr ""
 msgid "Standard"
 msgstr ""
 
-#: src/typecase/themes.py:30
+#: src/typecase/themes.py:30 src/typecase/template_dialog.py:37
 msgid "Paper"
 msgstr ""
 
@@ -893,10 +909,6 @@ msgstr ""
 #: src/typecase/window.py:181 src/typecase/window.py:221
 #: src/typecase/window.py:1469 src/typecase/window.py:1633
 msgid "New Group"
-msgstr ""
-
-#: src/typecase/window.py:183
-msgid "New…"
 msgstr ""
 
 #: src/typecase/window.py:185 src/typecase/window.py:207
@@ -1344,4 +1356,144 @@ msgstr ""
 
 #: src/typecase/window.py:1976
 msgid "Move"
+msgstr ""
+
+#: src/typecase/template_builder.py:55
+msgid "Plain Text"
+msgstr ""
+
+#: src/typecase/template_builder.py:56
+msgid "Manuscript for an Editor"
+msgstr ""
+
+#: src/typecase/template_builder.py:60
+msgid "Thesis or Essay"
+msgstr ""
+
+#: src/typecase/template_builder.py:63
+msgid "Novel"
+msgstr ""
+
+#: src/typecase/template_builder.py:68
+msgid "Report"
+msgstr ""
+
+#: src/typecase/template_builder.py:183
+msgid "Made with the template assistant"
+msgstr ""
+
+#: src/typecase/template_dialog.py:15
+msgid "Edit Template"
+msgstr ""
+
+#: src/typecase/template_dialog.py:15
+msgid "New Template"
+msgstr ""
+
+#: src/typecase/template_dialog.py:24
+msgid "Name"
+msgstr ""
+
+#: src/typecase/template_dialog.py:28
+msgid "Starting Point"
+msgstr ""
+
+#: src/typecase/template_dialog.py:29
+msgid "Fills in the settings below"
+msgstr ""
+
+#: src/typecase/template_dialog.py:36
+msgid "Page"
+msgstr ""
+
+#: src/typecase/template_dialog.py:37
+msgid "Letter"
+msgstr ""
+
+#: src/typecase/template_dialog.py:39
+msgid "Top Margin"
+msgstr ""
+
+#: src/typecase/template_dialog.py:39
+msgid "Right Margin"
+msgstr ""
+
+#: src/typecase/template_dialog.py:39
+msgid "Bottom Margin"
+msgstr ""
+
+#: src/typecase/template_dialog.py:39
+msgid "Left Margin"
+msgstr ""
+
+#: src/typecase/template_dialog.py:40
+msgid "Millimeters"
+msgstr ""
+
+#: src/typecase/template_dialog.py:41
+msgid "Page Numbers"
+msgstr ""
+
+#: src/typecase/template_dialog.py:41
+msgid "Bottom Center"
+msgstr ""
+
+#: src/typecase/template_dialog.py:41
+msgid "Bottom Right"
+msgstr ""
+
+#: src/typecase/template_dialog.py:46
+msgid "Size"
+msgstr ""
+
+#: src/typecase/template_dialog.py:46
+msgid "Points"
+msgstr ""
+
+#: src/typecase/template_dialog.py:48
+msgid "Paragraphs"
+msgstr ""
+
+#: src/typecase/template_dialog.py:48
+msgid "Gap Between Paragraphs"
+msgstr ""
+
+#: src/typecase/template_dialog.py:48
+msgid "First-Line Indent"
+msgstr ""
+
+#: src/typecase/template_dialog.py:49 src/typecase/template_dialog.py:54
+msgid "Alignment"
+msgstr ""
+
+#: src/typecase/template_dialog.py:49 src/typecase/template_dialog.py:54
+msgid "Left"
+msgstr ""
+
+#: src/typecase/template_dialog.py:49
+msgid "Justified"
+msgstr ""
+
+#: src/typecase/template_dialog.py:52
+msgid "Headings"
+msgstr ""
+
+#: src/typecase/template_dialog.py:54
+msgid "Centered"
+msgstr ""
+
+#: src/typecase/template_dialog.py:55
+msgid "Chapters on a New Page"
+msgstr ""
+
+#: src/typecase/template_dialog.py:55
+msgid "Every top-level heading starts a page"
+msgstr ""
+
+#: src/typecase/template_dialog.py:59
+msgid "Save"
+msgstr ""
+
+#: src/typecase/template_dialog.py:59
+msgid "Create"
 msgstr ""

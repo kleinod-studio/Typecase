@@ -4,7 +4,8 @@ from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, GObject, Gtk, GtkSource, Pango
 
-from . import config, export_templates, themes
+from . import config, export_templates, template_builder, themes
+from .template_dialog import TemplateDialog
 
 
 def _system_font_family() -> str:
@@ -225,12 +226,17 @@ class _TemplatesPage(Adw.PreferencesPage):
         self.group = Adw.PreferencesGroup(
             title=_("Export Templates"),
             description=_(
-                "Choose a template when exporting. To build your own, save a template as a file and use it as a starting point."
+                "Choose a template when exporting. Create your own with a few settings, or import a template file."
             ),
         )
         self.import_button = Gtk.Button(label=_("Import…"), css_classes=["flat"], valign=Gtk.Align.CENTER)
         self.import_button.connect("clicked", lambda _b: self._choose_import())
-        self.group.set_header_suffix(self.import_button)
+        self.new_button = Gtk.Button(label=_("New…"), css_classes=["flat"], valign=Gtk.Align.CENTER)
+        self.new_button.connect("clicked", lambda _b: self._open_assistant())
+        buttons = Gtk.Box(spacing=6)
+        buttons.append(self.new_button)
+        buttons.append(self.import_button)
+        self.group.set_header_suffix(buttons)
         self.add(self.group)
         self._rows: list[Gtk.Widget] = []
         self.refresh()
@@ -248,6 +254,12 @@ class _TemplatesPage(Adw.PreferencesPage):
             )
             save.connect("clicked", lambda _b, t=template: self._choose_save(t))
             row.add_suffix(save)
+            if template_builder.settings_of(template) is not None:
+                edit = Gtk.Button(
+                    icon_name="document-edit-symbolic", tooltip_text=_("Edit"), css_classes=["flat"], valign=Gtk.Align.CENTER
+                )
+                edit.connect("clicked", lambda _b, t=template: self._open_assistant(t))
+                row.add_suffix(edit)
             if not template.builtin:
                 remove = Gtk.Button(
                     icon_name="user-trash-symbolic", tooltip_text=_("Remove"), css_classes=["flat"], valign=Gtk.Align.CENTER
@@ -256,6 +268,16 @@ class _TemplatesPage(Adw.PreferencesPage):
                 row.add_suffix(remove)
             self.group.add(row)
             self._rows.append(row)
+
+    # --- Assistant --------------------------------------------------------------
+
+    def _open_assistant(self, template=None):
+        dialog = TemplateDialog(self._on_assistant_saved, lambda text: self._error(_("Template Not Saved"), text), template)
+        dialog.present(self)
+
+    def _on_assistant_saved(self, template):
+        self.refresh()
+        self._toast(_("Template “%s” saved") % template.title)
 
     # --- Importing --------------------------------------------------------------
 

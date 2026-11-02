@@ -90,7 +90,7 @@ printf -- '---\ntitle: Probe\nauthor: Anna\n---\n# Kapitel\n\nErster Absatz.\nZw
   --include-in-header <(printf '<style>%s</style>' "$(cat my-template/style.css)") -o preview.html
 ```
 
-(Typecase itself embeds the CSS the same way.) Without Pandoc, skip the preview — the build script's checks are enough. If you print the preview to PDF with a browser, remember Typecase prints with WebKit, which differs in details (see `references/format.md` §4); suggest the user does one test export in Typecase.
+(Typecase itself embeds the CSS the same way.) Without Pandoc, skip the preview — the build script's checks are enough. If you print the preview to PDF with a browser, remember Typecase lays out PDFs with WeasyPrint, which differs in details (see `references/format.md` §4); suggest the user does one test export in Typecase.
 
 ### 5. Hand it over
 
@@ -98,7 +98,7 @@ Give the user the `.typecase-template` file and a short note, in their language:
 
 - what the template does (the choices you made: paper, margins, fonts, spacing)
 - how to use it: Typecase → Preferences → Templates → **Import…**, then choose it in the export dialog (Ctrl+E)
-- anything that does not carry over (e.g. "PDF has no page numbers — Typecase's PDF export cannot do running footers yet")
+- anything that does not carry over between PDF, Word and HTML
 - only describe Typecase features that exist: sheets have a title, subtitle, author, keywords, status and language in the properties pane; there is no date field there (`$date$` is the export date)
 
 ## Changing an existing template

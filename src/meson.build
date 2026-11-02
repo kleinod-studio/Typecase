@@ -8,6 +8,7 @@ install_data(
     'typecase/card_view.py',
     'typecase/cards.py',
     'typecase/config.py',
+    'typecase/docx_style.py',
     'typecase/export.py',
     'typecase/export_dialog.py',
     'typecase/export_templates.py',
@@ -29,6 +30,8 @@ install_data(
     'typecase/search.py',
     'typecase/sheet_editor.py',
     'typecase/spelling.py',
+    'typecase/template_builder.py',
+    'typecase/template_dialog.py',
     'typecase/textstats.py',
     'typecase/themes.py',
     'typecase/window.py',
@@ -41,6 +44,7 @@ install_subdir('typecase/templates', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/themes', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/icons', install_dir: pkgdatadir / 'typecase')
 install_subdir('typecase/filters', install_dir: pkgdatadir / 'typecase')
+install_subdir('typecase/template_assets', install_dir: pkgdatadir / 'typecase')
 
 launcher = configuration_data()
 launcher.set('pkgdatadir', pkgdatadir)

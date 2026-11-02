@@ -11,3 +11,5 @@ src/typecase/preferences.py
 src/typecase/sheet_editor.py
 src/typecase/themes.py
 src/typecase/window.py
+src/typecase/template_builder.py
+src/typecase/template_dialog.py

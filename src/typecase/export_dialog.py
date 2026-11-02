@@ -165,6 +165,8 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
     if cover and not title:
         # The cover needs a title; without one in the front matter, the file's name stands in.
         defaults = {**defaults, "title": sheet_path.stem}
+    if fmt == "docx" and export.heading_one_breaks_page(template):
+        text = export.drop_word_breaks_before_parts(text)
     work = Path(tempfile.mkdtemp(prefix="typecase-export-"))
 
     def done(path, error):

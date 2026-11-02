@@ -113,6 +113,24 @@ def shift_headings(text: str, levels: int) -> str:
     return "\n".join(lines)
 
 
+def heading_one_breaks_page(template: Template) -> bool:
+    """Whether the template's Word styles start every top-level heading on a new page."""
+    if template.reference_docx is None:
+        return False
+    try:
+        with zipfile.ZipFile(template.reference_docx) as docx:
+            styles = docx.read("word/styles.xml").decode("utf-8")
+    except (OSError, KeyError, UnicodeDecodeError, zipfile.BadZipFile):
+        return False
+    heading = re.search(r'<w:style\b[^>]*w:styleId="Heading1".*?</w:style>', styles, re.DOTALL)
+    return heading is not None and "pageBreakBefore" in heading.group(0)
+
+
+def drop_word_breaks_before_parts(text: str) -> str:
+    """For such a template: a Word break right before a top-level part heading would leave a blank page."""
+    return re.sub(re.escape(DOCX_PAGE_BREAK) + r"\n\n(?=# )", "", text)
+
+
 def combine_sheets(paths: list[Path], group: Path | None = None, parts: str = "continuous") -> str:
     """Joins sheets into one Markdown text for exporting a group: each sheet's text without its
     front matter, in the given order, separated by a blank line. Unreadable files are skipped.
@@ -221,6 +239,8 @@ def pandoc_args(
             args += ["--metadata", f"typecase-toc={TOC_DEPTH}", "--metadata", f"typecase-toc-title={toc_title}"]
         if cover:
             args += ["--metadata", "typecase-cover=true"]
+        if fmt == "docx" and heading_one_breaks_page(template):
+            args += ["--metadata", "typecase-heading-breaks=true"]
     if fmt == "docx":
         args += ["--to", "docx"]
         if template.reference_docx:

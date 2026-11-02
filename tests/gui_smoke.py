@@ -1137,6 +1137,35 @@ def steps(win, app):
     page._remove(chosen)
     check(len(page._rows) == 1 and not (tc_config.TEMPLATES_DIR / "mein-brief").exists(), "Removed template goes to the trash")
 
+    # Template assistant: settings instead of files, and they can be changed later
+    from typecase.template_dialog import TemplateDialog
+
+    saved = []
+    assistant = TemplateDialog(saved.append, saved.append)
+    check(not assistant.save_button.get_sensitive(), "A new template needs a name")
+    assistant.name_row.set_text("Mein Roman")
+    check(assistant.save_button.get_sensitive(), "With a name, it can be created")
+    assistant.preset_row.set_selected(list(assistant._presets).index("novel"))
+    check(assistant.settings().paper == "a5" and assistant.chapters_row.get_active(), "A starting point fills in the settings")
+    assistant.size_row.set_value(11)
+    assistant._save()
+    roman = saved[0]
+    page.refresh()
+    check(roman.id == "mein-roman" and len(page._rows) == 2 and (roman.path / "reference.docx").is_file(), "The assistant creates a complete template")
+    if export.pandoc_path() is not None:
+        results = {}
+        for fmt in ("html", "docx") + (("pdf",) if pdf_available() else ()):
+            run_export("# Kapitel\n\nText.^[Note]\n", fmt, roman, TMP / ("roman" + export.EXTENSIONS[fmt]), meta, "Roman", {}, lambda path, error, fmt=fmt: results.__setitem__(fmt, error), toc_title="Inhalt", cover=True)
+        yield from wait_until(lambda: len(results) == (3 if pdf_available() else 2), timeout=30)
+        check(all(error is None for error in results.values()), f"The new template exports every format: {results}")
+    assistant = TemplateDialog(saved.append, saved.append, roman)
+    check(assistant.name_row.get_text() == "Mein Roman" and assistant.size_row.get_value() == 11 and not assistant.preset_row.get_visible(), "Editing shows the template's settings")
+    assistant.size_row.set_value(13)
+    assistant._save()
+    check(saved[1].id == roman.id and "font-size: 13pt" in saved[1].css.read_text(encoding="utf-8"), "Editing replaces the template")
+    page._remove(saved[1])
+    check(len(page._rows) == 1, "A template from the assistant can be removed")
+
     from typecase import config as cfg
 
     cfg.update(default_author="Sascha")

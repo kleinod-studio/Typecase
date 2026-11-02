@@ -11,6 +11,7 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 - Export options for a table of contents and a cover page. The table of contents lists two levels of headings as links, with page numbers in PDFs; in Word files the page numbers appear once the table is updated. The cover page puts title, subtitle, author and date on a page of their own.
 - Exporting a group with subgroups treats them as parts: each subgroup's name becomes a heading above its sheets, whose headings move one level down. Parts can run on, start on a new page, or get a title page of their own.
 - The built-in template numbers its pages at the bottom centre, in PDF and Word. The cover stays without a number, and in PDFs so do the title pages of parts.
+- Template assistant: under Preferences → Templates → New…, choose a starting point (plain text, manuscript, thesis, novel, report), adjust paper, margins, fonts and spacing, and the template is ready for PDF, Word and HTML. Templates made this way can be changed later.
 - The keyword filter uses the icon theme's own tag icon where there is one, and an outline icon of its own otherwise, so it matches the other icons.
 
 ## 1.1.2 – 2026-11-01

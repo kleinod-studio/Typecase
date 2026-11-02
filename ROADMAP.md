@@ -73,6 +73,7 @@ Ideas for after 1.0:
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
 - [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in PDF and Word exports
 - [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers
+- [x] Template assistant: create an export template for PDF, Word and HTML from a starting point and a few settings, and change it later, without files or AI
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)

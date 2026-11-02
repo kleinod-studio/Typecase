@@ -2,7 +2,7 @@
 
 Typecase exportiert Blätter als PDF, Word-Dokument (DOCX) und Webseite (HTML). Wie das Ergebnis aussieht, bestimmt die **Vorlage**. Eine Vorlage ist eine einzelne Datei mit der Endung `.typecase-template`. Sie lässt sich weitergeben und in Typecase unter **Einstellungen → Vorlagen → Importieren …** einlesen. Beim Exportieren wählst du sie dann im Dropdown „Vorlage“.
 
-Diese Anleitung beschreibt, wie eine Vorlage aufgebaut ist und wie du eine eigene baust. Am einfachsten geht das mit dem **Claude-Skill „typecase-template“**: Du beschreibst Claude, wie dein Dokument aussehen soll, und bekommst eine fertige Vorlagendatei. Wer lieber selbst Hand anlegt, findet hier alles Nötige.
+Diese Anleitung beschreibt, wie eine Vorlage aufgebaut ist und wie du eine eigene baust. Am einfachsten geht das mit dem **Vorlagen-Assistenten**: Unter **Einstellungen → Vorlagen → Neu …** wählst du einen Ausgangspunkt, passt Papier, Schriften und Abstände an, und die Vorlage ist fertig, für PDF, Word und HTML. Später kannst du sie über den Bearbeiten-Knopf ändern. Für Sonderwünsche wie einen Briefkopf oder Verlagsrichtlinien gibt es den **Claude-Skill „typecase-template“**: Du beschreibst Claude, wie dein Dokument aussehen soll, und bekommst eine fertige Vorlagendatei. Wer lieber selbst Hand anlegt, findet hier alles Nötige.
 
 ## Schnellstart: von einer vorhandenen Vorlage ausgehen
 
@@ -104,7 +104,9 @@ Gilt für HTML und PDF. Einige Hinweise:
 - **Druck und Bildschirm unterscheiden**: Beim PDF hat `<body>` die Klasse `pdf` (wenn das Gerüst sie setzt). Die Webseite darf eine begrenzte Zeilenbreite und Außenabstand haben; im PDF bestimmen Papier und Ränder aus `template.json` die Breite, also dort `max-width: none; margin: 0;`.
 - **Regeln für den Text auf `main` beschränken**: Das Gerüst setzt den Titelblock außerhalb von `<main>`, den Text des Blatts innerhalb – und der Titel ist ebenfalls eine `h1`-Überschrift. Schreib deshalb `main h1`, `main p` usw. Sonst beginnt das PDF mit einer leeren Seite (der Umbruch vor dem Titel) oder Absatzregeln überschreiben die Ausrichtung des Titelblocks.
 - **Seitenumbrüche**: `main h1 { break-before: page; }` für Kapitel auf neuer Seite, `.title-block { break-after: page; }` für ein eigenes Titelblatt, `break-after: avoid` für Überschriften, `orphans`/`widows` gegen einzelne Zeilen.
-- **Seitenzahlen und Kopfzeilen** gibt es im PDF derzeit nicht (Typecase druckt mit WebKit, das solche Seitenränder nicht füllt). Im Word-Dokument gehen sie über `reference.docx`.
+- **Seitenzahlen und Kopfzeilen** im PDF: `@page { @bottom-center { content: counter(page); } }` (auch `@top-center`, `@bottom-right` und so weiter). Im Word-Dokument gehen sie über `reference.docx`.
+- **Deckblatt, Inhaltsverzeichnis und Teile** sind Export-Optionen und funktionieren mit jeder Vorlage. Zum Umgestalten: `.cover` (mit `.title`, `.subtitle`, `.author`, `.date`), `.toc` (mit `.toc-title`) und `.part` für den Namen einer Untergruppe, je nach Export-Einstellung zusätzlich `.new-page` oder `.title-page`. In einer Gruppe mit Teilen sind Kapitel `h2`.
+- **Fußnoten** stehen im PDF unten auf ihrer Seite. `.footnote`, `::footnote-call` und `::footnote-marker` gestalten sie um.
 - **Schriften**: Verlass dich nur auf verbreitete Schriften (z. B. „Liberation Serif“, „DejaVu Serif“, „Noto Sans“) oder bette eigene ein: Schriftdatei mit ins Archiv legen und per `@font-face { font-family: "Meine"; src: url("fonts/Meine-Regular.woff2"); }` einbinden. Typecase bettet Dateien, auf die `url(…)` verweist, in HTML und PDF ein. Achte auf die Lizenz der Schrift.
 - **Bilder** (etwa ein Logo) funktionieren genauso: `background-image: url("logo.svg")`.
 - Verweise auf Dateien außerhalb der Vorlage und Adressen im Internet bleiben unverändert; Typecase lädt nichts aus dem Netz.

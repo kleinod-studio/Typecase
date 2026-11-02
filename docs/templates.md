@@ -2,7 +2,7 @@
 
 Typecase exports sheets as PDF, Word document (DOCX), and web page (HTML). The **template** determines what the result looks like. A template is a single file with the extension `.typecase-template`. You can share it with others and load it in Typecase under **Preferences → Templates → Import…**. When exporting (Ctrl+E), you then pick it under “Template” in the export dialog, next to “Format”.
 
-This guide describes how a template is structured and how to build your own. The easiest way is the **Claude skill “typecase-template”**: you describe to Claude what your document should look like and get a finished template file. The skill can be downloaded from https://kleinod.studio/typecase. If you prefer to do it by hand, you will find everything you need here.
+This guide describes how a template is structured and how to build your own. The easiest way is the **template assistant**: under **Preferences → Templates → New…**, choose a starting point, adjust paper, fonts and spacing, and the template is ready, for PDF, Word and HTML. You can change it later with the edit button. For special wishes, such as a letterhead or a publisher's guidelines, there is the **Claude skill “typecase-template”**: you describe to Claude what your document should look like and get a finished template file. The skill can be downloaded from https://kleinod.studio/typecase. If you prefer to do it by hand, you will find everything you need here.
 
 ## Quick start: begin with an existing template
 
@@ -104,7 +104,9 @@ Applies to both HTML and PDF. Some tips:
 - **Distinguish print from screen**: in the PDF, `<body>` has the class `pdf` (if the skeleton sets it). The web page may have a limited line length and outer margins; in the PDF, the paper size and margins from `template.json` determine the width, so use `max-width: none; margin: 0;` there.
 - **Scope text rules to `main`**: the skeleton places the title block outside `<main>` and the sheet’s text inside it, and the title is also an `h1` heading. So write `main h1`, `main p`, and so on. Otherwise the PDF starts with a blank page (the page break before the title), or paragraph rules override the alignment of the title block.
 - **Page breaks**: `main h1 { break-before: page; }` to start chapters on a new page, `.title-block { break-after: page; }` for a separate title page, `break-after: avoid` for headings, `orphans`/`widows` to prevent single stranded lines.
-- **Page numbers and headers** are currently not available in PDF (Typecase prints with WebKit, which does not fill these page margin areas). In Word documents, you can add them via `reference.docx`.
+- **Page numbers and headers** in PDF: `@page { @bottom-center { content: counter(page); } }` (also `@top-center`, `@bottom-right` and so on). In Word documents, you can add them via `reference.docx`.
+- **Cover, table of contents and parts** are export options that work with every template. To restyle them: `.cover` (with `.title`, `.subtitle`, `.author`, `.date`), `.toc` (with `.toc-title`), and `.part` for the name of a subgroup, plus `.new-page` or `.title-page` depending on the export setting. In a group with parts, chapters are `h2`.
+- **Footnotes** are at the bottom of their page in PDF. `.footnote`, `::footnote-call` and `::footnote-marker` restyle them.
 - **Fonts**: rely only on widely available fonts (e.g. “Liberation Serif”, “DejaVu Serif”, “Noto Sans”) or embed your own: put the font file in the archive and include it with `@font-face { font-family: "MyFont"; src: url("fonts/MyFont-Regular.woff2"); }`. Typecase embeds files referenced by `url(…)` in HTML and PDF. Mind the font’s license.
 - **Images** (such as a logo) work the same way: `background-image: url("logo.svg")`.
 - References to files outside the template and internet addresses are left unchanged; Typecase does not download anything from the network.

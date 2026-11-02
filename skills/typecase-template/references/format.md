@@ -39,7 +39,7 @@ The file name (without extension) becomes the template id: lower-cased, non-alph
 
 ## 3. template.html
 
-A [Pandoc template](https://pandoc.org/MANUAL.html#templates) rendered to HTML5. Typecase uses it for HTML export and as the intermediate for PDF (WebKit prints the HTML).
+A [Pandoc template](https://pandoc.org/MANUAL.html#templates) rendered to HTML5. Typecase uses it for HTML export and as the intermediate for PDF (WeasyPrint lays out the HTML as pages).
 
 Must contain:
 - `$body$` — the sheet's text. Typecase rejects templates without it.
@@ -65,7 +65,7 @@ Starting point: `assets/starter/template.html` (the built-in "Text" template).
 
 ## 4. style.css
 
-Applies to HTML and PDF. PDF is produced by WebKitGTK printing the HTML (no JavaScript, no network).
+Applies to HTML and PDF. PDF is produced by WeasyPrint from the HTML (no JavaScript, no network).
 
 - **Screen vs. PDF**: give the web page a readable column (`max-width: 38em; margin: 3em auto;`) and reset it for print: `body.pdf { max-width: none; margin: 0; padding: 0; }`. Paper width and margins come from `template.json`.
 - **Units**: use `pt` for type sizes (12pt body is typical), `em` for spacing.
@@ -73,8 +73,15 @@ Applies to HTML and PDF. PDF is produced by WebKitGTK printing the HTML (no Java
 - **Page breaks**: `main h1 { break-before: page; }` (chapters on new pages — never on a selector that can match the first element of the page), `h2, h3 { break-after: avoid; }`, `p { orphans: 3; widows: 3; }`, `pre, blockquote { break-inside: avoid; }`. To put the title block on its own page, use `.title-block { break-after: page; }` instead.
 - **Fonts**: the PDF uses fonts installed on the user's machine. Typecase runs as a Flatpak on the GNOME runtime; reliably present are "Liberation Serif/Sans/Mono" (metric-compatible with Times New Roman/Arial/Courier), "DejaVu Serif/Sans/Mono", "Carlito" (≈ Calibri), "Caladea" (≈ Cambria), "Cantarell", "Noto Sans". Always end a stack with a generic family (`serif`, `sans-serif`, `monospace`). For a specific typeface, embed it: put the font file in the template (e.g. `fonts/Name-Regular.woff2`, also `.ttf`/`.otf`) and declare `@font-face { font-family: "Name"; src: url("fonts/Name-Regular.woff2"); }` — one rule per weight/style. Only embed fonts whose licence allows redistribution (SIL OFL fonts are fine).
 - **Images** (logos, letterhead): include the file and reference it with `url("logo.svg")`.
-- **Not supported**: running headers/footers and page numbers in the PDF (CSS `@page` margin boxes are not implemented by WebKit), remote URLs, JavaScript. (Word can have both — see §6.)
-- **WebKit, not Chromium**: Typecase prints with WebKitGTK. A preview printed with Chromium or a browser can differ (Chromium silently drops a page break before the first element; WebKit prints an empty page). Treat such previews as approximate.
+- **Page numbers and running headers**: `@page { @bottom-center { content: counter(page); } }` (also `@top-center`, `@bottom-right` and so on). Word needs its own footer — see §6.
+- **Export options** that Typecase adds in front of the text, whatever the template contains. Typecase's defaults come before `style.css`, so these can be restyled:
+  - `.cover` with `.title`, `.subtitle`, `.author`, `.date`: the cover page (named page `cover`, no page number)
+  - `.toc` with `.toc-title` and a nested list: the table of contents, with page numbers in the PDF through `target-counter`
+  - `h1.part` (or deeper, by nesting): the name of a subgroup when a group is exported; with `.new-page` or `.title-page` depending on the export setting (named page `part`)
+  - In a group with parts, the headings of its sheets move one level down, so chapters are `h2`. For chapters on new pages: `main h1 { break-before: page; } main > h1:first-child { break-before: auto; } main h1.part ~ h2 { break-before: page; } main h1.part + h2 { break-before: auto; }`.
+- **Footnotes** sit at the bottom of their page in PDF. `.footnote`, `::footnote-call`, `::footnote-marker` and `@page { @footnote { … } }` can restyle them. Web pages collect them in `section.footnotes`.
+- **Not supported**: remote URLs, JavaScript.
+- **WeasyPrint, not a browser**: a preview printed with Chromium or a browser differs: no footnotes on the page, no page numbers. Treat such previews as approximate.
 - Use `hyphens: auto;` with `<html lang="$lang$">` for justified text.
 
 ## 5. How Markdown is converted

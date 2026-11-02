@@ -11,7 +11,7 @@ import tempfile
 import zipfile
 from xml.etree import ElementTree
 
-from typecase import export, export_templates, pdf_render
+from typecase import export, export_templates, pdf_render, template_builder
 
 
 class ExportTest(unittest.TestCase):
@@ -134,6 +134,80 @@ class ExportTest(unittest.TestCase):
     def test_style_header(self):
         header = export.style_header(self.template)
         self.assertTrue(header.startswith("<style>") and header.rstrip().endswith("</style>"))
+
+
+class TemplateBuilderTest(unittest.TestCase):
+    def build(self, folder, **changes):
+        settings = template_builder.replace(template_builder.Settings(name="Mein Buch"), **changes)
+        return template_builder.save(settings, Path(folder))
+
+    def test_saved_template_can_be_used_and_reopened(self):
+        with tempfile.TemporaryDirectory() as folder:
+            template = self.build(folder, paper="a5", margin_right=40, body_font="Caladea")
+            self.assertEqual((template.id, template.title), ("mein-buch", "Mein Buch"))
+            self.assertEqual((template.pdf_paper, template.pdf_margins_mm["right"]), ("iso_a5", 40))
+            self.assertIn('"Caladea", serif', template.css.read_text(encoding="utf-8"))
+            self.assertIn("$body$", template.html.read_text(encoding="utf-8"))
+            self.assertEqual(template_builder.settings_of(template).body_font, "Caladea")
+            self.assertEqual([p.name for p in Path(folder).iterdir()], ["mein-buch"], "no leftovers")
+
+    def test_a_second_template_never_replaces_the_first(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first, second = self.build(folder), self.build(folder)
+            self.assertEqual((first.id, second.id), ("mein-buch", "mein-buch-2"))
+
+    def test_built_in_names_stay_reserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertEqual(template_builder.new_id("Text", Path(folder)), "text-2")
+
+    def test_editing_replaces_the_template(self):
+        with tempfile.TemporaryDirectory() as folder:
+            template = self.build(folder)
+            settings = template_builder.replace(template_builder.settings_of(template), body_size=14)
+            changed = template_builder.save(settings, Path(folder), template)
+            self.assertEqual(changed.id, template.id)
+            self.assertIn("font-size: 14pt", changed.css.read_text(encoding="utf-8"))
+            self.assertEqual(len(list(Path(folder).iterdir())), 1)
+
+    def test_word_styles_follow_the_settings(self):
+        with tempfile.TemporaryDirectory() as folder:
+            template = self.build(folder, paper="a5", body_font="Carlito", chapters_on_new_page=True, page_numbers="right")
+            self.assertTrue(export.heading_one_breaks_page(template))
+            with zipfile.ZipFile(template.reference_docx) as docx:
+                styles, document = docx.read("word/styles.xml").decode(), docx.read("word/document.xml").decode()
+                ElementTree.fromstring(styles)
+                ElementTree.fromstring(document)
+                self.assertIn('w:val="right"', docx.read("word/typecase-footer.xml").decode())
+            self.assertIn("Carlito", styles)
+            self.assertIn('w:w="8391"', document)
+            plain = self.build(folder, page_numbers="none")
+            self.assertFalse(export.heading_one_breaks_page(plain))
+            with zipfile.ZipFile(plain.reference_docx) as docx:
+                self.assertNotIn("word/typecase-footer.xml", docx.namelist())
+
+    def test_every_preset_builds(self):
+        with tempfile.TemporaryDirectory() as folder:
+            for key, (label, settings) in template_builder.presets().items():
+                self.assertTrue(label)
+                template_builder.save(template_builder.replace(settings, name=key), Path(folder))
+            self.assertEqual(len(list(Path(folder).iterdir())), len(template_builder.presets()))
+
+    def test_stored_settings_are_checked(self):
+        template = export_templates.Template("x", Path("/x"), False, {"assistant": {"paper": "tiny", "body_font": 3, "body_size": "big", "margin_top": 10, "justify": True}})
+        settings = template_builder.settings_of(template)
+        self.assertEqual((settings.paper, settings.body_font, settings.body_size), ("a4", "Liberation Serif", 12))
+        self.assertEqual((settings.margin_top, settings.justify), (10, True))
+        self.assertIsNone(template_builder.settings_of(export_templates.Template("y", Path("/y"), False, {})))
+
+    def test_chapters_on_new_page_with_parts(self):
+        css = template_builder.stylesheet(template_builder.Settings(chapters_on_new_page=True))
+        for rule in ("main h1 { break-before: page; }", "main > h1:first-child { break-before: auto; }", "main h1.part ~ h2 { break-before: page; }"):
+            self.assertIn(rule, css)
+        self.assertNotIn("break-before", template_builder.stylesheet(template_builder.Settings()))
+
+    def test_no_second_word_break_before_a_part(self):
+        text = f"V\n\n{export.DOCX_PAGE_BREAK}\n\n# Teil {{.part}}\n\n{export.DOCX_PAGE_BREAK}\n\n## K\n"
+        self.assertEqual(export.drop_word_breaks_before_parts(text), f"V\n\n# Teil {{.part}}\n\n{export.DOCX_PAGE_BREAK}\n\n## K\n")
 
 
 @unittest.skipUnless(shutil.which("pandoc"), "Pandoc is missing")

@@ -4,6 +4,7 @@
 --   typecase-cover: true         title, subtitle, author and date on a page of their own
 --   typecase-toc: "2"            a table of contents with that many heading levels
 --   typecase-toc-title: "…"      its heading, in the user's language
+--   typecase-heading-breaks: true  (Word) top-level headings of the template start a page anyway
 -- For HTML and PDF they become <div class="cover"> and <div class="toc">; CSS sets the pages.
 -- For Word they use the reference document's paragraph styles and a TOC field.
 
@@ -122,6 +123,11 @@ function Pandoc(doc)
     local depth = tonumber(stringify(meta["typecase-toc"])) or 2
     local title = meta["typecase-toc-title"] and stringify(meta["typecase-toc-title"]) or "Contents"
     front:extend(contents(doc, depth, title))
+  end
+  -- A template whose top-level headings start a page: no second break, or a page stays blank
+  local next_block = doc.blocks[1]
+  if meta["typecase-heading-breaks"] and next_block and next_block.t == "Header" and next_block.level == 1 and front[#front] == page_break then
+    front:remove(#front)
   end
   doc.blocks = front .. doc.blocks
   doc.meta = meta
