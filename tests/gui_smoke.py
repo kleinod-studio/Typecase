@@ -1030,6 +1030,14 @@ def steps(win, app):
         yield from wait_until(lambda: results, timeout=30)
         page = (TMP / "parts.html").read_text(encoding="utf-8")
         check(results["html"] is None and 'class="cover"' in page and 'id="TOC"' in page and 'class="part title-page"' in page, "Export with cover, contents and parts")
+        results = {}
+        run_export(combined, "docx", export_templates.available(None)[0], TMP / "parts.docx", book / "Buch.md", "Buch", {}, lambda path, error: results.__setitem__("docx", error), toc_title="Inhalt", cover=True)
+        yield from wait_until(lambda: results, timeout=30)
+        import zipfile
+        with zipfile.ZipFile(TMP / "parts.docx") as docx:
+            xml = docx.read("word/document.xml").decode("utf-8")
+            footer = "word/typecase-footer.xml" in docx.namelist()
+        check(results["docx"] is None and footer and "<w:titlePg/>" in xml and "typecase_toc_1" in xml, "Word export has page numbers, none on the cover, and filled contents")
 
     # Card view: the notes of all sheets as cards, edited in place and moved like the sheets
     from typecase.cards import read_card

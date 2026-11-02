@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 import tempfile
+import zipfile
 from gettext import gettext as _
 from pathlib import Path
 
@@ -197,6 +198,12 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         if fmt == "pdf":
             _print_pdf(pandoc_output, sheet_path.parent, output, work, template, done)
         else:
+            if fmt == "docx" and cover:
+                try:
+                    export.hide_first_page_footer(pandoc_output)
+                except (OSError, zipfile.BadZipFile) as error:
+                    done(None, str(error))
+                    return
             _move_into_place(pandoc_output, output, done)
 
     process.communicate_utf8_async(export.prepare_markdown(text), None, on_pandoc)

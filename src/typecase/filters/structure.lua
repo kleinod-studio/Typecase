@@ -5,7 +5,7 @@
 --   typecase-toc: "2"            a table of contents with that many heading levels
 --   typecase-toc-title: "…"      its heading, in the user's language
 -- For HTML and PDF they become <div class="cover"> and <div class="toc">; CSS sets the pages.
--- For Word they use the reference document's paragraph styles and a TOC field that Word fills in.
+-- For Word they use the reference document's paragraph styles and a TOC field.
 
 local stringify = pandoc.utils.stringify
 local docx = FORMAT == "docx"
@@ -25,7 +25,7 @@ local function values_of(value)
 end
 
 local function xml_escape(text)
-  return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+  return (text:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;"))
 end
 
 local page_break = pandoc.RawBlock("openxml", '<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
@@ -63,17 +63,46 @@ local function top_level(blocks)
   return top
 end
 
+-- Word's TOC field with its entries already filled in as links, so every program shows them right
+-- away. Page numbers need a layout: they appear when the field is updated (Word offers that on
+-- opening; w:dirty asks for it). The content control marks it as a table of contents for updating.
+local function word_contents(doc, first, last, title)
+  local field_start = '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>' ..
+    string.format('<w:r><w:instrText xml:space="preserve">TOC \\o "%d-%d" \\h \\z \\u</w:instrText></w:r>', first, last) ..
+    '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
+  local field_end = '<w:r><w:fldChar w:fldCharType="end"/></w:r>'
+  local entries, indents = {}, {}
+  for _, block in ipairs(doc.blocks) do
+    if block.t == "Header" and block.level >= first and block.level <= last then
+      local text = stringify(block.content:walk({Note = function() return {} end}))
+      local number = #entries + 1
+      -- Our own bookmark, since the names of Pandoc's differ between versions
+      block.content:insert(1, pandoc.RawInline("openxml", string.format(
+        '<w:bookmarkStart w:id="%d" w:name="typecase_toc_%d"/><w:bookmarkEnd w:id="%d"/>', 900000 + number, number, 900000 + number)))
+      entries[number] = string.format(
+        '<w:hyperlink w:anchor="typecase_toc_%d" w:history="1"><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:hyperlink>',
+        number, xml_escape(text))
+      indents[#entries] = (block.level - first) * 280
+    end
+  end
+  local paragraphs = {}
+  for index, entry in ipairs(entries) do
+    paragraphs[index] = string.format('<w:p><w:pPr><w:ind w:left="%d"/></w:pPr>', indents[index]) ..
+      (index == 1 and field_start or "") .. entry .. (index == #entries and field_end or "") .. "</w:p>"
+  end
+  if #entries == 0 then
+    paragraphs[1] = "<w:p>" .. field_start .. field_end .. "</w:p>"
+  end
+  return '<w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val="Table of Contents"/><w:docPartUnique/></w:docPartObj></w:sdtPr><w:sdtContent>' ..
+    string.format('<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>', xml_escape(title)) ..
+    table.concat(paragraphs) .. "</w:sdtContent></w:sdt>"
+end
+
 local function contents(doc, depth, title)
   local first = top_level(doc.blocks)
   local last = math.min(first + depth - 1, 6)
   if docx then
-    local field = string.format(
-      '<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>' ..
-      '<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>' ..
-      '<w:r><w:instrText xml:space="preserve">TOC \\o "%d-%d" \\h \\z \\u</w:instrText></w:r>' ..
-      '<w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>',
-      xml_escape(title), first, last)
-    return pandoc.List({pandoc.RawBlock("openxml", field), page_break})
+    return pandoc.List({pandoc.RawBlock("openxml", word_contents(doc, first, last, title)), page_break})
   end
   local list = pandoc.structure.table_of_contents(doc.blocks, {toc_depth = last})
   local heading = pandoc.Div(pandoc.Plain(pandoc.Inlines(title)), {class = "toc-title"})

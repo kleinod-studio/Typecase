@@ -11,6 +11,7 @@ import mimetypes
 import os
 import re
 import shutil
+import zipfile
 from pathlib import Path
 
 from . import frontmatter
@@ -154,6 +155,29 @@ def _part_heading(name: str, level: int, parts: str, blocks: list[str]) -> list[
 def has_subgroups(paths: list[Path]) -> bool:
     """Whether the sheets of a group come from more than one folder."""
     return len({path.parent for path in paths}) > 1
+
+
+def hide_first_page_footer(docx: Path) -> None:
+    """Keeps the cover of a Word file free of page numbers: "different first page" in the last
+    section's settings. Word's schema wants titlePg before the few elements listed here."""
+    temporary = docx.with_suffix(".tmp")
+    with zipfile.ZipFile(docx) as source, zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == "word/document.xml":
+                data = _with_title_page(data.decode("utf-8")).encode("utf-8")
+            target.writestr(item, data)
+    os.replace(temporary, docx)
+
+
+def _with_title_page(xml: str) -> str:
+    start = xml.rfind("<w:sectPr")
+    end = xml.find("</w:sectPr>", start)
+    if start < 0 or end < 0 or "<w:titlePg" in xml[start:end]:
+        return xml  # no section settings, so no footer either
+    later = [xml.find(tag, start, end) for tag in ("<w:textDirection", "<w:bidi", "<w:rtlGutter", "<w:docGrid")]
+    position = min((found for found in later if found >= 0), default=end)
+    return xml[:position] + "<w:titlePg/>" + xml[position:]
 
 
 def with_title(text: str, title: str | None) -> str:

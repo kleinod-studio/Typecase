@@ -4,9 +4,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+import re
 import shutil
 import subprocess
 import tempfile
+import zipfile
+from xml.etree import ElementTree
 
 from typecase import export, export_templates, pdf_render
 
@@ -112,6 +115,18 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(export.shift_headings(text, 1), "## One\ntext\n```\n# code\n```\n###### Six")
         self.assertEqual(export.shift_headings("#hashtag", 1), "#hashtag")
 
+    def test_built_in_template_numbers_word_pages(self):
+        with zipfile.ZipFile(self.template.reference_docx) as docx:
+            self.assertIn(" PAGE ", docx.read("word/typecase-footer.xml").decode("utf-8"))
+            self.assertIn("footerReference", docx.read("word/document.xml").decode("utf-8"))
+
+    def test_title_page_setting(self):
+        section = '<w:sectPr><w:footerReference r:id="x"/><w:pgSz/><w:docGrid/></w:sectPr>'
+        marked = export._with_title_page("<a/>" + section)
+        self.assertIn("<w:pgSz/><w:titlePg/><w:docGrid/>", marked)
+        self.assertEqual(export._with_title_page(marked), marked)
+        self.assertEqual(export._with_title_page("<w:sectPr/>"), "<w:sectPr/>")
+
     def test_with_title(self):
         self.assertEqual(export.with_title("Text\n", "My Novel"), "---\ntitle: My Novel\n---\nText\n")
         self.assertEqual(export.with_title("Text\n", "  "), "Text\n")
@@ -133,8 +148,6 @@ class StructureFilterTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 out = Path(folder) / "o.docx"
                 subprocess.run(args + ["-o", str(out)], input=self.TEXT, text=True, check=True)
-                import zipfile
-
                 with zipfile.ZipFile(out) as docx:
                     return docx.read("word/document.xml").decode("utf-8")
         return subprocess.run(args, input=self.TEXT, text=True, check=True, capture_output=True).stdout
@@ -145,6 +158,22 @@ class StructureFilterTest(unittest.TestCase):
         self.assertIn('href="#unter"', html)
         self.assertNotIn('href="#tief"', html)
         self.assertIn('TOC \\o "2-3"', self.run_pandoc("docx", **{"typecase-toc": 2, "typecase-toc-title": "Inhalt"}))
+
+    def test_word_contents_show_their_entries_as_links(self):
+        self.TEXT = "# Eins 100% & mehr^[Note]\n\nText.\n\n## Unter\n\n# " + "Sehr lang " * 6 + "\n\n# 2. Kapitel\n"
+        xml = self.run_pandoc("docx", **{"typecase-toc": 2, "typecase-toc-title": "Inhalt"})
+        ElementTree.fromstring(xml)  # well-formed, whatever the headings contain
+        toc = xml[xml.index("<w:sdt>"):xml.index("</w:sdt>")]
+        self.assertIn("Eins 100% &amp; mehr", toc)
+        self.assertNotIn("Note", toc)
+        self.assertIn('w:left="280"', toc)
+        self.assertEqual(toc.count('w:fldCharType="begin"'), 1)
+        self.assertEqual(toc.count('w:fldCharType="end"'), 1)
+        anchors = re.findall(r'w:anchor="([^"]+)"', toc)
+        bookmarks = re.findall(r'w:name="([^"]+)"', xml)
+        self.assertEqual(len(anchors), 4)
+        for anchor in anchors:
+            self.assertIn(anchor, bookmarks, "every entry leads to its heading, also long and numbered ones")
 
     def test_cover_takes_over_the_title(self):
         html = self.run_pandoc("html5", **{"typecase-cover": "true"})
