@@ -53,6 +53,7 @@ class _EditorView(GtkSource.View):
         self.dim_others = False
         self._keyboard_moved = False
         self._margins = (kwargs.get("top_margin", 0), kwargs.get("bottom_margin", 0))
+        self._extra_bottom = 0
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", lambda *_a: setattr(self, "_keyboard_moved", True) or False)
         self.add_controller(keys)
@@ -212,6 +213,12 @@ class _EditorView(GtkSource.View):
         tooltip.set_text(_("{address}\nCtrl+click to open").format(address=address))
         return True
 
+    def set_extra_bottom_margin(self, pixels: int) -> None:
+        """Room for an image below the very last line."""
+        if pixels != self._extra_bottom:
+            self._extra_bottom = pixels
+            self.queue_resize()
+
     def set_focus_effects(self, typewriter: bool, dim_others: bool) -> None:
         self.typewriter = typewriter
         self.dim_others = dim_others
@@ -274,6 +281,7 @@ class _EditorView(GtkSource.View):
         # Typewriter mode: half a viewport of space above and below, so the first and last lines can be centred too.
         self.allocated_height = height  # what the margins were computed for (the tests compare against it)
         top, bottom = (height // 2, height // 2) if self.typewriter else self._margins
+        bottom += self._extra_bottom
         if (top, bottom) != (self.get_top_margin(), self.get_bottom_margin()):
             self.set_top_margin(top)
             self.set_bottom_margin(bottom)
@@ -429,7 +437,9 @@ class SheetEditor(Gtk.Stack):
             left_margin=MIN_SIDE_MARGIN,
             right_margin=MIN_SIDE_MARGIN,
             pixels_inside_wrap=5,
-            pixels_below_lines=5,
+            # Above, not below: GTK 4.24 aborts on a position in the space below a line with hidden
+            # text, as a click or the pointer can ask for (see text_pills).
+            pixels_above_lines=5,
             monospace=False,
             css_classes=["typecase-editor"],
         )
@@ -592,7 +602,7 @@ class SheetEditor(Gtk.Stack):
         )
         pixels = LINE_SPACING_PIXELS.get(line_spacing, LINE_SPACING_PIXELS["normal"])
         self.view.set_pixels_inside_wrap(pixels)
-        self.view.set_pixels_below_lines(pixels)
+        self.view.set_pixels_above_lines(pixels)
         self.view.line_width_chars = line_width_chars
         self.view.queue_resize()
 

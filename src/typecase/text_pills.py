@@ -7,7 +7,7 @@ UPDATE_DELAY_MS = 150
 PADDING = 6  # around the text of a pill
 ICON_SIZE = 16
 ROOM = PADDING + ICON_SIZE + PADDING // 2  # for the icon, at the start of a pill
-ICONS = {"image": "image-x-generic-symbolic", "link": "typecase-link-symbolic", "note": "text-x-generic-symbolic"}
+ICONS = {"image": "image-x-generic-symbolic", "link": "typecase-link-symbolic", "note": "typecase-footnote-symbolic"}
 
 # Tints behind the text, which keeps the theme's color. Soft enough for light and dark themes.
 TINTS = {
@@ -79,7 +79,10 @@ class TextPills:
 
     Like the images (see image_preview), this only uses text tags and painting below the text; the
     text itself stays untouched. A pill unfolds while the caret touches it or a selection covers
-    it, so it can be edited, and copying always takes the whole Markdown."""
+    it, so it can be edited, and copying always takes the whole Markdown.
+
+    Hidden text must never come with space below its line: GTK 4.24 aborts when it is asked for a
+    position there. So all spacing in the editor lies above the lines."""
 
     def __init__(self, view, buffer):
         self.view = view

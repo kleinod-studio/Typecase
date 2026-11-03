@@ -277,6 +277,20 @@ def steps(win, app):
     wx, wy = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, area.x + 5, area.y + area.height // 2)
     check(pills.note_at(wx, wy) == "Defined below", "Hovering over a reference finds its definition")
     check(area.width >= 20, "The pill has room for its icon")
+    yield 0.1
+    # GTK aborts on positions in the space below a line with several pieces of hidden text.
+    for y in range(0, min(ed.view.get_height(), 300), 2):
+        for x in range(0, ed.view.get_width(), 40):
+            ed.view.link_at_point(x, y)
+    check(True, "Asking for any position around folded text is safe")
+    ed.buffer.set_text("Plain.\n![](gone.png)\n```\n![](code.png)\n```\n\n![](last.png)")
+    yield from wait_until(lambda: len(ed.previews.lines) == 2)
+    yield 0.2
+    for y in range(0, min(ed.view.get_height(), 400), 2):
+        for x in range(0, ed.view.get_width(), 40):
+            ed.view.link_at_point(x, y)
+    check(True, "Asking for any position around folded images is safe")
+    check(ed.view._extra_bottom > 0, "An image on the last line gets its room below the text")
     ed.buffer.set_text("[At the start](x)\n\nText")
     ed.buffer.place_cursor(ed.buffer.get_end_iter())
     yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["link"] and pills.pills[0].wide)
@@ -323,22 +337,21 @@ def steps(win, app):
 
     # The markup folds into a pill and unfolds while the caret is on its line
     file_text_folded = text(ed)
-    folded_line = previews.lines[0]
     ed.buffer.place_cursor(ed.buffer.get_start_iter())
     yield 0.1
-    check(previews._is_folded(folded_line), "Away from the caret, an image's markup is folded")
+    check(previews._is_folded(previews.lines[0]), "Away from the caret, an image's markup is folded")
     check(text(ed) == file_text_folded, "Folding does not change the text")
     check(not previews._button.get_visible(), "The edit button is hidden while the line is folded")
     ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
     yield 0.1
-    check(not previews._is_folded(folded_line), "On the caret's line, the markup unfolds")
+    check(not previews._is_folded(previews.lines[0]), "On the caret's line, the markup unfolds")
     check(previews._button.get_visible(), "The edit button appears on the image")
     ed.buffer.place_cursor(ed.buffer.get_iter_at_line(4)[1])
     yield 0.1
-    check(previews._is_folded(folded_line), "When the caret leaves, it folds again")
+    check(previews._is_folded(previews.lines[0]), "When the caret leaves, it folds again")
     ed.buffer.select_range(ed.buffer.get_start_iter(), ed.buffer.get_end_iter())
     yield 0.1
-    check(not previews._is_folded(folded_line), "A selection unfolds it, so copying takes the whole markup")
+    check(not previews._is_folded(previews.lines[0]), "A selection unfolds it, so copying takes the whole markup")
     ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
     check(ed.view.link_actions.lookup_action("edit-image").get_enabled(), "The context menu offers to edit the image at the caret")
     ed.buffer.place_cursor(ed.buffer.get_start_iter())
@@ -1096,7 +1109,7 @@ def steps(win, app):
     win._fill_outline()
     next(row for row in win.outline_list if row.target == (third, target[1])).activate()
     yield 0.2
-    check(gv.active is third and third.view.has_focus(), "Choosing a sheet in the outline jumps into its section")
+    check(gv.active is third and win.get_focus() is third.view, "Choosing a sheet in the outline jumps into its section")
     first.buffer.place_cursor(first.buffer.get_start_iter())
     first.view.grab_focus()
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Graphene, Gsk, Gtk, Pango
 
 from . import images
-from .text_pills import ICON_SIZE as PILL_ICON, set_tag_runs, snapshot_icon, tag_runs, tint
+from .text_pills import ICON_SIZE as PILL_ICON, set_tag_runs, snapshot_icon, tint
 
 UPDATE_DELAY_MS = 150
 MAX_HEIGHT = 560
@@ -220,33 +220,33 @@ class ImagePreviews:
         self.update()
 
     def _apply_gaps(self) -> None:
-        """Makes room below the lines with images. Only what differs is touched: changing a tag
-        lays its text out anew, which must not happen to the whole sheet while typing."""
+        """Makes room below the lines with images, as space above the line that follows: GTK 4.24
+        aborts on a position in the space below a line with hidden text, which a click or the pointer
+        can ask for. Below the very last line, the view's bottom margin grows instead."""
         buffer = self.buffer
-        spacing = self.view.get_pixels_below_lines()
-        wanted = {line.number: line.gap + spacing for line in self.lines}
-        for height in wanted.values():
-            if height not in self._tags:
-                self._tags[height] = buffer.create_tag(None, pixels_below_lines=height)
-        correct = set()
-        for height, tag in self._tags.items():
-            for start, end in tag_runs(buffer, tag):
-                first, last = buffer.get_iter_at_offset(start), buffer.get_iter_at_offset(end)
-                if first.starts_line() and last.ends_line() and first.get_line() == last.get_line() and wanted.get(first.get_line()) == height:
-                    correct.add(first.get_line())
-                else:
-                    buffer.remove_tag(tag, first, last)
-        for number, height in wanted.items():
-            if number in correct:
+        spacing = self.view.get_pixels_above_lines()
+        last_line = buffer.get_line_count() - 1
+        runs: dict[int, set[tuple[int, int]]] = {height: set() for height in self._tags}
+        below_last = 0
+        for line in self.lines:
+            if line.number >= last_line:
+                below_last = line.gap
                 continue
-            _found, first = buffer.get_iter_at_line(number)
-            last = first.copy()
-            if not last.ends_line():
-                last.forward_to_line_end()
-            buffer.apply_tag(self._tags[height], first, last)
-        used = set(wanted.values())
-        for height in [height for height in self._tags if height not in used]:
+            _found, first = buffer.get_iter_at_line(line.number + 1)
+            end = first.copy()
+            if not end.ends_line():
+                end.forward_to_line_end()
+            if first.equal(end):
+                end.forward_char()  # an empty line: its line break carries the tag
+            height = line.gap + spacing
+            if height not in self._tags:
+                self._tags[height] = buffer.create_tag(None, pixels_above_lines=height)
+            runs.setdefault(height, set()).add((first.get_offset(), end.get_offset()))
+        for height, wanted in runs.items():
+            set_tag_runs(buffer, self._tags[height], wanted)
+        for height in [height for height, wanted in runs.items() if not wanted]:
             buffer.get_tag_table().remove(self._tags.pop(height))
+        self.view.set_extra_bottom_margin(below_last)
 
     def _open_lines(self) -> tuple[int, int]:
         """The lines that stay unfolded: from the caret to the other end of the selection."""
@@ -298,13 +298,14 @@ class ImagePreviews:
     def _rectangles(self):
         """Every picture with its place, in the coordinates of the text."""
         left = self.view.get_left_margin()
-        spacing = self.view.get_pixels_below_lines()
+        last_line = self.buffer.get_line_count() - 1
         for line in self.lines:
-            last = self.buffer.get_iter_at_mark(line.mark)
-            if not last.ends_line():
-                last.forward_to_line_end()
-            y, height = self.view.get_line_yrange(last)
-            top = y + height - line.gap - spacing + GAP // 2
+            number = self.buffer.get_iter_at_mark(line.mark).get_line()
+            if number >= last_line:
+                y, height = self.view.get_line_yrange(self.buffer.get_iter_at_line(number)[1])
+                top = y + height + GAP // 2
+            else:
+                top = self.view.get_line_yrange(self.buffer.get_iter_at_line(number + 1)[1])[0] + GAP // 2
             for picture in line.pictures:
                 yield line, picture, left + picture.offset, top
                 top += picture.size[1] + GAP
@@ -319,12 +320,11 @@ class ImagePreviews:
         layout = self.view.create_pango_layout(label)
         layout.set_attributes(Pango.AttrList.from_string("0 -1 scale 0.85"))
         left = self.view.get_left_margin()
-        y, _height = self.view.get_line_yrange(self.buffer.get_iter_at_mark(line.mark))
-        row = self.view.get_iter_location(self.buffer.get_iter_at_mark(line.mark)).height
+        area = self.view.char_area(self.buffer.get_iter_at_mark(line.mark))
         width = min(layout.get_pixel_size()[0] + PILL_ICON + 3 * PILL_PADDING, max(self._available(), 1))
         layout.set_width(int(max(width - PILL_ICON - 3 * PILL_PADDING, 1)) * Pango.SCALE)
         layout.set_ellipsize(Pango.EllipsizeMode.END)
-        return layout, Graphene.Rect().init(left, y, width, row)
+        return layout, Graphene.Rect().init(left, area.y, width, area.height)
 
     def _snapshot_pill(self, snapshot, line: _Line) -> None:
         layout, rect = self._pill(line)
