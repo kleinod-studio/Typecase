@@ -109,6 +109,7 @@ Gilt für HTML und PDF. Einige Hinweise:
 - **Fußnoten** stehen im PDF unten auf ihrer Seite. `.footnote`, `::footnote-call` und `::footnote-marker` gestalten sie um.
 - **Schriften**: Verlass dich nur auf verbreitete Schriften (z. B. „Liberation Serif“, „DejaVu Serif“, „Noto Sans“) oder bette eigene ein: Schriftdatei mit ins Archiv legen und per `@font-face { font-family: "Meine"; src: url("fonts/Meine-Regular.woff2"); }` einbinden. Typecase bettet Dateien, auf die `url(…)` verweist, in HTML und PDF ein. Achte auf die Lizenz der Schrift.
 - **Bilder** (etwa ein Logo) funktionieren genauso: `background-image: url("logo.svg")`.
+- **Bilder im Text** stehen in `<figure>` mit `<figcaption>`, ohne Bildunterschrift in einem Absatz. Eine im Bild-Dialog gewählte Ausrichtung ergänzt darum die Klasse `image-left`, `image-center` oder `image-right`. Ohne Ausrichtung entscheidet dein CSS: `figure { text-align: center; }` zentriert alle Bilder. In der `reference.docx` gelten die Formatvorlagen „Captioned Figure“ und „Image Caption“; ausgerichtete Bilder nutzen „Typecase Image center“ und „Typecase Caption center“ (entsprechend `left` und `right`), die Typecase selbst ergänzt, solange deine Vorlage sie nicht festlegt.
 - Verweise auf Dateien außerhalb der Vorlage und Adressen im Internet bleiben unverändert; Typecase lädt nichts aus dem Netz.
 
 Was Typecase aus Markdown macht, kannst du so gestalten:

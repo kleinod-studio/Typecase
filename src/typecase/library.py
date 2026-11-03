@@ -6,7 +6,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from .fileio import atomic_write_text
+from . import images
+from .fileio import atomic_write_text, read_text
 
 # Per-folder settings of the library, written only where needed (for now: the manual order).
 # A hidden JSON file keeps the file names untouched and travels along with sync tools.
@@ -194,6 +195,8 @@ def rename(path: Path, new_name: str) -> Path:
     path.rename(target)
     if target.is_file():
         move_attachments(path, target)
+        if target.stem != path.stem:
+            _relink_images(target, path.stem)
     return target
 
 
@@ -247,6 +250,7 @@ def duplicate(path: Path, base: str) -> Path:
             raise
         for attachment in attachments(path):
             add_attachment(target, attachment)
+        _relink_images(target, path.stem)
     place(target, path, after=True)
     return target
 
@@ -293,6 +297,18 @@ def add_attachment(sheet: Path, source: Path) -> Path:
         Path(temporary).unlink(missing_ok=True)
         raise
     return target
+
+
+def _relink_images(sheet: Path, old_stem: str) -> None:
+    """A sheet got a new name, and with it its attachments folder: its images follow. If the file
+    cannot be read or written, it stays as it is."""
+    try:
+        text = read_text(sheet)
+        new = images.retarget(text, f"{ATTACHMENTS_DIR}/{old_stem}", f"{ATTACHMENTS_DIR}/{sheet.stem}")
+        if new != text:
+            atomic_write_text(sheet, new)
+    except (OSError, UnicodeDecodeError):
+        pass
 
 
 def move_attachments(old_sheet: Path, new_sheet: Path) -> None:

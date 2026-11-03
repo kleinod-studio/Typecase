@@ -183,6 +183,7 @@ class GroupView(Gtk.ScrolledWindow):
         editor.connect("save-failed", lambda _e, message: self.emit("save-failed", message))
         editor.connect("external-change", lambda e, kind: self.emit("external-change", e, kind))
         editor.connect("dictionary-missing", lambda _e, lang: self.emit("dictionary-missing", lang))
+        editor.connect("message", lambda _e, text: self.emit("message", text))
         editor.buffer.connect("notify::cursor-position", lambda _b, _p: self._queue_caret_visible(editor))
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)  # before the view moves the caret
         keys.connect("key-pressed", self._on_key_pressed, editor)

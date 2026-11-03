@@ -109,6 +109,7 @@ Applies to both HTML and PDF. Some tips:
 - **Footnotes** are at the bottom of their page in PDF. `.footnote`, `::footnote-call` and `::footnote-marker` restyle them.
 - **Fonts**: rely only on widely available fonts (e.g. “Liberation Serif”, “DejaVu Serif”, “Noto Sans”) or embed your own: put the font file in the archive and include it with `@font-face { font-family: "MyFont"; src: url("fonts/MyFont-Regular.woff2"); }`. Typecase embeds files referenced by `url(…)` in HTML and PDF. Mind the font’s license.
 - **Images** (such as a logo) work the same way: `background-image: url("logo.svg")`.
+- **Images in the text** lie in `<figure>` with a `<figcaption>`, or in a paragraph if they have no caption. An alignment chosen in the image dialog adds the class `image-left`, `image-center` or `image-right` around them. Without one, your CSS decides: `figure { text-align: center; }` centers all images. In `reference.docx` the styles "Captioned Figure" and "Image Caption" apply; aligned images use "Typecase Image center" and "Typecase Caption center" (likewise `left` and `right`), which Typecase adds on its own unless your template defines them.
 - References to files outside the template and internet addresses are left unchanged; Typecase does not download anything from the network.
 
 Here is what Typecase turns Markdown into, so you can style it:

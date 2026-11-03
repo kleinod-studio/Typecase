@@ -14,7 +14,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from . import frontmatter
+from . import frontmatter, images
 from .export_templates import Template
 from .fileio import read_text
 
@@ -29,6 +29,7 @@ _FONT_TYPES = {".woff2": "font/woff2", ".woff": "font/woff", ".otf": "font/otf",
 _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
 FOOTNOTE_FILTER = Path(__file__).resolve().parent / "filters" / "page-footnotes.lua"
 STRUCTURE_FILTER = Path(__file__).resolve().parent / "filters" / "structure.lua"
+IMAGE_FILTER = Path(__file__).resolve().parent / "filters" / "images.lua"
 TOC_DEPTH = 2  # parts and chapters, or chapters and sections
 
 # Defaults for the cover page, table of contents and parts, before the template's CSS so a
@@ -45,6 +46,12 @@ BASE_CSS = """\
 .toc ul ul { padding-left: 1.5em; }
 .toc li { margin: 0.25em 0; }
 .toc a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
+figure { margin: 1.2em 0; }
+figcaption { font-size: 0.9em; margin-top: 0.4em; }
+.image-left { text-align: left; }
+.image-center { text-align: center; }
+.image-right { text-align: right; }
 """
 
 # PDF pages: footnotes at the bottom of their page, called by a small raised number; the cover,
@@ -55,6 +62,7 @@ PDF_BASE_CSS = """\
 @page cover { @top-center { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }
 .toc { break-after: page; margin-top: 0; }
 .toc a::after { content: leader(". ") target-counter(attr(href url), page); }
+figure { break-inside: avoid; }
 .part.new-page { break-before: page; }
 .part.title-page { page: part; break-before: page; break-after: page; padding-top: 30vh; text-align: center; }
 @page part { @top-center { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }
@@ -156,7 +164,7 @@ def combine_sheets(paths: list[Path], group: Path | None = None, parts: str = "c
                     named.add(folders[:level])
                     blocks += _part_heading(folders[level - 1], level, parts, blocks)
         if body.strip():
-            blocks.append(shift_headings(body, depth))
+            blocks.append(images.with_absolute_paths(shift_headings(body, depth), path.parent))
     return "\n\n".join(blocks) + "\n"
 
 
@@ -178,14 +186,40 @@ def has_subgroups(paths: list[Path]) -> bool:
 def hide_first_page_footer(docx: Path) -> None:
     """Keeps the cover of a Word file free of page numbers: "different first page" in the last
     section's settings. Word's schema wants titlePg before the few elements listed here."""
+    _change_docx_part(docx, "word/document.xml", _with_title_page)
+
+
+def style_aligned_images(docx: Path) -> None:
+    """Completes the paragraph styles that images.lua names: Pandoc adds them to the Word file
+    without any settings. A template's own definition of such a style stays."""
+    _change_docx_part(docx, "word/styles.xml", _with_image_alignment)
+
+
+def _change_docx_part(docx: Path, part: str, change) -> None:
     temporary = docx.with_suffix(".tmp")
     with zipfile.ZipFile(docx) as source, zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as target:
         for item in source.infolist():
             data = source.read(item.filename)
-            if item.filename == "word/document.xml":
-                data = _with_title_page(data.decode("utf-8")).encode("utf-8")
+            if item.filename == part:
+                data = change(data.decode("utf-8")).encode("utf-8")
             target.writestr(item, data)
     os.replace(temporary, docx)
+
+
+_IMAGE_STYLE = re.compile(r'(<w:style\b[^>]*>\s*<w:name w:val="Typecase (Image|Caption) (left|center|right)"\s*/>)(.*?)(</w:style>)', re.DOTALL)
+
+
+def _with_image_alignment(xml: str) -> str:
+    def completed(match: re.Match) -> str:
+        opening, kind, side, inner, closing = match.groups()
+        if "<w:pPr>" in inner:
+            return match.group(0)
+        if kind == "Caption":
+            inner = re.sub(r'(<w:basedOn w:val=")[^"]*', r"\1ImageCaption", inner)
+        keep = "<w:keepNext/>" if kind == "Image" else ""
+        return f'{opening}{inner}<w:pPr>{keep}<w:jc w:val="{side}"/></w:pPr>{closing}'
+
+    return _IMAGE_STYLE.sub(completed, xml)
 
 
 def _with_title_page(xml: str) -> str:
@@ -230,6 +264,7 @@ def pandoc_args(
     default values (author, language) for fields the front matter does not set itself.
     toc_title: put a table of contents with this heading in front of the text; cover: a cover page."""
     args = [pandoc_path() or "pandoc", "--from", INPUT_FORMAT, "--output", str(output)]
+    args += ["--lua-filter", str(IMAGE_FILTER)]
     for key, value in (defaults or {}).items():
         if value:
             args += ["--metadata", f"{key}={value}"]

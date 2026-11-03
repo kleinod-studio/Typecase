@@ -12,6 +12,7 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 - Exporting a group with subgroups treats them as parts: each subgroup's name becomes a heading above its sheets, whose headings move one level down. Parts can run on, start on a new page, or get a title page of their own.
 - The built-in template numbers its pages at the bottom centre, in PDF and Word. The cover stays without a number, and in PDFs so do the title pages of parts.
 - Template assistant: under Preferences → Templates → New…, choose a starting point (plain text, manuscript, thesis, novel, report), adjust paper, margins, fonts and spacing, and the template is ready for PDF, Word and HTML. Templates made this way can be changed later.
+- Images: the new button in the formatting bar (or Ctrl+Alt+I), dragging a file into the text, or pasting a screenshot puts an image into the sheet. The file becomes one of its attachments, and the image is shown in the editor. Its Markdown folds into a small pill and unfolds when the caret is on its line. A double-click on the image, its edit button, or the context menu sets its size, alignment, caption and alternative text. PDF, Word and web page exports follow these settings; a web page contains its images, so it stays a single file. Renaming or duplicating a sheet keeps its images linked, and a group's export finds the images of all its sheets.
 - The keyword filter uses the icon theme's own tag icon where there is one, and an outline icon of its own otherwise, so it matches the other icons.
 
 ## 1.1.2 – 2026-11-01

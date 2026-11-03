@@ -5,6 +5,8 @@ src/typecase/export_templates.py
 src/typecase/find_bar.py
 src/typecase/goal_ring.py
 src/typecase/group_view.py
+src/typecase/image_dialog.py
+src/typecase/image_preview.py
 src/typecase/inspector.py
 src/typecase/main.py
 src/typecase/preferences.py

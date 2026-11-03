@@ -32,9 +32,12 @@ os.environ["XDG_DATA_HOME"] = str(TMP / "data")  # imported templates
 import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gio, GLib, Gtk  # noqa: E402
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
 from typecase.main import TypecaseApplication, _fall_back_to_utf8  # noqa: E402
+from typecase import images  # noqa: E402
+from typecase.image_dialog import ImageDialog  # noqa: E402
 
 try:  # as on a real start: without matching locale data (Flatpak), use C.UTF-8 instead of ASCII
     import locale
@@ -240,6 +243,105 @@ def steps(win, app):
     yield 0.2
     caret = ed.buffer.get_iter_at_mark(ed.buffer.get_insert())
     check(caret.get_line() == 6 and not win.outline_popover.get_visible(), "Choosing a heading jumps to it and closes the outline")
+
+    # Images: inserted as attachments, shown below their line, without any change to the text
+    picture_source = TMP / "My Photo.png"
+    pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 400, 200)
+    pixbuf.fill(0xc8503cff)
+    pixbuf.savev(str(picture_source), "png", [], [])
+    (TMP / "notes.txt").write_text("no image", encoding="utf-8")
+    ed.buffer.set_text("First paragraph.\nSecond one.")
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    previews = ed.previews
+    sheet_stem = ed.path.stem
+    check(not ed.insert_image_files([Gio.File.new_for_path(str(TMP / "notes.txt"))]), "Other files are not inserted as images")
+    check(ed.insert_image_files([Gio.File.new_for_path(str(picture_source))]), "An image file is inserted")
+    attached = LIB / ".attachments" / sheet_stem / "My Photo.png"
+    check(attached.is_file(), "The image is copied into the sheet's attachments")
+    inserted = text(ed).split("\n")
+    check(inserted[0] == "First paragraph." and inserted[1] == "" and inserted[2].startswith("![](<.attachments/") and inserted[3] == "" and inserted[4] == "Second one.", "The image becomes a paragraph of its own")
+    yield from wait_until(lambda: previews.lines and previews.pictures_loaded() and previews.lines[0].pictures[0].texture is not None)
+    picture = previews.lines[0].pictures[0] if previews.lines else None
+    check(picture is not None and picture.texture is not None, "The image is loaded for the editor")
+    check(picture is not None and picture.size == (400, 200), "The image is shown in its natural size if it fits")
+    file_before = text(ed)
+    image_line = ed.buffer.get_iter_at_line(2)[1]
+    below = ed.buffer.get_iter_at_line(3)[1]
+    yield from wait_until(lambda: ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + 200)
+    check(ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + 200, "The lines below move down and make room")
+    check(text(ed) == file_before, "Showing the image does not change the text")
+    rects = list(previews._rectangles())
+    wx, wy = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, int(rects[0][2]) + 20, int(rects[0][3]) + 20)
+    check(previews.picture_at(wx, wy) is not None, "The image can be found under the pointer")
+    check(previews.picture_at(wx, wy - 60) is None, "The text above it is not the image")
+
+    # The markup folds into a pill and unfolds while the caret is on its line
+    file_text_folded = text(ed)
+    folded_line = previews.lines[0]
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    yield 0.1
+    check(previews._is_folded(folded_line), "Away from the caret, an image's markup is folded")
+    check(text(ed) == file_text_folded, "Folding does not change the text")
+    check(not previews._button.get_visible(), "The edit button is hidden while the line is folded")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
+    yield 0.1
+    check(not previews._is_folded(folded_line), "On the caret's line, the markup unfolds")
+    check(previews._button.get_visible(), "The edit button appears on the image")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(4)[1])
+    yield 0.1
+    check(previews._is_folded(folded_line), "When the caret leaves, it folds again")
+    ed.buffer.select_range(ed.buffer.get_start_iter(), ed.buffer.get_end_iter())
+    yield 0.1
+    check(not previews._is_folded(folded_line), "A selection unfolds it, so copying takes the whole markup")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
+    check(ed.view.link_actions.lookup_action("edit-image").get_enabled(), "The context menu offers to edit the image at the caret")
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    check(not ed.view.link_actions.lookup_action("edit-image").get_enabled(), "Elsewhere it does not")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(2)[1])
+    ed.edit_image_at_caret()
+    yield 0.2
+    dialog = win.get_visible_dialog()
+    check(isinstance(dialog, ImageDialog), "Editing an image opens its dialog")
+    dialog.size_row.set_selected(2)
+    dialog.align_row.set_selected(2)
+    dialog.caption_row.set_text("Fig. [1]")
+    dialog.alt_row.set_text('A "red" area')
+    dialog.apply()
+    yield 0.1
+    line = text(ed).split("\n")[2]
+    check(previews._is_folded(previews.lines[0]), "After the dialog, the markup is folded again")
+    check(line.startswith("![Fig. \\[1\\]](") and line.endswith('){.center width=50% alt="A \\"red\\" area"}'), "The dialog writes size, alignment, caption and alternative text")
+    check(win.get_visible_dialog() is None, "The dialog closes")
+    ed.buffer.undo()
+    check(text(ed) == file_before, "Undo takes the change back in one step")
+    ed.buffer.redo()
+    yield from wait_until(lambda: previews.lines and previews.lines[0].pictures[0].size[0] < 400)
+    expected = images.preview_size(images.in_line(line)[0], (400, 200), previews._available(), 560)
+    check(previews.lines[0].pictures[0].size == expected[1:] and previews.lines[0].pictures[0].offset == expected[0], "The editor shows the chosen size and alignment")
+
+    # Renaming a sheet renames its attachments folder: the open text and the file follow
+    ed.flush()
+    renamed_picture = win._selected_node()
+    win._do_rename(renamed_picture, "With Picture")
+    yield 0.3
+    moved = LIB / ".attachments" / "With Picture" / "My Photo.png"
+    check(moved.is_file() and ".attachments/With Picture/My Photo.png" in text(ed), "After a rename, the text points to the new attachments folder")
+    check(ed.path.read_text(encoding="utf-8") == ed.file_text() and not ed.in_conflict, "File and text agree, without a conflict")
+    yield from wait_until(lambda: previews.lines and previews.lines[0].pictures[0].texture is not None)
+    check(previews.lines and previews.lines[0].pictures[0].texture is not None, "The image stays visible")
+    ed.buffer.set_text("Plain.\n![](gone.png)\n```\n![](code.png)\n```")
+    yield from wait_until(lambda: previews.lines and previews.lines[0].pictures[0].problem)
+    check(len(previews.lines) == 1 and "gone.png" in (previews.lines[0].pictures[0].problem or ""), "A missing image shows a note; images in code blocks do not count")
+    ed.buffer.set_text("No images.")
+    yield from wait_until(lambda: not previews.lines)
+    check(not previews.lines and not previews._tags, "Without images, nothing is left behind")
+    ed.flush()
+    win.inspector.refresh_attachments()
+    moved.unlink()
+    (LIB / ".attachments" / "With Picture").rmdir()
+    (LIB / ".attachments").rmdir()
+    win._do_rename(win._selected_node(), sheet_stem)
+    yield 0.2
     for path in (named, second_named, list_sheet):
         win._do_delete(HeadingNode(path.stem, path))
     yield from wait_until(lambda: win._index_of(named) is None and win._index_of(second_named) is None)

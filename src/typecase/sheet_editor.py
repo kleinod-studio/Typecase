@@ -1,13 +1,16 @@
 import shutil
+import tempfile
 import time
 from gettext import gettext as _
 from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
-from . import formatting, frontmatter, spelling
+from . import formatting, frontmatter, images, spelling
 from .fileio import atomic_write_text, read_text
-from .library import unique_path
+from .image_dialog import ImageDialog
+from .image_preview import ImagePreviews
+from .library import ATTACHMENTS_DIR, add_attachment, unique_path
 from .markdown_lists import change_indent, on_enter, renumber
 from .markdown_style import link_at
 from .markdown_styler import MarkdownStyler
@@ -38,6 +41,8 @@ class _EditorView(GtkSource.View):
         self._char_width_cache = (None, 0.0)
         self._indent_font = None  # font the hanging indents of list items were measured with
         self.styler = None  # provides the lines of code blocks for the frame
+        self.previews = None  # images below their lines
+        self.on_edit_image = None  # double-click on an image: (line, image)
         # Text pointer over the wide margins as well, so the caret can be placed precisely.
         self.set_cursor_from_name("text")
 
@@ -139,6 +144,14 @@ class _EditorView(GtkSource.View):
             pass  # no browser, or the user cancelled the portal dialog
 
     def _on_click(self, gesture, n_press, x, y):
+        found = self.previews.picture_at(x, y) if self.previews is not None else None
+        if found is not None:
+            # Not to the caret: its line would unfold and move the picture away from the pointer.
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+            self.grab_focus()
+            if n_press == 2 and self.on_edit_image is not None:
+                self.on_edit_image(*found)
+            return
         if n_press != 1 or not gesture.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK:
             return
         address = self.link_at_point(x, y)
@@ -167,11 +180,15 @@ class _EditorView(GtkSource.View):
 
     def _set_link_cursor(self, ctrl: bool):
         over_link = self._pointer is not None and self.link_at_point(*self._pointer) is not None
-        self.set_cursor_from_name("pointer" if ctrl and over_link else "text")
+        over_image = self._pointer is not None and self.previews is not None and self.previews.over_image(*self._pointer)
+        self.set_cursor_from_name("pointer" if (ctrl and over_link) or over_image else "text")
 
     def _on_query_tooltip(self, _view, x, y, keyboard_mode, tooltip):
         address = self.link_at_iter(self._caret_iter()) if keyboard_mode else self.link_at_point(x, y)
         if address is None:
+            if not keyboard_mode and self.previews is not None and self.previews.picture_at(x, y) is not None:
+                tooltip.set_text(_("Double-click to edit the image"))
+                return True
             return False
         # Translators: tooltip over a link in the editor; {address} is the web address
         tooltip.set_text(_("{address}\nCtrl+click to open").format(address=address))
@@ -243,6 +260,8 @@ class _EditorView(GtkSource.View):
             self.set_top_margin(top)
             self.set_bottom_margin(bottom)
         GtkSource.View.do_size_allocate(self, width, height, baseline)
+        if self.previews is not None:
+            self.previews.width_changed()
         font = self.get_pango_context().get_font_description().to_string()
         if font != self._indent_font and self.styler is not None:
             self._indent_font = font  # new font: list items need indents of a new width
@@ -254,6 +273,8 @@ class _EditorView(GtkSource.View):
             self._snapshot_dimming(snapshot)
             self._snapshot_caret(snapshot)
             return
+        if layer == Gtk.TextViewLayer.BELOW_TEXT and self.previews is not None:
+            self.previews.snapshot(snapshot)  # below the dimming of focus mode, too
         if layer != Gtk.TextViewLayer.BELOW_TEXT or self.styler is None or not self.styler.code_blocks:
             return
         if self.styler.palette is None:
@@ -344,6 +365,9 @@ class SheetEditor(Gtk.Stack):
         "saved": (GObject.SignalFlags.RUN_FIRST, None, ()),
         # Spell checking is on, but there is no dictionary for the sheet's language (e.g. "de-DE")
         "dictionary-missing": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        # Something to tell the user, and new files among the sheet's attachments
+        "message": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "attachments-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     # One stylesheet for all editors (the single sheet and every section of the group view):
@@ -389,10 +413,25 @@ class SheetEditor(Gtk.Stack):
             css_classes=["typecase-editor"],
         )
         self.view.styler = self.styler
+        self.previews = ImagePreviews(self.view, self.buffer, lambda: self.path)
+        self.view.previews = self.previews
+        self.view.on_edit_image = self.edit_image
+        self.previews.on_edit = lambda: self.edit_image_at_caret()
         self.context_menu = Gio.Menu()
         link_item = Gio.MenuItem.new(_("Open Link"), "editor.open-link")
         link_item.set_attribute_value("hidden-when", GLib.Variant.new_string("action-disabled"))
         self.context_menu.append_item(link_item)
+        image_item = Gio.MenuItem.new(_("Edit Image…"), "editor.edit-image")
+        image_item.set_attribute_value("hidden-when", GLib.Variant.new_string("action-disabled"))
+        self.context_menu.append_item(image_item)
+        self._edit_image = Gio.SimpleAction(name="edit-image", enabled=False)
+        self._edit_image.connect("activate", lambda *_a: self.edit_image_at_caret())
+        self.view.link_actions.add_action(self._edit_image)
+        self.buffer.connect(
+            "mark-set",
+            lambda b, _i, mark: mark == b.get_insert() and self._edit_image.set_enabled(self._image_at_caret() is not None),
+        )
+        self.buffer.connect("changed", lambda _b: self._edit_image.set_enabled(self._image_at_caret() is not None))
         self.view.set_extra_menu(self.context_menu)
         self.styler.on_blocks_changed = self.view.queue_draw
         self.styler.measure = self.view.text_width
@@ -419,6 +458,10 @@ class SheetEditor(Gtk.Stack):
         keys = Gtk.EventControllerKey(propagation_phase=Gtk.PropagationPhase.CAPTURE)
         keys.connect("key-pressed", self._on_key_pressed)
         self.view.add_controller(keys)
+        drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
+        drop.connect("drop", self._on_files_dropped)
+        self.view.add_controller(drop)
+        self.view.connect("paste-clipboard", self._on_paste)
         self.add_named(empty, "empty")
         if embedded:
             # As tall as its text: not as tall as the hidden status page, and no share of spare space.
@@ -446,6 +489,8 @@ class SheetEditor(Gtk.Stack):
         self.in_conflict = False
         self.set_visible_child_name("editor")
         self._watch()
+        self.previews.update()  # right away, so the markup of images does not flash up
+        self.previews.fold_caret_line()
         self._emit_counts()
         self._update_spelling()
         self.emit("metadata-changed")
@@ -455,6 +500,7 @@ class SheetEditor(Gtk.Stack):
         is being destroyed; call flush() first)."""
         self._cancel_timer()
         self._unwatch()
+        self.previews.stop()
         if self._count_timer:
             GLib.source_remove(self._count_timer)
             self._count_timer = 0
@@ -464,8 +510,27 @@ class SheetEditor(Gtk.Stack):
 
     def set_path(self, path: Path) -> None:
         """The open sheet was renamed (possibly with its group); content stays, monitoring moves along."""
+        old = self.path
         self.path = path
+        if old is not None and old.stem != path.stem:
+            self._follow_new_name(old.stem, path.stem)
         self._watch()
+        self.previews.queue_update()
+
+    def _follow_new_name(self, old_stem: str, new_stem: str) -> None:
+        """The attachments folder is named after the sheet. The library has already changed the
+        file, so the open text and what we know about the file change the same way."""
+        old_folder, new_folder = f"{ATTACHMENTS_DIR}/{old_stem}", f"{ATTACHMENTS_DIR}/{new_stem}"
+        text = self._buffer_text()
+        new = images.retarget(text, old_folder, new_folder)
+        if new != text:
+            dirty, self._loading = self._dirty, True
+            self.buffer.begin_user_action()
+            self._replace_changed_part(text, new)
+            self.buffer.end_user_action()
+            self._loading, self._dirty = False, dirty
+        if self._disk_text is not None:
+            self._disk_text = images.retarget(self._disk_text, old_folder, new_folder)
 
     def close_sheet(self) -> None:
         """Closes the sheet without saving (after flush() or a deliberate discard)."""
@@ -557,6 +622,177 @@ class SheetEditor(Gtk.Stack):
         self.view.scroll_mark_onscreen(buffer.get_insert())
         self.focus_editor()
         return True
+
+    # --- Images ----------------------------------------------------------------
+
+    def choose_images(self) -> None:
+        if self.path is None:
+            return
+        pictures = Gtk.FileFilter(name=_("Images"))
+        for suffix in images.SUFFIXES:
+            pictures.add_suffix(suffix[1:])
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(pictures)
+        dialog = Gtk.FileDialog(title=_("Insert Image"), modal=True, filters=filters, default_filter=pictures)
+        dialog.open_multiple(self.get_root(), None, self._on_images_chosen)
+
+    def _on_images_chosen(self, dialog, result):
+        try:
+            files = dialog.open_multiple_finish(result)
+        except GLib.Error:
+            return  # cancelled
+        self.insert_image_files([files.get_item(i) for i in range(files.get_n_items())])
+
+    def insert_image_files(self, files: list, where: int | None = None) -> bool:
+        """Copies image files into the sheet's attachments and puts them into the text as
+        paragraphs of their own, at a text position or else at the caret. False if none was one."""
+        paths = [Path(file.get_path()) for file in files if file.get_path() is not None]
+        pictures = [path for path in paths if path.is_file() and images.is_image_file(path)]
+        if self.path is None or not pictures:
+            return False
+        blocks = []
+        for picture in pictures:
+            try:
+                copy = add_attachment(self.path, picture)
+            except OSError as error:
+                self.emit("message", _("Could not attach “%(name)s”: %(reason)s") % {"name": picture.name, "reason": error.strerror or error})
+                continue
+            blocks.append(self._image_markdown(copy.name))
+        if blocks:
+            self._insert_block("\n\n".join(blocks), where)
+            self.emit("attachments-changed")
+        return bool(blocks)
+
+    def _image_markdown(self, name: str) -> str:
+        return images.to_markdown(images.Image(f"{ATTACHMENTS_DIR}/{self.path.stem}/{name}"))
+
+    def _insert_block(self, block: str, where: int | None) -> None:
+        buffer = self.buffer
+        text = self._buffer_text()
+        position = buffer.get_iter_at_mark(buffer.get_insert()).get_offset() if where is None else where
+        new, cursor, _end = formatting.insert_block(text, position, block)
+        buffer.begin_user_action()
+        self._replace_changed_part(text, new)
+        buffer.end_user_action()
+        buffer.place_cursor(buffer.get_iter_at_offset(cursor))
+        self.previews.update()
+        self.previews.fold_caret_line()
+        self.view.scroll_mark_onscreen(buffer.get_insert())
+        self.focus_editor()
+
+    def _on_files_dropped(self, _target, value, x, y):
+        files = value.get_files()
+        bx, by = self.view.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, int(x), int(y))
+        _found, place = self.view.get_iter_at_location(bx, by)
+        if self.insert_image_files(files, place.get_offset()):
+            return True
+        if self.path is not None:
+            self.emit("message", _("Only images can be inserted into the text."))
+        return False
+
+    def _on_paste(self, view):
+        """An image on the clipboard goes into the text like a chosen file. Whenever there is text
+        as well, normal pasting wins."""
+        clipboard = view.get_clipboard()
+        formats = clipboard.get_formats()
+        if self.path is None:
+            return
+        if formats.contain_gtype(Gdk.FileList):
+            view.stop_emission_by_name("paste-clipboard")
+            clipboard.read_value_async(Gdk.FileList, GLib.PRIORITY_DEFAULT, None, self._on_pasted_files)
+        elif formats.contain_gtype(Gdk.Texture) and not formats.contain_gtype(GObject.TYPE_STRING):
+            view.stop_emission_by_name("paste-clipboard")
+            clipboard.read_texture_async(None, self._on_pasted_texture)
+
+    def _on_pasted_files(self, clipboard, result):
+        try:
+            files = clipboard.read_value_finish(result).get_files()
+        except GLib.Error:
+            return
+        if not self.insert_image_files(files):
+            clipboard.read_text_async(None, self._on_pasted_text)
+
+    def _on_pasted_text(self, clipboard, result):
+        try:
+            text = clipboard.read_text_finish(result)
+        except GLib.Error:
+            return
+        if text:
+            self.buffer.begin_user_action()
+            self.buffer.delete_selection(True, True)
+            self.buffer.insert_at_cursor(text)
+            self.buffer.end_user_action()
+
+    def _on_pasted_texture(self, clipboard, result):
+        try:
+            texture = clipboard.read_texture_finish(result)
+        except GLib.Error:
+            return
+        self.insert_texture(texture)
+
+    def insert_texture(self, texture) -> None:
+        """A pasted picture, for example a screenshot, becomes a PNG file among the attachments."""
+        if self.path is None:
+            return
+        work = Path(tempfile.mkdtemp(prefix="typecase-paste-"))
+        # Translators: file name of an image pasted from the clipboard, without extension
+        source = work / (_("Image") + ".png")
+        try:
+            if not texture.save_to_png(str(source)):
+                raise OSError(_("could not save"))
+            copy = add_attachment(self.path, source)
+        except OSError as error:
+            self.emit("message", _("Could not attach “%(name)s”: %(reason)s") % {"name": source.name, "reason": error.strerror or error})
+            return
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+        self._insert_block(self._image_markdown(copy.name), None)
+        self.emit("attachments-changed")
+
+    def _image_at_caret(self) -> tuple[int, images.Image] | None:
+        """The image the caret is in, or else the first one of its line."""
+        caret = self.buffer.get_iter_at_mark(self.buffer.get_insert())
+        number = caret.get_line()
+        start = caret.copy()
+        start.set_line_offset(0)
+        if start.has_tag(self.styler.tags["codeblock"]):
+            return None
+        end = start.copy()
+        if not end.ends_line():
+            end.forward_to_line_end()
+        line = start.get_text(end)
+        found = images.in_line(line) if "![" in line else []
+        for image in found:
+            if image.start <= caret.get_line_offset() <= image.end:
+                return number, image
+        return (number, found[0]) if found else None
+
+    def edit_image_at_caret(self) -> None:
+        found = self._image_at_caret()
+        if found is not None:
+            self.edit_image(*found)
+
+    def edit_image(self, line: int, image: images.Image) -> None:
+        original = self._line_text(line)[image.start : image.end]
+        ImageDialog(image, lambda changed: self._apply_image(line, original, changed)).present(self.get_root())
+
+    def _line_text(self, line: int) -> str:
+        lines = self._lines()
+        return lines[line] if 0 <= line < len(lines) else ""
+
+    def _apply_image(self, line: int, original: str, image: images.Image) -> None:
+        if self._line_text(line)[image.start : image.end] != original:
+            return  # the text changed in the meantime, for example from outside
+        _found, start = self.buffer.get_iter_at_line_offset(line, image.start)
+        _found, end = self.buffer.get_iter_at_line_offset(line, image.end)
+        self.buffer.begin_user_action()
+        self.buffer.delete(start, end)
+        _found, start = self.buffer.get_iter_at_line_offset(line, image.start)
+        self.buffer.insert(start, images.to_markdown(image))
+        self.buffer.end_user_action()
+        self.previews.update()
+        self.previews.fold_caret_line()
+        self.focus_editor()
 
     def _replace_changed_part(self, old: str, new: str) -> None:
         """Replaces only the part that differs (marks and cursor otherwise stay in place)."""
@@ -930,6 +1166,7 @@ class SheetEditor(Gtk.Stack):
         offset = self.buffer.get_iter_at_mark(self.buffer.get_insert()).get_offset()
         self._set_text(text)
         self.buffer.place_cursor(self.buffer.get_iter_at_offset(min(offset, self.buffer.get_char_count())))
+        self.previews.update()
         self._emit_counts()
 
     def _set_text(self, text: str) -> None:

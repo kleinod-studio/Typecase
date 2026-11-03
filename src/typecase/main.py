@@ -8,6 +8,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GtkSource", "5")
+gi.require_version("GdkPixbuf", "2.0")
 
 from gettext import gettext as _
 
@@ -83,6 +84,7 @@ class TypecaseApplication(Adw.Application):
             ("underline", ["<Primary>u"]),
             ("link", ["<Primary>k"]),
             ("footnote", ["<Primary><Alt>f"]),
+            ("image", ["<Primary><Alt>i"]),
             ("h1", ["<Primary>1"]),
             ("h2", ["<Primary>2"]),
             ("h3", ["<Primary>3"]),

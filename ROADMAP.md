@@ -78,7 +78,8 @@ Ideas for after 1.0:
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
-- [ ] Images in the text (shown in the editor, included in the export) and Markdown tables, styled in the editor
+- [x] Images in the text: inserted as attachments, shown in the editor, with size, alignment, caption and alternative text that the export follows
+- [ ] Markdown tables, styled in the editor
 - [ ] Math formulas (LaTeX notation), shown in the editor and in the export
 - [ ] Export as EPUB for e-readers
 - [ ] Optional grammar checking with LanguageTool, running locally on your computer; installed only if you ask for it in the preferences, as a separate third-party component

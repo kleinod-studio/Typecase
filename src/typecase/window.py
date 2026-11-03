@@ -133,6 +133,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.editor.connect("counts-changed", self._on_counts_changed)
         self.editor.connect("external-change", self._on_external_change)
         self.editor.connect("dictionary-missing", self._on_dictionary_missing)
+        self.editor.connect("message", lambda _e, text: self._toast(text))
+        self.editor.connect("attachments-changed", lambda _e: self.inspector.refresh_attachments())
         self.editor.buffer.connect("notify::cursor-position", self._on_editor_cursor_moved)
         self.group_view.connect("dictionary-missing", self._on_dictionary_missing)
         self.group_view.connect("save-failed", self._on_save_failed)
@@ -439,6 +441,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("code", _("Code"), label="</>")
         button("link", _("Link"), icon="insert-link-symbolic")
         button("footnote", _("Footnote"), label="x¹")
+        button("image", _("Insert Image"), icon="insert-image-symbolic")
         separator()
         headings = Gio.Menu()
         for level in (1, 2, 3):
@@ -1263,7 +1266,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
     def _apply_format(self, kind: str):
         editor = self._active_editor()
-        if editor is not None:
+        if editor is None:
+            return
+        if kind == "image":
+            editor.choose_images()
+        else:
             editor.apply_format(kind)
 
     def _update_export_action(self):
@@ -1486,6 +1493,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Underline"), "<Primary>u"),
                     (_("Link"), "<Primary>k"),
                     (_("Footnote"), "<Primary><Alt>f"),
+                    (_("Insert Image"), "<Primary><Alt>i"),
                     (_("Context Menu, for Example to Open a Link"), "Menu <Shift>F10"),
                     (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),
                     (_("Normal Text"), "<Primary>0"),

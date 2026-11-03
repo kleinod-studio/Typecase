@@ -128,6 +128,24 @@ def insert_footnote(text: str, start: int, end: int) -> Result:
     return text[:end] + note + text[end:], end + 2, end + 2
 
 
+def insert_block(text: str, position: int, block: str) -> Result:
+    """Inserts a block as a paragraph of its own: on the line at position if it is empty, otherwise
+    below it, with blank lines around it as needed. The cursor goes right after the block."""
+    line_start = text.rfind("\n", 0, position) + 1
+    line_end = text.find("\n", position)
+    if line_end == -1:
+        line_end = len(text)
+    before = text[:line_start] if not text[line_start:line_end].strip() else text[:line_end]
+    after = text[line_end:]
+    if not before or before.endswith("\n\n"):
+        opening = ""
+    else:
+        opening = "\n" if before.endswith("\n") else "\n\n"
+    closing = "\n" if after.startswith("\n") and not after.startswith("\n\n") and after.strip() else ""
+    cursor = len(before) + len(opening) + len(block)
+    return before + opening + block + closing + after, cursor, cursor
+
+
 def insert_code_block(text: str, start: int, end: int) -> Result:
     """Wraps the selected lines in ```; without a selection, an empty block with the cursor inside."""
     line_start = text.rfind("\n", 0, start) + 1

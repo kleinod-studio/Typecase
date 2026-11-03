@@ -6,6 +6,8 @@ in bold, italic, as a heading and so on. Only the code block (```) spans multipl
 
 import re
 
+from .images import IMAGE
+
 Span = tuple[int, int, str]
 
 FENCE = re.compile(r"^[ \t]{0,3}(```|~~~)[ \t]*([\w+#.-]*)")
@@ -81,6 +83,9 @@ def link_at(line: str, offset: int) -> str | None:
 
     Covers [text](address), <address> and bare web addresses. Images and links to anything
     but web pages and e-mail are left out."""
+    for match in IMAGE.finditer(line):
+        if match.start() <= offset < match.end():
+            return None
     for match in _IMAGE_OR_LINK.finditer(line):
         if match.start() <= offset < match.end():
             address = re.match(r"\]\(([^)\s]*)", match.group(3)).group(1)
@@ -177,6 +182,15 @@ def _inline(line: str, start: int) -> list[Span]:
     for match in _NOTE_REFERENCE.finditer(masked()):
         spans.append((match.start(), match.end(), "syntax"))
         hide(match.start(), match.end())
+
+    for match in IMAGE.finditer(masked()):
+        # The caption stays text; address and attributes are markup.
+        spans += [
+            (match.start(), match.start("caption"), "syntax"),
+            (match.end("caption"), match.end(), "syntax"),
+        ]
+        hide(match.start(), match.start("caption"))
+        hide(match.end("caption"), match.end())
 
     for match in _IMAGE_OR_LINK.finditer(masked()):
         spans += [

@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+import base64
 import re
 import shutil
 import subprocess
@@ -259,6 +260,54 @@ class StructureFilterTest(unittest.TestCase):
         self.assertIn('w:type="page"', docx)
 
 
+_ONE_PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
+
+
+@unittest.skipUnless(shutil.which("pandoc"), "Pandoc is missing")
+class ImageExportTest(unittest.TestCase):
+    def _export(self, fmt, text, work):
+        template = next(t for t in export_templates.available(None) if t.id == "text")
+        (work / "a.png").write_bytes(base64.b64decode(_ONE_PIXEL_PNG))
+        output = work / ("out.docx" if fmt == "docx" else "out.html")
+        subprocess.run(export.pandoc_args(fmt, template, output, "Probe"), input=text, text=True, check=True, cwd=work)
+        return output
+
+    def test_html_alignment_caption_and_alt_text(self):
+        with tempfile.TemporaryDirectory() as folder:
+            html = self._export("html", '![Caption](a.png){.right width=50% alt="Described"}\n\n![](a.png){.center alt="Only alt"}\n', Path(folder)).read_text(encoding="utf-8")
+        self.assertIn('<figure class="image-right">', html)
+        self.assertIn("<figcaption>Caption</figcaption>", html)
+        self.assertIn('alt="Described"', html)
+        self.assertIn('<div class="image-center">', html)
+        self.assertEqual(html.count("<figcaption"), 1, "alternative text alone gives no caption")
+
+    def test_word_alignment_is_a_paragraph_style(self):
+        with tempfile.TemporaryDirectory() as folder:
+            docx = self._export("docx", '![Caption](a.png){.right alt="Described"}\n', Path(folder))
+            export.style_aligned_images(docx)
+            with zipfile.ZipFile(docx) as archive:
+                document = archive.read("word/document.xml").decode("utf-8")
+                styles = archive.read("word/styles.xml").decode("utf-8")
+        self.assertIn('w:val="TypecaseImageright"', document)
+        self.assertIn('w:val="TypecaseCaptionright"', document)
+        self.assertIn('descr="Described"', document)
+        self.assertIn('<w:keepNext/><w:jc w:val="right"/>', styles)
+        self.assertIn('<w:basedOn w:val="ImageCaption" />', styles)
+
+    def test_a_template_keeps_its_own_style(self):
+        xml = '<w:style w:styleId="X"><w:name w:val="Typecase Image left" /><w:pPr><w:jc w:val="both"/></w:pPr></w:style>'
+        self.assertEqual(export._with_image_alignment(xml), xml)
+
+    def test_combined_sheets_keep_their_images(self):
+        with tempfile.TemporaryDirectory() as folder:
+            group = Path(folder)
+            (group / "Part").mkdir()
+            sheet = group / "Part" / "Chapter.md"
+            sheet.write_text("![](<a b.png>)\n", encoding="utf-8")
+            text = export.combine_sheets([sheet], group)
+            self.assertIn(f"![](<{group / 'Part' / 'a b.png'}>)", text)
+
+
 class PdfRenderTest(unittest.TestCase):
     def test_page_css(self):
         css = pdf_render.page_css(210, 297, {"top": 25, "right": 50, "bottom": 20, "left": 30})
@@ -267,7 +316,22 @@ class PdfRenderTest(unittest.TestCase):
     @unittest.skipUnless(pdf_render.available(), "WeasyPrint is not installed")
     def test_network_is_never_used(self):
         with self.assertRaises(ValueError):
-            pdf_render._local_only("https://example.org/image.png")
+            pdf_render._local_only().fetch("https://example.org/image.png")
+
+    @unittest.skipUnless(pdf_render.available() and shutil.which("pandoc"), "WeasyPrint or Pandoc is missing")
+    def test_images_reach_the_pdf(self):
+        template = next(t for t in export_templates.available(None) if t.id == "text")
+        with tempfile.TemporaryDirectory() as folder:
+            work = Path(folder)
+            (work / "pictures").mkdir()
+            (work / "pictures" / "a b.png").write_bytes(base64.b64decode(_ONE_PIXEL_PNG))
+            (work / "style.html").write_text(export.style_header(template, pdf=True), encoding="utf-8")
+            html = work / "doc.html"
+            args = export.pandoc_args("pdf", template, html, "Probe", work / "style.html")
+            subprocess.run(args, input="![Caption](<pictures/a b.png>){.center width=50%}\n", text=True, check=True, cwd=work)
+            margins = dict.fromkeys(("top", "right", "bottom", "left"), 25)
+            pdf_render.render(html, work, work / "doc.pdf", pdf_render.page_css(210, 297, margins))
+            self.assertIn(b"/Subtype /Image", (work / "doc.pdf").read_bytes())
 
     @unittest.skipUnless(pdf_render.available() and shutil.which("pandoc"), "WeasyPrint or Pandoc is missing")
     def test_footnotes_end_up_on_their_page(self):

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from . import config
+from . import config, images
 from .goal import DEFAULT_GOAL, MAX_GOAL, parse_goal
 from .goal_ring import GoalView
 from .library import add_attachment, attachments, attachments_folder, remove_empty_attachments_dir
@@ -362,7 +362,10 @@ class Inspector(Adw.Bin):
             except OSError:
                 pass
             remove_empty_attachments_dir(self.editor.path.parent)
-            self.emit("message", _("“%s” was moved to the trash.") % name)
+            if images.uses_file(self.editor.text(), name):
+                self.emit("message", _("“%s” was moved to the trash, but the text still shows it.") % name)
+            else:
+                self.emit("message", _("“%s” was moved to the trash.") % name)
         self.refresh_attachments()
 
     def _on_choice(self, row: Adw.ComboRow, key: str):

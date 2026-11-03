@@ -8,7 +8,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from . import config, export, export_templates, pdf_render
+from . import config, export, export_templates, images, pdf_render
 
 def format_name(fmt: str) -> str:
     return {"pdf": _("PDF"), "docx": _("Word Document (DOCX)"), "html": _("Web Page (HTML)")}[fmt]
@@ -167,6 +167,8 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         defaults = {**defaults, "title": sheet_path.stem}
     if fmt == "docx" and export.heading_one_breaks_page(template):
         text = export.drop_word_breaks_before_parts(text)
+    if fmt == "html":
+        text = images.embedded(text, sheet_path.parent)  # one file, with its images inside
     work = Path(tempfile.mkdtemp(prefix="typecase-export-"))
 
     def done(path, error):
@@ -200,9 +202,11 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         if fmt == "pdf":
             _print_pdf(pandoc_output, sheet_path.parent, output, work, template, done)
         else:
-            if fmt == "docx" and cover:
+            if fmt == "docx":
                 try:
-                    export.hide_first_page_footer(pandoc_output)
+                    export.style_aligned_images(pandoc_output)
+                    if cover:
+                        export.hide_first_page_footer(pandoc_output)
                 except (OSError, zipfile.BadZipFile) as error:
                     done(None, str(error))
                     return

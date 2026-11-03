@@ -23,18 +23,16 @@ def page_css(width_mm: float, height_mm: float, margins_mm: dict) -> str:
     return f"@page {{ size: {width_mm}mm {height_mm}mm; margin: {margin}; }}"
 
 
-def _local_only(url: str, *args, **kwargs):
-    import weasyprint
+def _local_only():
+    from weasyprint.urls import URLFetcher
 
-    if not url.startswith(("file:", "data:")):
-        raise ValueError(f"Not loading {url}: Typecase does not use the network")
-    return weasyprint.default_url_fetcher(url, *args, **kwargs)
+    return URLFetcher(allowed_protocols=("file", "data"))
 
 
 def render(html: Path, base_dir: Path, output: Path, css: str) -> None:
     import weasyprint
 
-    document = weasyprint.HTML(filename=str(html), base_url=base_dir.resolve().as_uri() + "/", url_fetcher=_local_only)
+    document = weasyprint.HTML(filename=str(html), base_url=base_dir.resolve().as_uri() + "/", url_fetcher=_local_only())
     document.write_pdf(str(output), stylesheets=[weasyprint.CSS(string=css)])
 
 
