@@ -15,4 +15,6 @@ fi
 python=python3
 [ -x .venv/bin/python ] && python=.venv/bin/python
 
-PYTHONPATH=src exec "$python" -m typecase "$@"
+# On systems without every spell checker, Enchant warns about each plugin it cannot load. That is
+# harmless and only visible here, so it is filtered out; all other messages still show.
+PYTHONPATH=src exec "$python" -m typecase "$@" 2> >(grep --line-buffered -v -e 'libenchant-WARNING' -e '^$' >&2)
