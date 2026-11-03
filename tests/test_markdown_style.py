@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase.markdown_style import fence_language, line_spans, link_at, list_text_start
+from typecase.markdown_style import fence_language, line_spans, link_at, list_text_start, link_spans, note_definition, note_spans
 
 
 def styled(line, in_code=False):
@@ -143,6 +143,16 @@ if __name__ == "__main__":
 
 
 class LinkAtTest(unittest.TestCase):
+    def test_link_spans(self):
+        line = "[a](b) <https://c.de> www.d.de ![e](f.png) `[g](h)` ^[[i](j)]"
+        self.assertEqual(link_spans(line), [(0, 1, 2, 6), (7, 8, 20, 21), (22, 26, 30, 30)])
+
+    def test_note_spans(self):
+        line = "a^[note [x](y)] b[^1] `^[code]` ![c^[d]](e.png)"
+        self.assertEqual(note_spans(line), [(1, 3, 14, 15), (17, 19, 20, 21)])
+        self.assertEqual(note_definition("[^1]: The text"), ("1", "The text"))
+        self.assertIsNone(note_definition("No [^1] definition"))
+
     LINE = 'Die [Seite](https://example.org "Titel"), <mailto:a@b.de> und www.gnome.org. ![Bild](b.png) [Datei](notes.md)'
 
     def at(self, word):

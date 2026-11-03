@@ -14,6 +14,7 @@ from .library import ATTACHMENTS_DIR, add_attachment, unique_path
 from .markdown_lists import change_indent, on_enter, renumber
 from .markdown_style import link_at
 from .markdown_styler import MarkdownStyler
+from .text_pills import TextPills
 from .textstats import count_characters, count_words
 
 AUTOSAVE_DELAY_MS = 800
@@ -42,6 +43,7 @@ class _EditorView(GtkSource.View):
         self._indent_font = None  # font the hanging indents of list items were measured with
         self.styler = None  # provides the lines of code blocks for the frame
         self.previews = None  # images below their lines
+        self.pills = None  # links in the running text
         self.on_edit_image = None  # double-click on an image: (line, image)
         # Text pointer over the wide margins as well, so the caret can be placed precisely.
         self.set_cursor_from_name("text")
@@ -104,6 +106,18 @@ class _EditorView(GtkSource.View):
             and self._open_link.set_enabled(self.link_at_iter(self._caret_iter()) is not None),
         )
 
+    def char_area(self, where) -> Gdk.Rectangle:
+        """Where a character is. Unlike get_iter_location (which GTK lets drift on lines with folded
+        text, since it counts the hidden characters as well), this holds on every line."""
+        area = self.get_cursor_locations(where)[0]
+        following = where.copy()
+        if following.forward_char():
+            after = self.get_cursor_locations(following)[0]
+            # On the same row? Smaller text, like a footnote, starts a little lower.
+            same_row = after.y < area.y + area.height and area.y < after.y + after.height
+            area.width = max(after.x - area.x, 0) if same_row else 0
+        return area
+
     def _caret_iter(self):
         buffer = self.get_buffer()
         return buffer.get_iter_at_mark(buffer.get_insert())
@@ -127,7 +141,7 @@ class _EditorView(GtkSource.View):
         if not found:
             return None
         # Past the end of a line, the iter is the line end; only count it when over text.
-        area = self.get_iter_location(where)
+        area = self.char_area(where)
         if not area.x <= bx < area.x + max(area.width, 1):
             return None
         return self.link_at_iter(where)
@@ -188,6 +202,10 @@ class _EditorView(GtkSource.View):
         if address is None:
             if not keyboard_mode and self.previews is not None and self.previews.picture_at(x, y) is not None:
                 tooltip.set_text(_("Double-click to edit the image"))
+                return True
+            note = None if keyboard_mode or self.pills is None else self.pills.note_at(x, y)
+            if note:
+                tooltip.set_text(note)
                 return True
             return False
         # Translators: tooltip over a link in the editor; {address} is the web address
@@ -262,6 +280,8 @@ class _EditorView(GtkSource.View):
         GtkSource.View.do_size_allocate(self, width, height, baseline)
         if self.previews is not None:
             self.previews.width_changed()
+        if self.pills is not None:
+            self.pills.queue_measure()
         font = self.get_pango_context().get_font_description().to_string()
         if font != self._indent_font and self.styler is not None:
             self._indent_font = font  # new font: list items need indents of a new width
@@ -274,6 +294,7 @@ class _EditorView(GtkSource.View):
             self._snapshot_caret(snapshot)
             return
         if layer == Gtk.TextViewLayer.BELOW_TEXT and self.previews is not None:
+            self.pills.snapshot(snapshot)
             self.previews.snapshot(snapshot)  # below the dimming of focus mode, too
         if layer != Gtk.TextViewLayer.BELOW_TEXT or self.styler is None or not self.styler.code_blocks:
             return
@@ -324,7 +345,7 @@ class _EditorView(GtkSource.View):
             return
         if buffer.get_has_selection():
             return  # with a selection, the selection is enough
-        where = self.get_iter_location(buffer.get_iter_at_mark(buffer.get_insert()))
+        where = self.char_area(buffer.get_iter_at_mark(buffer.get_insert()))
         width = where.width if where.width > 2 else self._char_width()
         thickness = 2
         rect = Graphene.Rect().init(where.x, where.y + where.height - thickness, width, thickness)
@@ -415,6 +436,9 @@ class SheetEditor(Gtk.Stack):
         self.view.styler = self.styler
         self.previews = ImagePreviews(self.view, self.buffer, lambda: self.path)
         self.view.previews = self.previews
+        self.pills = TextPills(self.view, self.buffer)
+        self.view.pills = self.pills
+        self.styler.on_palette_changed = self.pills.set_text_color
         self.view.on_edit_image = self.edit_image
         self.previews.on_edit = lambda: self.edit_image_at_caret()
         self.context_menu = Gio.Menu()
@@ -489,8 +513,9 @@ class SheetEditor(Gtk.Stack):
         self.in_conflict = False
         self.set_visible_child_name("editor")
         self._watch()
-        self.previews.update()  # right away, so the markup of images does not flash up
+        self.previews.update()  # right away, so the markup of images and links does not flash up
         self.previews.fold_caret_line()
+        self.pills.update()
         self._emit_counts()
         self._update_spelling()
         self.emit("metadata-changed")
@@ -501,6 +526,7 @@ class SheetEditor(Gtk.Stack):
         self._cancel_timer()
         self._unwatch()
         self.previews.stop()
+        self.pills.stop()
         if self._count_timer:
             GLib.source_remove(self._count_timer)
             self._count_timer = 0
@@ -1167,6 +1193,7 @@ class SheetEditor(Gtk.Stack):
         self._set_text(text)
         self.buffer.place_cursor(self.buffer.get_iter_at_offset(min(offset, self.buffer.get_char_count())))
         self.previews.update()
+        self.pills.update()
         self._emit_counts()
 
     def _set_text(self, text: str) -> None:

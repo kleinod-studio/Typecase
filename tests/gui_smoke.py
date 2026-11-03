@@ -244,6 +244,52 @@ def steps(win, app):
     caret = ed.buffer.get_iter_at_mark(ed.buffer.get_insert())
     check(caret.get_line() == 6 and not win.outline_popover.get_visible(), "Choosing a heading jumps to it and closes the outline")
 
+    # Links: the address folds away unless the caret touches the link or a selection covers it
+    link_text = "Before [Seite](https://example.org/a_b) and www.gnome.org after."
+    ed.buffer.set_text(link_text)
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    pills = ed.pills
+    yield from wait_until(lambda: len(pills.pills) == 2)
+    check(len(pills.pills) == 2 and pills.is_folded(pills.pills[0]), "The address of a link is folded away")
+    check(text(ed) == link_text, "Folding a link does not change the text")
+    visible_link = ed.buffer.get_iter_at_offset(link_text.index("Seite"))
+    check(visible_link.has_tag(pills._muted), "A folded link has the muted look of a pill")
+    check(ed.view.link_at_iter(ed.buffer.get_iter_at_offset(link_text.index("Seite"))) == "https://example.org/a_b", "The link still knows its address")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_offset(link_text.index("Seite") + 1))
+    check(not pills.is_folded(pills.pills[0]), "With the caret on it, the link unfolds")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    check(pills.is_folded(pills.pills[0]), "When the caret leaves, it folds again")
+    ed.buffer.select_range(ed.buffer.get_start_iter(), ed.buffer.get_end_iter())
+    check(not pills.is_folded(pills.pills[0]), "A selection unfolds it, so copying takes the address too")
+    note_text = "Text^[The note] more[^a] end\n\n[^a]: Defined below"
+    ed.buffer.set_text(note_text)
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["note", "note"])
+    check(all(pill.folded for pill in pills.pills), "Footnotes fold into pills")
+    note_start = ed.buffer.get_iter_at_offset(note_text.index("The note"))
+    check(not note_start.has_tag(pills._hidden), "The pill shows the note's text")
+    check(ed.buffer.get_iter_at_offset(note_text.index("[The") ).has_tag(pills._hidden), "Its markup is hidden")
+    check(pills.pills[1].note == "Defined below", "A reference knows what it stands for")
+    yield 0.1
+    check(ed.view.char_area(note_start).height == ed.view.char_area(ed.buffer.get_start_iter()).height, "A note in a pill is as tall as the text around it")
+    check(text(ed) == note_text, "Folding a footnote does not change the text")
+    area = ed.view.char_area(ed.buffer.get_iter_at_offset(note_text.index("[^a]")))
+    wx, wy = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, area.x + 5, area.y + area.height // 2)
+    check(pills.note_at(wx, wy) == "Defined below", "Hovering over a reference finds its definition")
+    check(area.width >= 20, "The pill has room for its icon")
+    ed.buffer.set_text("[At the start](x)\n\nText")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["link"] and pills.pills[0].wide)
+    yield 0.1
+    check(ed.view.char_area(ed.buffer.get_start_iter()).width >= 20, "At the start of a line the icon has room, too")
+    ed.buffer.set_text(note_text)
+    yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["note", "note"])
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_offset(note_text.index("note")))
+    check(not pills.pills[0].folded and pills.pills[1].folded, "Only the footnote at the caret unfolds")
+    ed.buffer.set_text("```\n[code](x)\n```")
+    yield from wait_until(lambda: not pills.pills)
+    check(not pills.pills, "Links in code blocks stay as they are")
+
     # Images: inserted as attachments, shown below their line, without any change to the text
     picture_source = TMP / "My Photo.png"
     pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 400, 200)

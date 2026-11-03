@@ -2082,6 +2082,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             typewriter=single and self.focus_mode and data.get("focus_typewriter") is not False,
             dim_others=single and self.focus_mode and data.get("focus_dim") is not False,
         )
+        editor.previews.calm = editor.pills.calm = self.focus_mode
         self._style_scheme(editor)
 
     def _apply_style_scheme(self):

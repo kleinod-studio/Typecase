@@ -35,6 +35,7 @@ install_data(
     'typecase/spelling.py',
     'typecase/template_builder.py',
     'typecase/template_dialog.py',
+    'typecase/text_pills.py',
     'typecase/textstats.py',
     'typecase/themes.py',
     'typecase/window.py',

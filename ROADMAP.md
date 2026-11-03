@@ -79,6 +79,7 @@ Ideas for after 1.0:
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
 - [x] Images in the text: inserted as attachments, shown in the editor, with size, alignment, caption and alternative text that the export follows
+- [x] Pills in the editor: images, links and footnotes fold their Markdown into a small colored pill with an icon, and unfold while the caret touches them
 - [ ] Markdown tables, styled in the editor
 - [ ] Math formulas (LaTeX notation), shown in the editor and in the export
 - [ ] Export as EPUB for e-readers

@@ -4,6 +4,7 @@ from gi.repository import Gdk, GLib, GtkSource, Pango
 
 from .markdown_style import FENCE, fence_language, line_spans, list_text_start
 
+FOOTNOTE_SCALE = 0.85
 _FENCE_LINES = re.compile(r"^[ \t]{0,3}(?:```|~~~).*$", re.MULTILINE)
 _BARE_ADDRESS = re.compile(r"\b(?:https?://|www\.)\S+|\b[\w.+-]+@[\w-]+\.[\w.-]+")
 # Spans that the spell checker skips: code, code blocks, Markdown marks and link targets.
@@ -56,6 +57,7 @@ class MarkdownStyler:
         # (line of opening fence, last line, closed?); an open block extends to the end of the text
         self.code_blocks: list[tuple[int, int, bool]] = []
         self.on_blocks_changed = None  # callback so the text view redraws the frame
+        self.on_palette_changed = None  # callback with the theme's text color
         # Width in pixels of a piece of text in the editor's font (set by the text view). With it,
         # wrapped lines of a list item line up with its text instead of with the marker.
         self.measure = None
@@ -78,7 +80,7 @@ class MarkdownStyler:
         tag("code", family="monospace")
         tag("codeblock", family="monospace")
         tag("link", underline=Pango.Underline.SINGLE)
-        tag("footnote", scale=0.85)
+        tag("footnote", scale=FOOTNOTE_SCALE)
         tag("list-marker")
         tag("syntax")
         self.no_spell_check = buffer.create_tag(NO_SPELL_CHECK_TAG)
@@ -113,6 +115,8 @@ class MarkdownStyler:
                 tag.props.foreground_rgba = palette["heading"]
             else:
                 tag.props.foreground_set = False
+        if self.on_palette_changed:
+            self.on_palette_changed(palette["text"])
         if self.buffer.get_char_count():
             self.restyle_all()  # code colors come from the style scheme
 

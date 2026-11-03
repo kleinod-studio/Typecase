@@ -5,13 +5,13 @@ from pathlib import Path
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Graphene, Gsk, Gtk, Pango
 
 from . import images
+from .text_pills import ICON_SIZE as PILL_ICON, set_tag_runs, snapshot_icon, tag_runs, tint
 
 UPDATE_DELAY_MS = 150
 MAX_HEIGHT = 560
 MAX_DECODED_WIDTH = 1600  # large photos are loaded smaller, so writing stays fluid
 PLACEHOLDER_HEIGHT = 44
 GAP = 12  # between text and image, and between images on one line
-PILL_ICON = 16
 PILL_PADDING = 8
 _CAPTION_MARKUP = re.compile(r"[*_`~\\]")
 
@@ -56,6 +56,7 @@ class ImagePreviews:
         self.sheet = sheet
         self.lines: list[_Line] = []
         self.on_edit = None  # the edit button was clicked
+        self.calm = False  # focus mode: a pill without color
         self._stay_folded = False  # right after inserting or editing, until the caret moves
         self._hidden = buffer.create_tag(None, invisible=True)
         # Not quite 0: Pango takes an alpha of exactly 0 for "not set" and draws solid text.
@@ -229,7 +230,7 @@ class ImagePreviews:
                 self._tags[height] = buffer.create_tag(None, pixels_below_lines=height)
         correct = set()
         for height, tag in self._tags.items():
-            for start, end in self._runs(tag):
+            for start, end in tag_runs(buffer, tag):
                 first, last = buffer.get_iter_at_offset(start), buffer.get_iter_at_offset(end)
                 if first.starts_line() and last.ends_line() and first.get_line() == last.get_line() and wanted.get(first.get_line()) == height:
                     correct.add(first.get_line())
@@ -272,18 +273,10 @@ class ImagePreviews:
                 end.forward_to_line_end()
             transparent.add((offset, offset + 1))
             hidden.add((offset + 1, end.get_offset()))
-        self._set_runs(self._hidden, hidden)
-        self._set_runs(self._transparent, transparent)
+        set_tag_runs(buffer, self._hidden, hidden)
+        set_tag_runs(buffer, self._transparent, transparent)
         self.view.queue_draw()
         self._queue_place_button()
-
-    def _set_runs(self, tag, wanted: set[tuple[int, int]]) -> None:
-        buffer = self.buffer
-        current = set(self._runs(tag))
-        for start, end in current - wanted:
-            buffer.remove_tag(tag, buffer.get_iter_at_offset(start), buffer.get_iter_at_offset(end))
-        for start, end in wanted - current:
-            buffer.apply_tag(tag, buffer.get_iter_at_offset(start), buffer.get_iter_at_offset(end))
 
     def _queue_place_button(self) -> None:
         # After the layout has followed the change.
@@ -301,18 +294,6 @@ class ImagePreviews:
                 return False
         self._button.set_visible(False)
         return False
-
-    def _runs(self, tag) -> list[tuple[int, int]]:
-        runs = []
-        position = self.buffer.get_start_iter()
-        start = 0 if position.has_tag(tag) else None
-        while position.forward_to_tag_toggle(tag):
-            if position.starts_tag(tag):
-                start = position.get_offset()
-            elif start is not None:
-                runs.append((start, position.get_offset()))
-                start = None
-        return runs
 
     def _rectangles(self):
         """Every picture with its place, in the coordinates of the text."""
@@ -347,8 +328,7 @@ class ImagePreviews:
 
     def _snapshot_pill(self, snapshot, line: _Line) -> None:
         layout, rect = self._pill(line)
-        fill = self.view.get_color()
-        fill.alpha = 0.1
+        fill = tint("image", self.calm)
         rounded = Gsk.RoundedRect()
         rounded.init_from_rect(rect, rect.get_height() / 2)
         snapshot.push_rounded_clip(rounded)
@@ -356,13 +336,7 @@ class ImagePreviews:
         snapshot.pop()
         color = self.view.get_color()
         color.alpha = 0.75
-        icon = Gtk.IconTheme.get_for_display(self.view.get_display()).lookup_icon(
-            "image-x-generic-symbolic", None, PILL_ICON, self.view.get_scale_factor(), Gtk.TextDirection.NONE, 0
-        )
-        snapshot.save()
-        snapshot.translate(Graphene.Point().init(rect.get_x() + PILL_PADDING, rect.get_y() + (rect.get_height() - PILL_ICON) / 2))
-        icon.snapshot_symbolic(snapshot, PILL_ICON, PILL_ICON, [color])
-        snapshot.restore()
+        snapshot_icon(self.view, snapshot, "image", rect.get_x() + PILL_PADDING, rect.get_y() + (rect.get_height() - PILL_ICON) / 2, color)
         snapshot.save()
         text_height = layout.get_pixel_size()[1]
         snapshot.translate(Graphene.Point().init(rect.get_x() + PILL_ICON + 2 * PILL_PADDING, rect.get_y() + (rect.get_height() - text_height) / 2))

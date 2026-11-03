@@ -26,6 +26,7 @@ _NOTE_DEFINITION = re.compile(r"^\[\^[^\]\s]+\]:[ \t]?")
 _AUTOLINK = re.compile(r"(<)((?:https?://|mailto:)[^>\s]+)(>)")
 # A bare web address ends before trailing punctuation, so "see https://example.org." works.
 _BARE_URL = re.compile(r"(?<![\w/])(?:https?://|www\.)[^\s<>]*[^\s<>.,;:!?\"')\]]")
+_BARE_PREFIX = re.compile(r"(?:https?://)?(?:www\.)?")
 _OPENABLE = ("http://", "https://", "mailto:")
 _STRONG_EMPHASIS = re.compile(r"(\*\*\*|___)(?=\S)(.+?)(?<=\S)\1")
 _STRONG = re.compile(r"(\*\*|__)(?=\S)(.+?)(?<=\S)\1")
@@ -95,6 +96,43 @@ def link_at(line: str, offset: int) -> str | None:
             if match.start() <= offset < match.end():
                 return _openable(match.group(group))
     return None
+
+
+def link_spans(line: str) -> list[tuple[int, int, int, int]]:
+    """The links of a line that is not inside a code block, as (start, start of the visible text,
+    its end, end). Links inside code, images and footnotes do not count. Of a bare address, the
+    prefix (https://, www.) folds away like the brackets of the others."""
+    text = line
+    for pattern in (_CODE, IMAGE, _INLINE_NOTE, _NOTE_REFERENCE):
+        text = pattern.sub(lambda match: _MASK * len(match.group(0)), text)
+    spans = []
+    for pattern, group in ((_IMAGE_OR_LINK, 2), (_AUTOLINK, 2)):
+        for match in pattern.finditer(text):
+            if match.group(1) != "![":
+                spans.append((match.start(), match.start(group), match.end(group), match.end()))
+            text = text[: match.start()] + _MASK * (match.end() - match.start()) + text[match.end() :]
+    for match in _BARE_URL.finditer(text):
+        prefix = _BARE_PREFIX.match(match.group(0)).end()
+        spans.append((match.start(), match.start() + prefix, match.end(), match.end()))
+    return sorted(spans)
+
+
+def note_spans(line: str) -> list[tuple[int, int, int, int]]:
+    """The footnotes of a line that is not inside a code block, as (start, start of the note or
+    label, its end, end): inline ones and references, but no definitions."""
+    text = line
+    for pattern in (_CODE, IMAGE):
+        text = pattern.sub(lambda match: _MASK * len(match.group(0)), text)
+    spans = [(match.start(), match.start(2), match.end(2), match.end()) for match in _INLINE_NOTE.finditer(text)]
+    text = _INLINE_NOTE.sub(lambda match: _MASK * len(match.group(0)), text)
+    spans += [(match.start(), match.start() + 2, match.end() - 1, match.end()) for match in _NOTE_REFERENCE.finditer(text)]
+    return sorted(spans)
+
+
+def note_definition(line: str) -> tuple[str, str] | None:
+    """(label, text) of a line that defines a footnote, "[^label]: text"."""
+    match = _NOTE_DEFINITION.match(line)
+    return (line[2 : line.index("]")], line[match.end() :]) if match else None
 
 
 def _openable(address: str) -> str | None:

@@ -198,13 +198,13 @@ class GroupView(Gtk.ScrolledWindow):
             return False
         index = self.editors.index(editor)
         buffer, view = editor.buffer, editor.view
-        line = view.get_iter_location(buffer.get_iter_at_mark(buffer.get_insert())).y
+        line = view.char_area(buffer.get_iter_at_mark(buffer.get_insert())).y
         if keyval in (Gdk.KEY_Up, Gdk.KEY_KP_Up) and index > 0:
-            if line == view.get_iter_location(buffer.get_start_iter()).y:  # on the first display line
+            if line == view.char_area(buffer.get_start_iter()).y:  # on the first display line
                 self._enter(self.editors[index - 1], at_end=True)
                 return True
         if keyval in (Gdk.KEY_Down, Gdk.KEY_KP_Down) and index < len(self.editors) - 1:
-            if line == view.get_iter_location(buffer.get_end_iter()).y:  # on the last display line
+            if line == view.char_area(buffer.get_end_iter()).y:  # on the last display line
                 self._enter(self.editors[index + 1], at_end=False)
                 return True
         return False
@@ -230,7 +230,7 @@ class GroupView(Gtk.ScrolledWindow):
         if editor not in self.editors:
             return GLib.SOURCE_REMOVE
         view = editor.view
-        rect = view.get_iter_location(editor.buffer.get_iter_at_mark(editor.buffer.get_insert()))
+        rect = view.char_area(editor.buffer.get_iter_at_mark(editor.buffer.get_insert()))
         x, y = view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, rect.x, rect.y)
         found, point = view.compute_point(self._box, Graphene.Point().init(x, y))
         if not found:
