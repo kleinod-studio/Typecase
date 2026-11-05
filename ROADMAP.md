@@ -73,9 +73,9 @@ Ideas for after 1.0:
 - [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
 - [ ] Comments: select a passage and attach a comment to it, for notes to yourself while revising; comments stay in the sheet's plain `.md` file and are left out of the export
 - [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in PDF and Word exports
-- [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers
+- [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers ([testers wanted](https://github.com/kleinod-studio/Typecase/issues/4))
 - [x] Template assistant: create an export template for PDF, Word and HTML from a starting point and a few settings, and change it later, without files or AI
-- [ ] Template fields: a template names the fields it needs (for a letter: sender, recipient, subject), and the properties pane shows them as input rows for sheets that use it; they are saved in the front matter and placed by the template on export, so the editor holds only the text
+- [ ] Template fields: a template names the fields it needs (for a letter: sender, recipient, subject), and the properties pane shows them as input rows for sheets that use it; they are saved in the front matter and placed by the template on export, so the editor holds only the text ([share your ideas](https://github.com/kleinod-studio/Typecase/issues/3))
 - [ ] Rendered Markdown preview (live styling covers most of it)
 - [ ] Custom icons and colors for sheets and groups in the library
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
