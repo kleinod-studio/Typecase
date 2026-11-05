@@ -26,6 +26,7 @@ _UNREADABLE = object()  # File exists but is not (or no longer) UTF-8 text
 # Writing defaults; to become configurable in the preferences later (P2-05).
 DEFAULT_FONT_SIZE_PT = 15
 DEFAULT_LINE_WIDTH_CHARS = 70
+LAYOUT_SETTLE_MS = 250
 MIN_SIDE_MARGIN = 32
 LINE_SPACING_PIXELS = {"compact": 2, "normal": 5, "relaxed": 10}  # Spacing of wrapped lines and paragraphs
 
@@ -50,6 +51,7 @@ class _EditorView(GtkSource.View):
 
         # Focus aids (focus mode only): keep the current line centred, dim the surroundings.
         self.typewriter = False
+        self._centered_size = None
         self.dim_others = False
         self._keyboard_moved = False
         self._margins = (kwargs.get("top_margin", 0), kwargs.get("bottom_margin", 0))
@@ -222,10 +224,9 @@ class _EditorView(GtkSource.View):
     def set_focus_effects(self, typewriter: bool, dim_others: bool) -> None:
         self.typewriter = typewriter
         self.dim_others = dim_others
+        self._centered_size = None  # do_size_allocate centres, once the margins and the new size are in place
         self.queue_resize()
         self.queue_draw()
-        if typewriter:
-            GLib.idle_add(self._center_cursor)
 
     def _keep_centered(self, force: bool = False):
         """Typewriter mode: centre only when typing and moving with the keyboard, so that
@@ -286,6 +287,10 @@ class _EditorView(GtkSource.View):
             self.set_top_margin(top)
             self.set_bottom_margin(bottom)
         GtkSource.View.do_size_allocate(self, width, height, baseline)
+        if self.typewriter and self._centered_size != (width, height):
+            self._centered_size = (width, height)
+            GLib.idle_add(self._center_cursor)
+            GLib.timeout_add(LAYOUT_SETTLE_MS, self._center_cursor)  # lines above get their real height only by and by
         if self.previews is not None:
             self.previews.width_changed()
         if self.pills is not None:

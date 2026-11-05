@@ -1442,6 +1442,21 @@ def steps(win, app):
     check(ed.path and ed.path.name == "a.md", "Checkpoint F5 fullscreen off: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
     check(not window_keys.emit("key-pressed", Gdk.KEY_Escape, 0, Gdk.ModifierType(0)), "Escape outside of focus mode is left alone")
 
+    # Entering focus mode centres the caret, also far down in a long text
+    before_long = text(ed)
+    ed.buffer.set_text("Line\n\n" * 400)
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line(500)[1])
+    yield 0.3
+    win.activate_action("win.focus-mode", None)
+    yield 1.5
+    caret = ed.view.get_iter_location(ed.buffer.get_iter_at_mark(ed.buffer.get_insert()))
+    visible = ed.view.get_visible_rect()
+    check(abs(caret.y + caret.height / 2 - visible.y - visible.height / 2) < caret.height, "Focus mode centres the caret when it starts")
+    win.activate_action("win.focus-mode", None)
+    yield 1.5
+    ed.buffer.set_text(before_long)
+    yield 0.3
+
     # Preferences
     from gi.repository import Adw
     from typecase import config
