@@ -128,6 +128,12 @@ Typecase is available in English and German, and translations into other languag
 
 Translations, bug reports, ideas and code are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). For security problems, see the [security policy](SECURITY.md), and for barriers, the [accessibility statement](ACCESSIBILITY.md).
 
+## How Typecase is made
+
+Typecase is developed with the help of AI. I decide what the app does and how it looks, and I try out every change myself. The code is written with [Claude Code](https://claude.com/claude-code), an AI coding assistant by Anthropic, and every change has to pass the automated tests before it is committed.
+
+The AI is only used to build Typecase. The app itself has no AI features and never sends your texts anywhere. The optional [Claude skill](skills/typecase-template/) for export templates runs in Claude, not in the app, and only if you choose to use it.
+
 ## Privacy
 
 Typecase has no telemetry and makes no network connections. The Flatpak has no network permission.
