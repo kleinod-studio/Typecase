@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Typecase does not work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time! Please remove anything private from your text, screenshots and files before you post them here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a sheet with …
+        2. Press …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Typecase version
+      description: You will find it under Menu → About Typecase.
+      placeholder: "1.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Typecase?
+      options:
+        - Flatpak bundle from the release page
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Linux distribution and desktop
+      placeholder: Fedora 44, GNOME
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Messages from the terminal
+      description: Optional. Start Typecase with `flatpak run studio.kleinod.Typecase`, repeat the problem, and paste what appears.
+      render: text
+  - type: markdown
+    attributes:
+      value: You can attach screenshots by dragging them into any of the text fields.

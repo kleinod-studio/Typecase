@@ -1,0 +1,27 @@
+name: Accessibility barrier
+description: Something in Typecase is hard or impossible to use for you
+labels: [accessibility]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you try to do, and what got in the way?
+    validations:
+      required: true
+  - type: input
+    id: technology
+    attributes:
+      label: Assistive technology
+      description: Optional. For example, a screen reader, screen magnifier or keyboard-only use.
+      placeholder: Orca, keyboard only
+  - type: input
+    id: version
+    attributes:
+      label: Typecase version
+      description: You will find it under Menu → About Typecase.
+      placeholder: "1.2.0"
+  - type: input
+    id: system
+    attributes:
+      label: Linux distribution and desktop
+      placeholder: Fedora 44, GNOME

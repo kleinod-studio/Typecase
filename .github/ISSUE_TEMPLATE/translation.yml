@@ -1,0 +1,28 @@
+name: Translation
+description: Offer a translation, send in a finished file, or suggest a better wording
+body:
+  - type: markdown
+    attributes:
+      value: You don't need to know how to program. The [guide for translators](https://github.com/kleinod-studio/Typecase/blob/main/CONTRIBUTING.md#translating-typecase) explains how it works.
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: French (fr)
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is it about?
+      options:
+        - I would like to start a new translation
+        - I have finished a translation
+        - I have a suggestion for an existing translation
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Attach your `.po` file here if you have one (zip it first if GitHub refuses the file type).
