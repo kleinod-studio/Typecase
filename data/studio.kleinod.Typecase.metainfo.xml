@@ -16,10 +16,14 @@
       <li>Focus mode with typewriter scrolling and dimmed surroundings</li>
       <li>Group view: read and edit all sheets of a chapter or book as one continuous text</li>
       <li>Card view for plotting: the notes of all sheets as cards, reordered by dragging</li>
+      <li>Images in the text, shown in the editor, with size, alignment, caption and alternative text</li>
+      <li>Colored pills that fold the Markdown of images, links and footnotes while you write</li>
+      <li>Footnotes written right in the text, and an outline of the headings to jump to</li>
       <li>Writing goals with progress rings, keywords, notes and attachments per sheet</li>
       <li>Spell checking while you type, offline and in each sheet's language</li>
       <li>Editor themes in light and dark, and your own GtkSourceView themes</li>
-      <li>Export single sheets or whole groups to PDF, Word and HTML with importable templates</li>
+      <li>Export single sheets or whole groups to PDF, Word and HTML, with table of contents, cover page and parts</li>
+      <li>Export templates from a built-in assistant, or imported as files</li>
     </ul>
     <p>Typecase works completely offline and collects no data.</p>
   </description>
@@ -42,11 +46,19 @@
   <screenshots>
     <screenshot type="default" environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-light.png</image>
-      <caption>A sheet in the editor, with the library and writing goals</caption>
+      <caption>A sheet with an image and colored pills for links and footnotes, next to the library</caption>
     </screenshot>
     <screenshot environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-cards-light.png</image>
       <caption>Card view: the notes of all chapters as cards</caption>
+    </screenshot>
+    <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-image-light.png</image>
+      <caption>Size, alignment, caption and alternative text of an image</caption>
+    </screenshot>
+    <screenshot environment="gnome">
+      <image>https://kleinod.studio/assets/typecase/screenshot-assistant-light.png</image>
+      <caption>The template assistant for export templates</caption>
     </screenshot>
     <screenshot environment="gnome">
       <image>https://kleinod.studio/assets/typecase/screenshot-goal-light.png</image>
@@ -62,11 +74,19 @@
     </screenshot>
     <screenshot environment="gnome:dark">
       <image>https://kleinod.studio/assets/typecase/screenshot-dark.png</image>
-      <caption>A sheet in the editor, with the library and writing goals</caption>
+      <caption>A sheet with an image and colored pills for links and footnotes, next to the library</caption>
     </screenshot>
     <screenshot environment="gnome:dark">
       <image>https://kleinod.studio/assets/typecase/screenshot-cards-dark.png</image>
       <caption>Card view: the notes of all chapters as cards</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-image-dark.png</image>
+      <caption>Size, alignment, caption and alternative text of an image</caption>
+    </screenshot>
+    <screenshot environment="gnome:dark">
+      <image>https://kleinod.studio/assets/typecase/screenshot-assistant-dark.png</image>
+      <caption>The template assistant for export templates</caption>
     </screenshot>
     <screenshot environment="gnome:dark">
       <image>https://kleinod.studio/assets/typecase/screenshot-goal-dark.png</image>
@@ -82,6 +102,20 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.2.0" date="2026-11-05">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.2.0</url>
+      <description>
+        <p>Images, pills, footnotes, an outline and a stronger export.</p>
+        <ul>
+          <li>Images: insert them by button, drag and drop or paste; they are shown in the editor and have a size, an alignment, a caption and an alternative text</li>
+          <li>Pills: images, links and footnotes fold their Markdown into a small colored pill while the caret is elsewhere</li>
+          <li>Links open with Ctrl+click, and footnotes are written right in the text</li>
+          <li>Outline: the headings of a sheet or group in a list to jump to</li>
+          <li>Export with table of contents, cover page, parts, page numbers and footnotes on their page</li>
+          <li>Template assistant: create an export template from a starting point and a few settings</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.2" date="2026-11-01">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.2</url>
       <description>

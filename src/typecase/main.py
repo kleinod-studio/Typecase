@@ -17,7 +17,7 @@ from gi.repository import Adw, Gdk, Gio, Gtk, GtkSource
 from .window import TypecaseWindow
 
 APP_ID = "studio.kleinod.Typecase"
-VERSION = "1.1.2"  # must match meson.build
+VERSION = "1.2.0"  # must match meson.build
 GETTEXT_DOMAIN = "typecase"
 WEBSITE = "https://kleinod.studio/typecase"
 REPOSITORY = "https://github.com/kleinod-studio/Typecase"

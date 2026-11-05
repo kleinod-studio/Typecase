@@ -4,7 +4,7 @@ A calm, native Markdown writing app for Linux. Built with GTK 4, libadwaita and 
 
 Your texts stay plain `.md` files in a folder of your choice: no database, no proprietary format, no account, no network access. Sync the folder with Nextcloud or Syncthing if you like.
 
-> **Status:** 1.1.2. Typecase is stable for everyday writing; a release on Flathub is planned for later. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
+> **Status:** 1.2.0. Typecase is stable for everyday writing; a release on Flathub is planned for later. See the [roadmap](ROADMAP.md) for what is done and what comes next, and the [changelog](CHANGELOG.md) for releases.
 
 ## Features
 
@@ -14,11 +14,16 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Writing**: Markdown is styled as you type and code blocks are highlighted. Lists continue on Enter, and you can find and replace in a sheet.
 - **Spell checking**: offline, in each sheet's language, with suggestions in the right-click menu; F7 or one click switches it on and off.
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
+- **Images**: insert them with a button, by dragging or by pasting. They are shown in the editor, stored as attachments of the sheet, and have a size, an alignment, a caption and an alternative text.
+- **Links and footnotes**: links open with Ctrl+click, and footnotes are written right in the text.
+- **Pills**: images, links and footnotes fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
+- **Outline**: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O).
 - **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
 - **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode can have its own font settings and theme.
-- **Export**: PDF, Word (DOCX) and HTML via Pandoc. Export templates are single `.typecase-template` files that you import in the preferences ([how templates work](docs/templates.md)). A group can be exported as one document, optionally with every subgroup on a new page.
+- **Export**: PDF, Word (DOCX) and HTML via Pandoc, with optional table of contents and cover page, footnotes on their page and page numbers. A group can be exported as one document, with its subgroups as parts.
+- **Export templates**: the template assistant creates a template from a starting point and a few settings. Templates can also be built by hand as single `.typecase-template` files ([how templates work](docs/templates.md)).
 - **Editor themes**: Standard, Paper, Solarized, Calm and High Contrast, each with a light and a dark variant; the whole window takes on the theme's colors. Themes are GtkSourceView style schemes, so you can import your own ([how themes work](docs/themes.md)).
 - **GNOME-native**: libadwaita look, light and dark style, fully usable with the keyboard. The UI is in English and German.
 
@@ -42,7 +47,7 @@ The first command installs Flatpak (on other distributions, use their package ma
 Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
 
 ```bash
-flatpak install --user Typecase-1.1.2-x86_64.flatpak
+flatpak install --user Typecase-1.2.0-x86_64.flatpak
 ```
 
 Bundles don't update by themselves; install the next release the same way. A release on Flathub is planned for later.
@@ -117,7 +122,11 @@ Project layout:
 
 ## Translations
 
-Source strings are English. Translations live in `po/`; German is maintained in `po/de.po`. `run-dev.sh` compiles them into `locale/` automatically.
+Typecase is available in English and German, and translations into other languages are very welcome. You don't need to know how to program: [CONTRIBUTING.md](CONTRIBUTING.md) explains how it works.
+
+## Contributing
+
+Translations, bug reports, ideas and code are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). For security problems, see the [security policy](SECURITY.md), and for barriers, the [accessibility statement](ACCESSIBILITY.md).
 
 ## Privacy
 

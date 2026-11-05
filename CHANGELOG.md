@@ -2,18 +2,21 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 1.2.0 – 2026-11-05
+
+Images in the text, colored pills that tidy up the Markdown, footnotes, an outline, and a much stronger export.
 
 - Links open in the browser with Ctrl+click, or from the context menu while the caret is in a link. Hovering over a link shows its address. Bare web addresses and addresses in angle brackets are styled as links too, and underscores in them no longer turn into italics.
 - Footnotes: Ctrl+Alt+F or the new button in the formatting bar inserts a note right in the text (`^[note]`). Notes are set smaller and dimmed in the editor, PDF and Word exports put them at the bottom of their page; web pages collect them at the end. Classic `[^1]` footnotes are styled too.
 - Outline: a new button in the header bar (or Ctrl+Shift+O) lists the headings of the sheet, indented by level, with the current one selected. Choosing one jumps there. In a group, it starts with the group's name and shows each subgroup, such as the parts of a novel, with the headings of its sheets below.
-- PDFs are now laid out by WeasyPrint instead of being printed by WebKit. They look as before, with text at exactly the size the template sets (WebKit printed it slightly larger), and real pages open the way to footnotes on their page and, later, page numbers and a table of contents.
+- PDFs are now laid out by WeasyPrint instead of being printed by WebKit. They look as before, with text at exactly the size the template sets (WebKit printed it slightly larger), and real pages make footnotes, page numbers and a table of contents possible.
 - Export options for a table of contents and a cover page. The table of contents lists two levels of headings as links, with page numbers in PDFs; in Word files the page numbers appear once the table is updated. The cover page puts title, subtitle, author and date on a page of their own.
 - Exporting a group with subgroups treats them as parts: each subgroup's name becomes a heading above its sheets, whose headings move one level down. Parts can run on, start on a new page, or get a title page of their own.
 - The built-in template numbers its pages at the bottom centre, in PDF and Word. The cover stays without a number, and in PDFs so do the title pages of parts.
 - Template assistant: under Preferences → Templates → New…, choose a starting point (plain text, manuscript, thesis, novel, report), adjust paper, margins, fonts and spacing, and the template is ready for PDF, Word and HTML. Templates made this way can be changed later.
 - Images: the new button in the formatting bar (or Ctrl+Alt+I), dragging a file into the text, or pasting a screenshot puts an image into the sheet. The file becomes one of its attachments, and the image is shown in the editor. Its Markdown folds into a small pill and unfolds when the caret is on its line. A double-click on the image, its edit button, or the context menu sets its size, alignment, caption and alternative text. PDF, Word and web page exports follow these settings; a web page contains its images, so it stays a single file. Renaming or duplicating a sheet keeps its images linked, and a group's export finds the images of all its sheets.
 - Pills bring order to the editor: images (yellow), links (blue) and footnotes (green) fold their Markdown into a small pill with an icon that shows their text, and unfold while the caret touches them. References like `[^1]` show what they stand for on hover. In focus mode, all pills stay gray.
+- Focus mode centers the current line as soon as it starts, not only after the first key press.
 - The keyword filter uses the icon theme's own tag icon where there is one, and an outline icon of its own otherwise, so it matches the other icons.
 
 ## 1.1.2 – 2026-11-01
