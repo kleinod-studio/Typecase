@@ -83,7 +83,8 @@ Ideas for after 1.0:
 - [x] Pills in the editor: images, links and footnotes fold their Markdown into a small colored pill with an icon, and unfold while the caret touches them
 - [ ] Markdown tables, styled in the editor
 - [ ] Math formulas (LaTeX notation), shown in the editor and in the export
-- [ ] Export as EPUB for e-readers
+- [ ] Export as EPUB for e-readers, optionally straight into the library of [Endpaper](https://github.com/kleinod-studio/Endpaper)
+- [ ] Import from PDF: the text and pictures of a PDF with a text layer become a sheet with attachments, guessing paragraphs, headings and footnotes; tidy it up, then export it again, for example as EPUB for Endpaper. PDFs with copy protection stay out
 - [ ] Tagged PDFs: exported PDFs carry their structure and the alternative text of images, so that screen readers can read them well
 - [ ] Optional grammar checking with LanguageTool, running locally on your computer; installed only if you ask for it in the preferences, as a separate third-party component
 - [ ] Publish texts to WordPress and other platforms (opt-in: only this feature would connect to the internet, and only when you publish)
