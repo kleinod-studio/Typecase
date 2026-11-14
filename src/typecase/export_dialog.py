@@ -167,6 +167,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         defaults = {**defaults, "title": sheet_path.stem}
     if fmt == "docx" and export.heading_one_breaks_page(template):
         text = export.drop_word_breaks_before_parts(text)
+    text = images.without_missing_descriptions(text, sheet_path.parent)  # else shown twice for a missing image
     if fmt == "html":
         text = images.embedded(text, sheet_path.parent)  # one file, with its images inside
     work = Path(tempfile.mkdtemp(prefix="typecase-export-"))

@@ -69,6 +69,22 @@ class AddressTests(unittest.TestCase):
             text = images.embedded("![x](a.png){width=50%} ![](missing.png)", Path(folder))
         self.assertEqual(text, "![x](data:image/png;base64,cG5n){width=50%} ![](missing.png)")
 
+    def test_missing_image_keeps_only_its_caption(self):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "here.png").write_bytes(b"png")
+            text = (
+                "Intro.\n\n![Tower](gone.png)\n\n![Lamp](gone.png){.center alt=\"A lamp\"}\n\n"
+                "![Here](here.png)\n\nA ![icon](gone.png) in a line.\n\n![Web](https://example.org/a.png)\n\n"
+                "```\n![Code](gone.png)\n```"
+            )
+            lines = images.without_missing_descriptions(text, Path(folder)).split("\n")
+            self.assertEqual(lines[2], '![Tower](gone.png){alt=""}')
+            self.assertEqual(lines[4], '![Lamp](gone.png){.center alt=""}')
+            self.assertEqual(lines[6], "![Here](here.png)")
+            self.assertEqual(lines[8], "A ![icon](gone.png) in a line.")
+            self.assertEqual(lines[10], "![Web](https://example.org/a.png)")
+            self.assertEqual(lines[13], "![Code](gone.png)")
+
     def test_uses_file(self):
         self.assertTrue(images.uses_file("![](.attachments/S/a.png)", "a.png"))
         self.assertFalse(images.uses_file("![](.attachments/S/a.png)", "b.png"))

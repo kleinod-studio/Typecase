@@ -187,6 +187,35 @@ def embedded(text: str, folder: Path) -> str:
     return _map_addresses(text, as_data)
 
 
+def without_missing_descriptions(text: str, folder: Path) -> str:
+    """For the export: an image of its own whose file is missing gets an empty description.
+    Pandoc and WeasyPrint put the description where the image would be, so it stood right above
+    the caption, and twice if there was no separate description. Now only the caption is left.
+    Images within a line of text keep their description, which is then the only trace of them."""
+    if "![" not in text:
+        return text
+    lines = text.split("\n")
+    in_code_block = False
+    for number, line in enumerate(lines):
+        if _FENCE.match(line):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block or "![" not in line:
+            continue
+        found = in_line(line)
+        own_paragraph = (number == 0 or not lines[number - 1].strip()) and (number == len(lines) - 1 or not lines[number + 1].strip())
+        if len(found) != 1 or not own_paragraph or line.strip() != line[found[0].start : found[0].end].strip():
+            continue
+        image = found[0]
+        file = resolve(image.address, folder)
+        if file is None or file.is_file():
+            continue
+        image.alt = ""
+        image.others.append('alt=""')
+        lines[number] = line[: image.start] + to_markdown(image) + line[image.end :]
+    return "\n".join(lines)
+
+
 def only_images(line: str) -> bool:
     """Whether a line holds nothing but images."""
     return "![" in line and not IMAGE.sub("", line).strip()
