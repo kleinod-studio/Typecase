@@ -1,7 +1,7 @@
 from gettext import gettext as _
 from gettext import ngettext
 
-from gi.repository import Adw, Gdk, GObject, Gtk, GtkSource
+from gi.repository import Adw, Gdk, GObject, Gtk, GtkSource, Pango
 
 
 class FindBar(Gtk.SearchBar):
@@ -28,7 +28,8 @@ class FindBar(Gtk.SearchBar):
         shift_enter.connect("key-pressed", self._on_entry_key)
         self.entry.add_controller(shift_enter)
 
-        self.label = Gtk.Label(css_classes=["dim-label", "numeric"], width_chars=12, xalign=1)
+        # At least 10 characters wide; longer texts like "No matches" get their room, but shorten on narrow screens.
+        self.label = Gtk.Label(css_classes=["dim-label", "numeric"], width_chars=10, xalign=1, ellipsize=Pango.EllipsizeMode.END)
         previous = Gtk.Button(icon_name="go-up-symbolic", tooltip_text=_("Previous Match"))
         previous.connect("clicked", lambda _b: self.find_previous())
         following = Gtk.Button(icon_name="go-down-symbolic", tooltip_text=_("Next Match"))

@@ -162,9 +162,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         # Narrow windows (GNOME pattern): sidebars overlay the text instead of taking up space.
         self.set_size_request(360, 360)
-        for condition, split in [("max-width: 1000sp", self.inspector_split), ("max-width: 640sp", self.split)]:
+        # Only one breakpoint applies at a time, so the narrower one collapses both sidebars.
+        for condition, splits in [
+            ("max-width: 1000sp", [self.inspector_split]),
+            ("max-width: 640sp", [self.inspector_split, self.split]),
+        ]:
             breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(condition))
-            breakpoint.add_setter(split, "collapsed", True)
+            for split in splits:
+                breakpoint.add_setter(split, "collapsed", True)
             self.add_breakpoint(breakpoint)
 
     def _build_sidebar(self):

@@ -7,6 +7,7 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 - Software centers can show links for helping with translations and for contributing.
 - The description in software centers and the entry in the app launcher are translated now, so Typecase appears in German there too and can be found by German search terms. Release notes stay in English.
 - If an image's file is missing, PDF, Word and web page exports show its caption once, instead of its description and then the caption again.
+- In a narrow window, an open properties pane now overlays the text like the library does, instead of making the window wider than the screen. The find bar fits into a window 360 pixels wide, as on a phone.
 - Two deprecated GTK functions were replaced, for the context menu in the library and for images in the editor. Nothing changes in use.
 
 ## 1.2.0 – 2026-11-05
