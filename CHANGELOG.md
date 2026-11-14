@@ -2,6 +2,11 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- Software centers can show links for helping with translations and for contributing.
+- Two deprecated GTK functions were replaced, for the context menu in the library and for images in the editor. Nothing changes in use.
+
 ## 1.2.0 – 2026-11-05
 
 Images in the text, colored pills that tidy up the Markdown, footnotes, an outline, and a much stronger export.

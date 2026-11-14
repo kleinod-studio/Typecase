@@ -323,12 +323,15 @@ def steps(win, app):
     yield from wait_until(lambda: previews.lines and previews.pictures_loaded() and previews.lines[0].pictures[0].texture is not None)
     picture = previews.lines[0].pictures[0] if previews.lines else None
     check(picture is not None and picture.texture is not None, "The image is loaded for the editor")
-    check(picture is not None and picture.size == (400, 200), "The image is shown in its natural size if it fits")
+    available = previews._available()  # tiling window managers may give the test window little room
+    fitting = (400, 200) if available >= 400 else (available, round(200 * available / 400))
+    check(picture is not None and picture.size == fitting, f"The image is shown in its natural size if it fits, else scaled down ({picture and picture.size}, {available} px)")
     file_before = text(ed)
     image_line = ed.buffer.get_iter_at_line(2)[1]
     below = ed.buffer.get_iter_at_line(3)[1]
-    yield from wait_until(lambda: ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + 200)
-    check(ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + 200, "The lines below move down and make room")
+    room = picture.size[1] if picture else 200
+    yield from wait_until(lambda: ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + room)
+    check(ed.view.get_iter_location(below).y > ed.view.get_iter_location(image_line).y + room, "The lines below move down and make room")
     check(text(ed) == file_before, "Showing the image does not change the text")
     rects = list(previews._rectangles())
     wx, wy = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, int(rects[0][2]) + 20, int(rects[0][3]) + 20)

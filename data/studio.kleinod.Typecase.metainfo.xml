@@ -31,6 +31,8 @@
   <url type="homepage">https://kleinod.studio/typecase</url>
   <url type="bugtracker">https://github.com/kleinod-studio/Typecase/issues</url>
   <url type="vcs-browser">https://github.com/kleinod-studio/Typecase</url>
+  <url type="translate">https://github.com/kleinod-studio/Typecase/blob/main/CONTRIBUTING.md#translating-typecase</url>
+  <url type="contribute">https://github.com/kleinod-studio/Typecase/blob/main/CONTRIBUTING.md</url>
   <branding>
     <color type="primary" scheme_preference="light">#ECEAF7</color>
     <color type="primary" scheme_preference="dark">#2A2550</color>

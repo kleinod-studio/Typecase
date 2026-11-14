@@ -4,7 +4,7 @@ from gettext import gettext as _
 from gettext import ngettext
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gtk, Pango
 
 from . import config
 from . import export
@@ -2003,10 +2003,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self.selection.set_selected(position)
         if self.selection.get_selected() != position:
             return  # selection was refused (save error), no menu for the wrong sheet.
-        point = gesture.get_widget().translate_coordinates(self.list_view, x, y)
-        if point is None:
+        found, point = gesture.get_widget().compute_point(self.list_view, Graphene.Point().init(x, y))
+        if not found:
             return
-        list_x, list_y = point
+        list_x, list_y = point.x, point.y
         rect = Gdk.Rectangle()
         rect.x, rect.y, rect.width, rect.height = int(list_x), int(list_y), 1, 1
         self.row_menu.set_pointing_to(rect)

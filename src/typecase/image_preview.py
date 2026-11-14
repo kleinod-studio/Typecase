@@ -7,6 +7,7 @@ from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Graphene, Gsk, Gtk, Pango
 from . import images
 from .text_pills import ICON_SIZE as PILL_ICON, set_tag_runs, snapshot_icon, tint
 
+
 UPDATE_DELAY_MS = 150
 MAX_HEIGHT = 560
 MAX_DECODED_WIDTH = 1600  # large photos are loaded smaller, so writing stays fluid
@@ -14,6 +15,13 @@ PLACEHOLDER_HEIGHT = 44
 GAP = 12  # between text and image, and between images on one line
 PILL_PADDING = 8
 _CAPTION_MARKUP = re.compile(r"[*_`~\\]")
+
+
+def _texture(pixbuf: GdkPixbuf.Pixbuf) -> Gdk.Texture:
+    """The pixels of a decoded image as a texture (Gdk.Texture.new_for_pixbuf is deprecated)."""
+    memory_format = Gdk.MemoryFormat.R8G8B8A8 if pixbuf.get_has_alpha() else Gdk.MemoryFormat.R8G8B8
+    return Gdk.MemoryTexture.new(pixbuf.get_width(), pixbuf.get_height(), memory_format,
+                                 pixbuf.read_pixel_bytes(), pixbuf.get_rowstride())
 
 
 class _Picture:
@@ -206,7 +214,7 @@ class ImagePreviews:
         # Photos often store their rotation separately; it can swap width and height.
         turned = pixbuf.apply_embedded_orientation()
         pixbuf = turned if turned is not None else pixbuf
-        self._loaded(key, Gdk.Texture.new_for_pixbuf(pixbuf))
+        self._loaded(key, _texture(pixbuf))
 
     def _loaded(self, key: tuple, texture) -> None:
         self._loading.discard(key)
