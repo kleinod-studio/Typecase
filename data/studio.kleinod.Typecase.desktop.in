@@ -6,5 +6,6 @@ Icon=studio.kleinod.Typecase
 Terminal=false
 Type=Application
 Categories=GTK;GNOME;Utility;TextEditor;
+# Translators: Search terms for the app launcher, separated by semicolons. Keep the English ones and add your own; end with a semicolon.
 Keywords=markdown;writing;text;editor;
 StartupNotify=true

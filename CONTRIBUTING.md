@@ -6,7 +6,7 @@ The most useful contribution right now is a **translation** into your language. 
 
 ## Translating Typecase
 
-Typecase is available in English and German. Its texts live in the [`po/`](po/) folder as [gettext](https://www.gnu.org/software/gettext/) files, with one `.po` file per language. English is the source language, and `po/typecase.pot` is the template for new translations.
+Typecase is available in English and German. Its texts live in the [`po/`](po/) folder as [gettext](https://www.gnu.org/software/gettext/) files, with one `.po` file per language. English is the source language, and `po/typecase.pot` is the template for new translations. Besides the interface, the files also hold the app's description in software centers and its entry in the app launcher, so these appear in your language too.
 
 ### Start a new language
 
@@ -92,7 +92,7 @@ python3 tests/gui_smoke.py
 To update the translation template after changing texts:
 
 ```bash
-xgettext --from-code=UTF-8 -L Python -k --keyword=_ --keyword=ngettext:1,2 --add-comments=Translators --package-name=typecase -f po/POTFILES.in -o po/typecase.pot
+xgettext --from-code=UTF-8 -k --keyword=_ --keyword=ngettext:1,2 --keyword=Name --keyword=GenericName --keyword=Comment --keyword=Keywords --add-comments=Translators --package-name=typecase -f po/POTFILES.in -o po/typecase.pot
 ```
 
 ## License

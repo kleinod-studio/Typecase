@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-03 17:10+0100\n"
+"POT-Creation-Date: 2026-11-14 16:14+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,136 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: data/studio.kleinod.Typecase.desktop.in:2
+#: data/studio.kleinod.Typecase.metainfo.xml.in:7
+msgid "Typecase"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.desktop.in:3
+#: data/studio.kleinod.Typecase.metainfo.xml.in:8 src/typecase/main.py:111
+msgid "Calm Markdown writing"
+msgstr ""
+
+#. Translators: Search terms for the app launcher, separated by semicolons. Keep the English ones and add your own; end with a semicolon.
+#: data/studio.kleinod.Typecase.desktop.in:10
+msgid "markdown;writing;text;editor;"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:10
+msgid "kleinod.studio"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:13
+msgid ""
+"Typecase is a quiet writing app for Markdown. Your texts live in a library "
+"of groups and sheets, stored as plain .md files in a folder of your choice — "
+"no database, no account, no network access."
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:15
+msgid ""
+"Markdown styled as you type, with a formatting bar for those who don't want "
+"to learn the syntax"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:16
+msgid "Focus mode with typewriter scrolling and dimmed surroundings"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:17
+msgid ""
+"Group view: read and edit all sheets of a chapter or book as one continuous "
+"text"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:18
+msgid ""
+"Card view for plotting: the notes of all sheets as cards, reordered by "
+"dragging"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:19
+msgid ""
+"Images in the text, shown in the editor, with size, alignment, caption and "
+"alternative text"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:20
+msgid ""
+"Colored pills that fold the Markdown of images, links and footnotes while "
+"you write"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:21
+msgid ""
+"Footnotes written right in the text, and an outline of the headings to jump "
+"to"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:22
+msgid ""
+"Writing goals with progress rings, keywords, notes and attachments per sheet"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:23
+msgid "Spell checking while you type, offline and in each sheet's language"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:24
+msgid "Editor themes in light and dark, and your own GtkSourceView themes"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:25
+msgid ""
+"Export single sheets or whole groups to PDF, Word and HTML, with table of "
+"contents, cover page and parts"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:26
+msgid "Export templates from a built-in assistant, or imported as files"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:28
+msgid "Typecase works completely offline and collects no data."
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:51
+#: data/studio.kleinod.Typecase.metainfo.xml.in:79
+msgid ""
+"A sheet with an image and colored pills for links and footnotes, next to the "
+"library"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:55
+#: data/studio.kleinod.Typecase.metainfo.xml.in:83
+msgid "Card view: the notes of all chapters as cards"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:59
+#: data/studio.kleinod.Typecase.metainfo.xml.in:87
+msgid "Size, alignment, caption and alternative text of an image"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:63
+#: data/studio.kleinod.Typecase.metainfo.xml.in:91
+msgid "The template assistant for export templates"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:67
+#: data/studio.kleinod.Typecase.metainfo.xml.in:95
+msgid "Sheet properties with the writing goal and its progress"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:71
+#: data/studio.kleinod.Typecase.metainfo.xml.in:99
+msgid "Focus mode with typewriter scrolling and the Paper theme"
+msgstr ""
+
+#: data/studio.kleinod.Typecase.metainfo.xml.in:75
+#: data/studio.kleinod.Typecase.metainfo.xml.in:103
+msgid "Preferences for font, line width and editor theme"
+msgstr ""
 
 #: src/typecase/card_view.py:52 src/typecase/group_view.py:159
 msgid "Open this sheet on its own"
@@ -55,7 +185,7 @@ msgid ""
 "“%(copy)s”."
 msgstr ""
 
-#: src/typecase/cards.py:66 src/typecase/sheet_editor.py:937
+#: src/typecase/cards.py:66 src/typecase/sheet_editor.py:986
 #, python-format
 msgid "%(name)s (conflict %(date)s)"
 msgstr ""
@@ -275,7 +405,7 @@ msgid "Sheets you add to the group appear here one after another."
 msgstr ""
 
 #. Translators: file name of an image pasted from the clipboard, without extension
-#: src/typecase/image_dialog.py:15 src/typecase/sheet_editor.py:731
+#: src/typecase/image_dialog.py:15 src/typecase/sheet_editor.py:780
 msgid "Image"
 msgstr ""
 
@@ -355,12 +485,17 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: src/typecase/image_preview.py:112
+#: src/typecase/image_preview.py:74 src/typecase/image_preview.py:79
+#: src/typecase/sheet_editor.py:463
+msgid "Edit Image…"
+msgstr ""
+
+#: src/typecase/image_preview.py:164
 #, python-format
 msgid "Image not found: %s"
 msgstr ""
 
-#: src/typecase/image_preview.py:116
+#: src/typecase/image_preview.py:168
 #, python-format
 msgid "No preview for this image: %s"
 msgstr ""
@@ -524,8 +659,8 @@ msgstr ""
 msgid "Only files can be attached."
 msgstr ""
 
-#: src/typecase/inspector.py:339 src/typecase/sheet_editor.py:652
-#: src/typecase/sheet_editor.py:737
+#: src/typecase/inspector.py:339 src/typecase/sheet_editor.py:699
+#: src/typecase/sheet_editor.py:786
 #, python-format
 msgid "Could not attach “%(name)s”: %(reason)s"
 msgstr ""
@@ -543,10 +678,6 @@ msgstr ""
 #: src/typecase/inspector.py:368
 #, python-format
 msgid "“%s” was moved to the trash."
-msgstr ""
-
-#: src/typecase/main.py:111
-msgid "Calm Markdown writing"
 msgstr ""
 
 #. Translators: put your name here (one per line) so it appears in the about dialog.
@@ -917,53 +1048,49 @@ msgid ""
 "starting point."
 msgstr ""
 
-#: src/typecase/sheet_editor.py:187
+#: src/typecase/sheet_editor.py:207
 msgid "Double-click to edit the image"
 msgstr ""
 
 #. Translators: tooltip over a link in the editor; {address} is the web address
-#: src/typecase/sheet_editor.py:191
+#: src/typecase/sheet_editor.py:215
 #, python-brace-format
 msgid ""
 "{address}\n"
 "Ctrl+click to open"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:392
+#: src/typecase/sheet_editor.py:429
 msgid "No Sheet Open"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:393
+#: src/typecase/sheet_editor.py:430
 msgid "Select a sheet in the library to start writing."
 msgstr ""
 
-#: src/typecase/sheet_editor.py:417
+#: src/typecase/sheet_editor.py:460
 msgid "Open Link"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:420
-msgid "Edit Image…"
-msgstr ""
-
-#: src/typecase/sheet_editor.py:605 src/typecase/window.py:314
+#: src/typecase/sheet_editor.py:652 src/typecase/window.py:314
 #: src/typecase/template_dialog.py:44
 msgid "Text"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:625
+#: src/typecase/sheet_editor.py:672
 msgid "Images"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:630 src/typecase/window.py:444
+#: src/typecase/sheet_editor.py:677 src/typecase/window.py:444
 #: src/typecase/window.py:1496
 msgid "Insert Image"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:682
+#: src/typecase/sheet_editor.py:731
 msgid "Only images can be inserted into the text."
 msgstr ""
 
-#: src/typecase/sheet_editor.py:734 src/typecase/sheet_editor.py:947
+#: src/typecase/sheet_editor.py:783 src/typecase/sheet_editor.py:996
 msgid "could not save"
 msgstr ""
 

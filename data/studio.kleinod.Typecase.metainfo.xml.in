@@ -103,10 +103,11 @@
       <caption>Preferences for font, line width and editor theme</caption>
     </screenshot>
   </screenshots>
+  <!-- Release notes stay in English (translate="no"), so that a release brings no extra work for translators. -->
   <releases>
     <release version="1.2.0" date="2026-11-05">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.2.0</url>
-      <description>
+      <description translate="no">
         <p>Images, pills, footnotes, an outline and a stronger export.</p>
         <ul>
           <li>Images: insert them by button, drag and drop or paste; they are shown in the editor and have a size, an alignment, a caption and an alternative text</li>
@@ -120,7 +121,7 @@
     </release>
     <release version="1.1.2" date="2026-11-01">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.2</url>
-      <description>
+      <description translate="no">
         <ul>
           <li>The keyword filter button shows its icon on every system, not only with icon themes that happen to include a tag icon</li>
         </ul>
@@ -128,7 +129,7 @@
     </release>
     <release version="1.1.1" date="2026-10-31">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.1</url>
-      <description>
+      <description translate="no">
         <ul>
           <li>Wrapped lines of a list item now line up with its text instead of starting under the bullet or number</li>
         </ul>
@@ -136,7 +137,7 @@
     </release>
     <release version="1.1.0" date="2026-10-30">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.1.0</url>
-      <description>
+      <description translate="no">
         <p>A first feature update.</p>
         <ul>
           <li>Card view: a group shows the notes of its sheets as cards, edited in place; dragging a card or Alt+arrow keys change the order</li>
@@ -146,7 +147,7 @@
     </release>
     <release version="1.0.0" date="2026-10-27">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.0.0</url>
-      <description>
+      <description translate="no">
         <p>The first stable version.</p>
         <ul>
           <li>New screenshots and a fuller description in software centers</li>
@@ -155,7 +156,7 @@
     </release>
     <release version="0.10.0" date="2026-10-25">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.10.0</url>
-      <description>
+      <description translate="no">
         <p>Writing a longer work, and making the app your own.</p>
         <ul>
           <li>Group view: read and edit all sheets of a group as one continuous text</li>
@@ -169,7 +170,7 @@
     </release>
     <release version="0.9.0" date="2026-10-25">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v0.9.0</url>
-      <description>
+      <description translate="no">
         <p>First public release.</p>
         <ul>
           <li>Library of plain Markdown files in a folder of your choice, with groups, drag and drop, search and keywords</li>
