@@ -27,7 +27,7 @@ body:
     attributes:
       label: Typecase version
       description: You will find it under Menu → About Typecase.
-      placeholder: "1.2.0"
+      placeholder: "1.2.1"
     validations:
       required: true
   - type: dropdown

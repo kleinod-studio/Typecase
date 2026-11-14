@@ -2,7 +2,9 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 1.2.1 – 2026-11-14
+
+Bug fixes for narrow windows and exports with missing images, translated software center texts, and a check against the current GNOME platform.
 
 - Software centers can show links for helping with translations and for contributing.
 - The description in software centers and the entry in the app launcher are translated now, so Typecase appears in German there too and can be found by German search terms. Release notes stay in English.

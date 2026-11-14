@@ -105,6 +105,19 @@
   </screenshots>
   <!-- Release notes stay in English (translate="no"), so that a release brings no extra work for translators. -->
   <releases>
+    <release version="1.2.1" date="2026-11-14">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.2.1</url>
+      <description translate="no">
+        <p>Bug fixes, and checked against current GNOME standards.</p>
+        <ul>
+          <li>In a narrow window, an open properties pane overlays the text instead of making the window wider than the screen</li>
+          <li>If an image's file is missing, exports show its caption only once</li>
+          <li>The description in software centers and the app launcher entry are translated</li>
+          <li>Software centers can show links for translating and contributing</li>
+          <li>Deprecated GTK functions replaced</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-11-05">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.2.0</url>
       <description translate="no">

@@ -1308,6 +1308,8 @@ def steps(win, app):
 
     saved = []
     assistant = TemplateDialog(saved.append, saved.append)
+    assistant.present(win)  # as in the app; closing a dialog that was never shown is an error in libadwaita
+    yield 0.2
     check(not assistant.save_button.get_sensitive(), "A new template needs a name")
     assistant.name_row.set_text("Mein Roman")
     check(assistant.save_button.get_sensitive(), "With a name, it can be created")
@@ -1325,6 +1327,8 @@ def steps(win, app):
         yield from wait_until(lambda: len(results) == (3 if pdf_available() else 2), timeout=30)
         check(all(error is None for error in results.values()), f"The new template exports every format: {results}")
     assistant = TemplateDialog(saved.append, saved.append, roman)
+    assistant.present(win)
+    yield 0.2
     check(assistant.name_row.get_text() == "Mein Roman" and assistant.size_row.get_value() == 11 and not assistant.preset_row.get_visible(), "Editing shows the template's settings")
     assistant.size_row.set_value(13)
     assistant._save()
