@@ -65,6 +65,16 @@ If you installed the GNOME runtime system-wide instead, run `sudo flatpak config
 
 Outside the Flatpak, install Hunspell dictionaries from your distribution, for example `hunspell-de` and `hunspell-en_us`.
 
+### Icon in Omarchy's theme colors
+
+On [Omarchy](https://omarchy.org), Typecase's icon can follow the current theme like Omarchy's own app icons, in the Papercraft and Arcade icon sets. In a copy of this repository, run:
+
+```bash
+tools/omarchy-icon.sh install
+```
+
+The script puts two icon templates into `~/.config/omarchy/icons/`, and from then on Omarchy redraws the icon on every theme switch. The app itself doesn't change, and its About dialog keeps the normal icon. To go back to the normal icon everywhere, run `tools/omarchy-icon.sh remove`. Without Omarchy, the script changes nothing.
+
 ## Install from source (Flatpak)
 
 You need `flatpak-builder` and the GNOME 51 runtime:
