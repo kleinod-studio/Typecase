@@ -91,6 +91,7 @@ class GroupView(Gtk.ScrolledWindow):
 
     def close(self) -> None:
         """Removes all sections without saving (call flush() first)."""
+        self.group = None  # first, so the emptied sections don't report their counts as the group's
         for editor in self.editors:
             editor.close_sheet()
         child = self._box.get_first_child()
@@ -103,7 +104,6 @@ class GroupView(Gtk.ScrolledWindow):
         self._active = None
         self.cards.close()
         self.showing_cards = False
-        self.group = None
         self._emit_counts()
 
     def flush(self) -> bool:

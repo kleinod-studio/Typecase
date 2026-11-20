@@ -1210,9 +1210,26 @@ def steps(win, app):
     check(gv.group == book and all(p.parent == book for p in gv.paths()), "Renaming the shown group keeps the group view open")
     check(body(book / "Chapter 2.md").endswith("Ungesichert Weiter"), "Renaming the group saves unsaved text first")
 
+    toasts = []
+    show_toast = win._toast
+    win._toast = lambda message: (toasts.append(message), show_toast(message))
+    second = gv.editor_for(book / "Chapter 2.md")
+    second.buffer.insert(second.buffer.get_end_iter(), " Mehr")
+    win._set_look(LibNode("Chapter 2", book / "Chapter 2.md"), looks.Look("flag", "red"))
+    yield 0.6
+    second = gv.editor_for(book / "Chapter 2.md")
+    check(second is not None and second.flush() and "icon: flag\ncolor: red\n" in (book / "Chapter 2.md").read_text(encoding="utf-8"), "A sheet in the group view takes its icon and color through its section")
+    check(body(book / "Chapter 2.md").endswith("Weiter Mehr") and not toasts, "Its unsaved text stays, and nothing reports an outside change")
+    win._toast = show_toast
+
     gv.editor_for(book / "Epilogue.md").buffer.insert_at_cursor("Zuletzt ")
     win._open_sheet(book / "Prologue.md")
     check(ed.path == book / "Prologue.md" and gv.group is None and win.content_stack.get_visible_child_name() == "sheet", "The header of a section opens that sheet on its own")
+    yield 0.2
+    from typecase.textstats import count_words
+
+    words = count_words(body(book / "Prologue.md"))
+    check(words > 0 and win.content_title.get_subtitle().startswith(f"{words} word"), "After the group view, the counts belong to the sheet")
     check(body(book / "Epilogue.md") == "Zuletzt Ende.", "Leaving the group view saves every sheet")
     select(book)
     check(gv.group == book and ed.path is None, "Back to the group view")

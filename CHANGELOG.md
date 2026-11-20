@@ -2,6 +2,10 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- After leaving the group view for a single sheet, the header showed 0 words; it shows the sheet's counts again.
+
 ## 1.3.0 – 2026-11-20
 
 Icons and colors for sheets and groups in the library, a notice for missing images after an export, and an app icon that follows the Omarchy theme.

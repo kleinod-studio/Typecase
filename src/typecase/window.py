@@ -1687,9 +1687,16 @@ class TypecaseWindow(Adw.ApplicationWindow):
     def _look_of(self, node) -> looks.Look:
         if node.is_group:
             return looks.of_group(node.path)
-        if node.path == self.editor.path:  # the open sheet shows its look before it is saved
-            return looks.from_metadata(self.editor.metadata())
+        editor = self._editor_for(node.path)
+        if editor is not None:  # an open sheet shows its look before it is saved
+            return looks.from_metadata(editor.metadata())
         return self._looks.of_sheet(node.path)
+
+    def _editor_for(self, path: Path):
+        """The editor showing this sheet, on its own or as a section of the group view."""
+        if path == self.editor.path:
+            return self.editor
+        return self.group_view.editor_for(path)
 
     def _on_look(self):
         node = self._selected_node()
@@ -1702,8 +1709,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
         try:
             if node.is_group:
                 looks.set_for_group(node.path, look)
-            elif node.path == self.editor.path:
-                self.editor.set_metadata(looks.metadata_changes(look))  # saved like typed input
+            elif (editor := self._editor_for(node.path)) is not None:
+                editor.set_metadata(looks.metadata_changes(look))  # saved like typed input
             else:
                 if not self._flush():  # the group view may show this sheet with unsaved input
                     return
