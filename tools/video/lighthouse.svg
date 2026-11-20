@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560">
+  <!-- The tower on the evening of the storm: drawn for the Typecase demo library. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3550"/>
+      <stop offset="0.45" stop-color="#5d6a8a"/>
+      <stop offset="0.75" stop-color="#d9a77c"/>
+      <stop offset="1" stop-color="#f2c590"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3d5478"/>
+      <stop offset="1" stop-color="#1e2a42"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff6d0" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff6d0" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="beam-right" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#fff6d0" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff6d0" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="560" fill="url(#sky)"/>
+  <!-- clouds -->
+  <g fill="#27304a" opacity="0.55">
+    <ellipse cx="240" cy="70" rx="300" ry="28"/>
+    <ellipse cx="900" cy="45" rx="330" ry="34"/>
+    <ellipse cx="560" cy="120" rx="240" ry="16"/>
+    <ellipse cx="1080" cy="150" rx="170" ry="14"/>
+  </g>
+  <!-- light beams -->
+  <polygon points="40,130 40,215 806,140" fill="url(#beam)"/>
+  <polygon points="1200,95 1200,170 806,140" fill="url(#beam-right)"/>
+  <!-- sea -->
+  <rect y="400" width="1200" height="160" fill="url(#sea)"/>
+  <g fill="none" stroke="#9fb3d1" stroke-width="2" stroke-linecap="round" opacity="0.6">
+    <path d="M60 455 q20 -8 40 0 t40 0"/><path d="M300 470 q20 -8 40 0 t40 0"/>
+    <path d="M520 445 q20 -8 40 0 t40 0"/><path d="M980 460 q20 -8 40 0 t40 0"/>
+    <path d="M150 510 q20 -8 40 0 t40 0"/><path d="M700 515 q20 -8 40 0 t40 0"/>
+    <path d="M1060 520 q20 -8 40 0 t40 0"/><path d="M420 530 q20 -8 40 0 t40 0"/>
+  </g>
+  <!-- island -->
+  <path d="M590 425 Q640 380 720 372 L900 372 Q960 380 1030 425 Z" fill="#1c2233"/>
+  <!-- tower -->
+  <g>
+    <polygon points="776,380 836,380 826,175 786,175" fill="#f4f1ea"/>
+    <polygon points="783,330 829,330 827,295 785,295" fill="#c8413a"/>
+    <polygon points="788,255 824,255 822,220 790,220" fill="#c8413a"/>
+    <rect x="800" y="350" width="12" height="30" rx="6" fill="#2b3550"/>
+    <circle cx="806" cy="270" r="4" fill="#2b3550"/>
+    <rect x="778" y="165" width="56" height="12" fill="#2b2f3a"/>
+    <rect x="788" y="125" width="36" height="40" fill="#ffe7a1"/>
+    <g stroke="#2b2f3a" stroke-width="3"><line x1="797" y1="125" x2="797" y2="165"/><line x1="806" y1="125" x2="806" y2="165"/><line x1="815" y1="125" x2="815" y2="165"/></g>
+    <polygon points="782,127 830,127 806,105" fill="#2b2f3a"/>
+    <line x1="806" y1="105" x2="806" y2="94" stroke="#2b2f3a" stroke-width="3"/>
+  </g>
+  <!-- boat -->
+  <g>
+    <path d="M220 400 L300 400 L288 414 L232 414 Z" fill="#1c2233"/>
+    <polygon points="258,330 258,396 226,396" fill="#f4f1ea"/>
+    <polygon points="264,340 264,396 292,396" fill="#e2ddd2"/>
+    <line x1="261" y1="322" x2="261" y2="400" stroke="#1c2233" stroke-width="3"/>
+  </g>
+</svg>

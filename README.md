@@ -128,6 +128,7 @@ Project layout:
 - `data/`: desktop file, AppStream metainfo, icon
 - `po/`: translations (gettext, English source strings)
 - `skills/typecase-template/`: a Claude skill that builds export templates from a description; `python3 skills/package.py skills/typecase-template` packs it into `dist/typecase-template.skill`
+- `tools/video/`: explainer videos that play a script in the real app, record it and add an English narration (Kokoro, a speech synthesizer that runs locally) with English and German subtitles; `python3 tools/video/icons-and-colors.py` writes `dist/videos/icons-and-colors/`
 - `docs/`: the template guide (`templates.md`; German: `vorlagen.md`) and the theme guide (`themes.md`)
 
 ## Translations
