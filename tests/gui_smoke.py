@@ -423,6 +423,45 @@ def steps(win, app):
     check(inner.exists() and ed.path == inner, "Open sheet is renamed, editor follows")
     check(body(inner) == "Kapitel", "Unsaved input survives renaming")
 
+    # Icon and color of sheets and groups
+    from typecase import looks
+    from typecase.look_dialog import LookDialog
+
+    def row_icon(path):
+        child = win.list_view.get_first_child()
+        while child is not None:
+            expander = child.get_first_child()
+            row = expander.get_list_row() if isinstance(expander, Gtk.TreeExpander) else None
+            if row is not None and row.get_item().node.path == path:
+                return expander.get_child().get_first_child()
+            child = child.get_next_sibling()
+        return None
+
+    ed.buffer.insert_at_cursor(" eins")
+    win._set_look(win._selected_node(), looks.Look("star", "orange"))
+    icon = row_icon(inner)
+    check(icon is not None and icon.get_icon_name() == "starred-symbolic" and icon.has_css_class("look-orange"), "The open sheet shows its new icon and color")
+    check(ed.flush() and "icon: star\ncolor: orange\n" in inner.read_text(encoding="utf-8") and body(inner) == "Kapitel eins", "Icon and color go into the front matter, the unsaved text stays")
+    group_node = win.tree_model.get_item(win._index_of(LIB / "Romane")).get_item().node
+    win._set_look(group_node, looks.Look("book", "purple"))
+    check(looks.of_group(LIB / "Romane") == looks.Look("book", "purple"), "A group keeps its icon and color in its folder file")
+    icon = row_icon(LIB / "Romane")
+    check(icon is not None and icon.get_icon_name() == "typecase-book-symbolic" and icon.has_css_class("look-purple"), "The group shows its icon and color")
+    chosen = []
+    dialog = LookDialog(looks.Look("book", "purple"), True, chosen.append)
+    dialog.present(win)
+    yield 0.2
+    check(dialog.look == looks.Look("book", "purple"), "The dialog starts with the current icon and color")
+    dialog.color_box.select_child(dialog.color_box.get_child_at_index(0))
+    dialog.icon_box.select_child(dialog.icon_box.get_child_at_index(0))
+    check(all(not image.get_css_classes() for image in dialog._images), "The icons in the dialog show the chosen color")
+    dialog.apply()
+    check(chosen == [looks.Look()], "Standard resets icon and color")
+    win._set_look(group_node, chosen[0])
+    icon = row_icon(LIB / "Romane")
+    check(icon is not None and icon.get_icon_name() == "folder-symbolic" and not icon.get_css_classes(), "The group shows the standard icon again")
+    ed.buffer.set_text("Kapitel")
+
     # Rename the group without selecting it (selecting a group opens the group view)
     win._do_rename(win.tree_model.get_item(win._index_of(LIB / "Romane")).get_item().node, "Bücher")
     inner = LIB / "Bücher" / "Entwurf.md"

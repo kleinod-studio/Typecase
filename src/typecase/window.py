@@ -9,6 +9,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gtk, Pango
 from . import config
 from . import export
 from . import frontmatter
+from . import looks
 from . import spelling, themes
 from .export_dialog import ExportDialog
 from .find_bar import FindBar
@@ -18,6 +19,8 @@ from .goal_ring import GoalBadge, ProgressRing
 from .group_view import GroupView
 from .inspector import Inspector
 from .keywords import KeywordIndex, filter_nodes
+from .look_dialog import LookDialog, color_class
+from .looks import LookIndex
 from .keywords import sheets as all_sheets
 from .preferences import PreferencesDialog
 from .markdown_style import outline
@@ -65,6 +68,27 @@ def _install_css():
             padding: 8px 12px;
         }
         /* Where a dragged sheet or group lands: a line above or below the row, or the whole row. */
+        .look-blue { color: var(--accent-blue); }
+        .look-swatch-blue { background-color: var(--accent-blue); }
+        .look-teal { color: var(--accent-teal); }
+        .look-swatch-teal { background-color: var(--accent-teal); }
+        .look-green { color: var(--accent-green); }
+        .look-swatch-green { background-color: var(--accent-green); }
+        .look-yellow { color: var(--accent-yellow); }
+        .look-swatch-yellow { background-color: var(--accent-yellow); }
+        .look-orange { color: var(--accent-orange); }
+        .look-swatch-orange { background-color: var(--accent-orange); }
+        .look-red { color: var(--accent-red); }
+        .look-swatch-red { background-color: var(--accent-red); }
+        .look-pink { color: var(--accent-pink); }
+        .look-swatch-pink { background-color: var(--accent-pink); }
+        .look-purple { color: var(--accent-purple); }
+        .look-swatch-purple { background-color: var(--accent-purple); }
+        .look-slate { color: var(--accent-slate); }
+        .look-swatch-slate { background-color: var(--accent-slate); }
+        .look-swatch { border-radius: 9999px; }
+        .look-swatch-standard { box-shadow: inset 0 0 0 2px alpha(currentColor, 0.3); }
+        .look-choices > flowboxchild { padding: 6px; border-radius: 8px; }
         treeexpander.drop-before { box-shadow: inset 0 2px 0 0 var(--accent-bg-color); }
         treeexpander.drop-after { box-shadow: inset 0 -2px 0 0 var(--accent-bg-color); }
         treeexpander.drop-into { background-color: alpha(var(--accent-bg-color), 0.15); border-radius: 6px; }
@@ -117,6 +141,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         self._search = LibrarySearch()
         self._keywords = KeywordIndex()
         self._goals = GoalIndex()
+        self._looks = LookIndex()
         self._row_rings: weakref.WeakSet[ProgressRing] = weakref.WeakSet()  # writing-goal rings of the library rows
         self._keyword_filter: str | None = None
         self._expanded_before_filter: set[Path] = set()
@@ -229,6 +254,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         row_menu.append_section(None, creation)
         changes = Gio.Menu()
         changes.append(_("Rename…"), "win.rename")
+        changes.append(_("Icon and Color…"), "win.look")
         changes.append(_("Duplicate"), "win.duplicate")
         changes.append(_("Move Up"), "win.move-up")
         changes.append(_("Move Down"), "win.move-down")
@@ -1200,6 +1226,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             "new-sheet": self._on_new_sheet,
             "new-group": self._on_new_group,
             "rename": self._on_rename,
+            "look": self._on_look,
             "duplicate": self._on_duplicate,
             "move": self._on_move_to,
             "delete": self._on_delete,
@@ -1539,6 +1566,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
             ("new-sheet", has_library),
             ("new-group", has_library),
             ("rename", has_selection),
+            ("look", has_selection),
             ("duplicate", has_selection),
             ("move", has_selection),
             ("delete", has_selection),
@@ -1655,6 +1683,35 @@ class TypecaseWindow(Adw.ApplicationWindow):
             return
         self._reload(select_path=path)
         self._on_rename()  # Ask for a name right away.
+
+    def _look_of(self, node) -> looks.Look:
+        if node.is_group:
+            return looks.of_group(node.path)
+        if node.path == self.editor.path:  # the open sheet shows its look before it is saved
+            return looks.from_metadata(self.editor.metadata())
+        return self._looks.of_sheet(node.path)
+
+    def _on_look(self):
+        node = self._selected_node()
+        if node is None:
+            return
+        LookDialog(self._look_of(node), node.is_group, lambda look: self._set_look(node, look)).present(self)
+
+    def _set_look(self, node, look: looks.Look):
+        """Stores the icon and color of a sheet or group, see looks."""
+        try:
+            if node.is_group:
+                looks.set_for_group(node.path, look)
+            elif node.path == self.editor.path:
+                self.editor.set_metadata(looks.metadata_changes(look))  # saved like typed input
+            else:
+                if not self._flush():  # the group view may show this sheet with unsaved input
+                    return
+                looks.set_for_sheet(node.path, look)
+        except (OSError, UnicodeDecodeError) as error:
+            self._toast(_("Could not save: %s") % (getattr(error, "strerror", None) or error))
+            return
+        self._reload(select_path=node.path)
 
     def _on_rename(self):
         node = self._selected_node()
@@ -2031,7 +2088,9 @@ class TypecaseWindow(Adw.ApplicationWindow):
         box = expander.get_child()
         icon = box.get_first_child()
         label = icon.get_next_sibling()
-        icon.set_from_icon_name("folder-symbolic" if node.is_group else "text-x-generic-symbolic")
+        look = self._look_of(node)
+        icon.set_from_icon_name(look.icon_name(node.is_group))
+        icon.set_css_classes(color_class(look.color))
         label.set_text(node.name)
         ring = label.get_next_sibling()
         ring.path = None if node.is_group else node.path

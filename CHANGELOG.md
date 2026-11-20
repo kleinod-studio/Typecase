@@ -4,6 +4,7 @@ All notable changes to Typecase are listed here. Versions follow [semantic versi
 
 ## Unreleased
 
+- Sheets and groups can have an icon and a color in the library: “Icon and Color…” in the context menu offers 28 icons and the nine libadwaita accent colors. A sheet keeps them in its front matter (`icon`, `color`), a group in its folder file, so they move along with it.
 - On Omarchy, the app icon can follow the current theme like Omarchy's own icons, in the Papercraft and Arcade icon sets: `tools/omarchy-icon.sh install` sets it up, `remove` brings the normal icon back.
 - After an export, a notice says how many images were not found, so a missing picture no longer goes unnoticed.
 - In web pages and PDFs, a missing image or one without a description gets an empty alternative text, so screen readers skip it instead of reading out its file name.

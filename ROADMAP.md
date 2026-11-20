@@ -77,7 +77,7 @@ Ideas for after 1.0:
 - [x] Template assistant: create an export template for PDF, Word and HTML from a starting point and a few settings, and change it later, without files or AI
 - [ ] Template fields: a template names the fields it needs (for a letter: sender, recipient, subject), and the properties pane shows them as input rows for sheets that use it; they are saved in the front matter and placed by the template on export, so the editor holds only the text ([share your ideas](https://github.com/kleinod-studio/Typecase/issues/3))
 - [ ] Rendered Markdown preview (live styling covers most of it)
-- [ ] Custom icons and colors for sheets and groups in the library
+- [x] Custom icons and colors for sheets and groups in the library, chosen from the GNOME icons and the libadwaita accent colors
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
 - [x] Images in the text: inserted as attachments, shown in the editor, with size, alignment, caption and alternative text that the export follows
 - [x] Pills in the editor: images, links and footnotes fold their Markdown into a small colored pill with an icon, and unfold while the caret touches them

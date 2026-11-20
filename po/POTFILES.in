@@ -10,6 +10,8 @@ src/typecase/group_view.py
 src/typecase/image_dialog.py
 src/typecase/image_preview.py
 src/typecase/inspector.py
+src/typecase/look_dialog.py
+src/typecase/looks.py
 src/typecase/main.py
 src/typecase/preferences.py
 src/typecase/sheet_editor.py

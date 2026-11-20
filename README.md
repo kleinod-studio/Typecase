@@ -18,7 +18,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Links and footnotes**: links open with Ctrl+click, and footnotes are written right in the text.
 - **Pills**: images, links and footnotes fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
 - **Outline**: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O).
-- **Organize**: search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
+- **Organize**: give sheets and groups an icon and a color, search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
 - **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode can have its own font settings and theme.

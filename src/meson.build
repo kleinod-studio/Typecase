@@ -25,6 +25,8 @@ install_data(
     'typecase/inspector.py',
     'typecase/keywords.py',
     'typecase/library.py',
+    'typecase/look_dialog.py',
+    'typecase/looks.py',
     'typecase/markdown_lists.py',
     'typecase/markdown_style.py',
     'typecase/markdown_styler.py',
