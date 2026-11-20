@@ -105,6 +105,17 @@
   </screenshots>
   <!-- Release notes stay in English (translate="no"), so that a release brings no extra work for translators. -->
   <releases>
+    <release version="1.3.0" date="2026-11-20">
+      <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.3.0</url>
+      <description translate="no">
+        <p>Icons and colors for sheets and groups, and clearer exports.</p>
+        <ul>
+          <li>Sheets and groups can have one of 28 icons and one of the nine accent colors in the library</li>
+          <li>After an export, a notice says how many images were not found</li>
+          <li>Missing images and images without a description no longer let screen readers read out file names in web pages and PDFs</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.1" date="2026-11-14">
       <url type="details">https://github.com/kleinod-studio/Typecase/releases/tag/v1.2.1</url>
       <description translate="no">

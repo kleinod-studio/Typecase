@@ -2,7 +2,9 @@
 
 All notable changes to Typecase are listed here. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 1.3.0 – 2026-11-20
+
+Icons and colors for sheets and groups in the library, a notice for missing images after an export, and an app icon that follows the Omarchy theme.
 
 - Sheets and groups can have an icon and a color in the library: “Icon and Color…” in the context menu offers 28 icons and the nine libadwaita accent colors. A sheet keeps them in its front matter (`icon`, `color`), a group in its folder file, so they move along with it.
 - On Omarchy, the app icon can follow the current theme like Omarchy's own icons, in the Papercraft and Arcade icon sets: `tools/omarchy-icon.sh install` sets it up, `remove` brings the normal icon back.
