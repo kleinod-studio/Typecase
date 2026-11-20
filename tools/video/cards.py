@@ -148,6 +148,72 @@ def outro(t: float, second: float) -> str:
     return _frame(f'<g opacity="{appear:.3f}">{lockup}{line}</g>{credit}')
 
 
+def closing(t: float) -> str:
+    """The end of a video without narration: the lockup, the line, the address of the website,
+    and "With love by" a little later."""
+    appear = _smooth(t / 0.6)
+    lockup = _lockup([1.0] * len(WORD), 1.0, HEIGHT / 2 - 150)
+    line = (
+        f'<text x="{WIDTH / 2}" y="{HEIGHT / 2 + 50}" text-anchor="middle" font-family="{FONT}" font-size="54" '
+        f'fill="{MUTED}" fill-opacity="{_smooth((t - 0.3) / 0.6):.3f}">Free software, made for GNOME</text>'
+        f'<text x="{WIDTH / 2}" y="{HEIGHT / 2 + 130}" text-anchor="middle" font-family="{FONT}" font-weight="700" '
+        f'font-size="46" fill="{VIOLET}" fill-opacity="{_smooth((t - 0.8) / 0.6):.3f}">kleinod.studio/typecase</text>'
+    )
+    love = _smooth((t - 1.8) / 0.6)
+    credit = (
+        f'<text x="{WIDTH / 2}" y="{HEIGHT - 175}" text-anchor="middle" font-family="{FONT}" font-size="34" '
+        f'fill="{MUTED}" fill-opacity="{love:.3f}">With love by</text>'
+    ) + _studio(HEIGHT - 150, love, 64)
+    return _frame(f'<g opacity="{appear:.3f}">{lockup}{line}</g>{credit}')
+
+
+def _still(svg: str, path: Path) -> Path:
+    subprocess.run(["rsvg-convert", "-o", str(path)], input=svg.encode(), check=True)
+    return path
+
+
+def caption(text: str, path: Path) -> Path:
+    """A word laid over the picture (a transparent 1920x1080 PNG): white card at the bottom left."""
+    size = 64
+    width = _advances(text, size)[-1] + 2 * 56 + 16
+    x, y, height = 72, HEIGHT - 72 - 132, 132
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}">'
+        f'<defs><filter id="shadow" x="-20%" y="-40%" width="140%" height="180%"><feDropShadow dx="0" dy="10" '
+        f'stdDeviation="18" flood-color="{INK}" flood-opacity="0.22"/></filter></defs>'
+        f'<rect x="{x}" y="{y}" width="{width:.0f}" height="{height}" rx="26" fill="#fff" filter="url(#shadow)"/>'
+        f'<rect x="{x + 40}" y="{y + 38}" width="8" height="{height - 76}" rx="4" fill="{VIOLET}"/>'
+        f'<text x="{x + 72}" y="{y + height / 2 + size * 0.36:.0f}" font-family="{FONT}" font-weight="700" '
+        f'font-size="{size}" fill="{INK}">{html_escape(text)}</text></svg>'
+    )
+    return _still(svg, path)
+
+
+def pages(images: list[Path], path: Path, paper: tuple[float, float] = (148, 210)) -> Path:
+    """Printed pages side by side on the background of the cards (a full 1920x1080 PNG)."""
+    height = 880
+    width = height * paper[0] / paper[1]
+    gap = 90
+    left = (WIDTH - len(images) * width - (len(images) - 1) * gap) / 2
+    top = (HEIGHT - height) / 2
+    shots = ""
+    for number, image in enumerate(images):
+        x = left + number * (width + gap)
+        picture = base64.b64encode(image.read_bytes()).decode()
+        shots += (
+            f'<rect x="{x:.1f}" y="{top}" width="{width:.1f}" height="{height}" fill="#fff" filter="url(#shadow)"/>'
+            f'<image x="{x:.1f}" y="{top}" width="{width:.1f}" height="{height}" preserveAspectRatio="xMidYMid slice" '
+            f'href="data:image/png;base64,{picture}"/>'
+        )
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}">'
+        f'<defs><filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="16" '
+        f'stdDeviation="24" flood-color="{INK}" flood-opacity="0.2"/></filter></defs>'
+        f'<rect width="100%" height="100%" fill="{BACKGROUND}"/>{shots}</svg>'
+    )
+    return _still(svg, path)
+
+
 # --- Thumbnail -----------------------------------------------------------------------
 
 VIOLET = "#4B3F9E"
@@ -291,7 +357,9 @@ def render(draw, length: float, path: Path) -> Path:
 if __name__ == "__main__":
     folder = ROOT / "dist" / "videos" / "cards"
     folder.mkdir(parents=True, exist_ok=True)
-    for name, svg in [("intro-1.0", intro(1.0)), ("intro-end", intro(INTRO)), ("outro-end", outro(6.0, 3.0))]:
+    for name, svg in [("intro-1.0", intro(1.0)), ("intro-end", intro(INTRO)), ("outro-end", outro(6.0, 3.0)),
+                      ("closing-end", closing(5.0))]:
         subprocess.run(["rsvg-convert", "-o", str(folder / f"{name}.png")], input=svg.encode(), check=True)
         print(folder / f"{name}.png")
+    print(caption("Organize.", folder / "caption.png"))
     print(signature(folder / "signature.wav"))

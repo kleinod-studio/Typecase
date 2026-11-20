@@ -54,6 +54,8 @@ class Scene:
     steps: object = None  # generator function(app_window) that yields seconds to wait
     hold: float = 0.0  # extra seconds at the end of the scene
     say: str = ""  # how the voice is to say it, if not as written (names, for example)
+    length: float = 0.0  # music videos: the scene lasts exactly this long (seconds, to the beat)
+    overlays: list = field(default_factory=list)  # music videos: (caption text or PNG path, from, to), seconds into the scene
     start: float = field(default=0.0, init=False)  # when it began, in seconds of video
     duration: float = field(default=0.0, init=False)  # length of the narration
 
@@ -126,19 +128,20 @@ def write_subtitles(scenes: list[Scene], path: Path, language: str) -> None:
 # --- Demo library and configuration ------------------------------------------
 
 
-def prepare_home(language: str) -> Path:
+def prepare_home(language: str, settings: dict | None = None, extras: bool = False) -> Path:
     """A temporary home for the app: XDG folders, a configuration and the sample library.
+    settings are added to the configuration; extras adds the tour's sheets to the library.
     Returns the temporary folder (deleted by the caller)."""
     import demo_library
 
     temp = Path(tempfile.mkdtemp(prefix="typecase-video-", dir=Path.home() / ".cache"))
-    library = demo_library.build(temp / demo_library.TEXT[language]["library"], language)
+    library = demo_library.build(temp / demo_library.TEXT[language]["library"], language, extras=extras)
     os.environ["XDG_CONFIG_HOME"] = str(temp / "cfg")
     os.environ["XDG_DATA_HOME"] = str(temp / "data")
     os.environ["LANGUAGE"] = language
     (temp / "cfg" / "typecase").mkdir(parents=True)
-    settings = {"library_path": str(library), "color_scheme": "light", "spell_check": False}
-    (temp / "cfg" / "typecase" / "config.json").write_text(json.dumps(settings), encoding="utf-8")
+    config = {"library_path": str(library), "color_scheme": "light", "spell_check": False, **(settings or {})}
+    (temp / "cfg" / "typecase" / "config.json").write_text(json.dumps(config), encoding="utf-8")
     return temp
 
 
@@ -224,7 +227,14 @@ class Recorder:
 
 # --- Zooming -----------------------------------------------------------------
 
-_state = {"recorder": None, "window": None}
+_state = {"recorder": None, "window": None, "scene_start": 0.0}
+
+
+def at(seconds: float) -> float:
+    """For steps of a music video: how long to wait until `seconds` after the scene began, so a
+    step can `yield at(2.4)` to land on the beat however long the steps before it took."""
+    recorder = _state["recorder"]
+    return max(0.0, _state["scene_start"] + seconds - recorder.now()) if recorder else 0.0
 _zooms: list[tuple[float, float, tuple[float, float, float]]] = []  # start, length, (zoom, center x, center y)
 
 
@@ -271,9 +281,11 @@ def _zoom_filter() -> str:
         return expr
 
     z, cx, cy = expression(0), expression(1), expression(2)
+    # crop keeps the frame size it saw first as in_w/in_h, so the zoomed size is spelled out
+    w, h = f"trunc(1920*{z}/2)*2", f"trunc(1080*{z}/2)*2"
     return (
-        f"scale=w='trunc(1920*{z}/2)*2':h='trunc(1080*{z}/2)*2':eval=frame:flags=lanczos,"
-        f"crop=1920:1080:x='clip({cx}*in_w-960,0,in_w-1920)':y='clip({cy}*in_h-540,0,in_h-1080)'"
+        f"scale=w='{w}':h='{h}':eval=frame:flags=lanczos,"
+        f"crop=1920:1080:x='clip({cx}*{w}-960,0,{w}-1920)':y='clip({cy}*{h}-540,0,{h}-1080)'"
     )
 
 
@@ -319,11 +331,21 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
         f"[intro][screen]xfade=transition=fade:duration={FADE}:offset={lead:.3f}[opened]",
         f"[opened][outro]xfade=transition=fade:duration={FADE}:offset={closing:.3f},fade=t=out:st={total - 0.6:.2f}:d=0.6[video]",
     ]
+    outputs = _encode(inputs, filters, total, folder, name)
+    for language in ("en", "de"):
+        path = folder / f"{name}.{language}.vtt"
+        write_subtitles(every, path, language)
+        outputs.append(path)
+    return outputs
+
+
+def _encode(inputs: list[str], filters: list[str], total: float, folder: Path, name: str) -> list[Path]:
+    """Writes the [video] and [audio] of the filter graph as WebM and MP4."""
     graph = ";".join(filters)
     outputs = []
     for extension, codecs in [
-        ("webm", ["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-row-mt", "1", "-c:a", "libopus", "-b:a", "96k"]),
-        ("mp4", ["-c:v", "libx264", "-crf", "20", "-preset", "slow", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]),
+        ("webm", ["-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-row-mt", "1", "-c:a", "libopus", "-b:a", "128k"]),
+        ("mp4", ["-c:v", "libx264", "-crf", "20", "-preset", "slow", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]),
     ]:
         path = folder / f"{name}.{extension}"
         subprocess.run(
@@ -332,11 +354,57 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
             check=True,
         )
         outputs.append(path)
-    for language in ("en", "de"):
-        path = folder / f"{name}.{language}.vtt"
-        write_subtitles(every, path, language)
-        outputs.append(path)
     return outputs
+
+
+def _duration(path: Path) -> float:
+    return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                                text=True, capture_output=True, check=True).stdout)
+
+
+def assemble_music(scenes: list[Scene], music: Path, work: Path, folder: Path, name: str, intro_length: float,
+                   signature_volume: float = 0.6) -> list[Path]:
+    """Music videos: the intro card, the recording from the first scene on with its zooms and
+    overlays, and the closing card until the music ends; the signature sound plays over the music."""
+    import cards
+
+    folder.mkdir(parents=True, exist_ok=True)
+    first = scenes[0].start  # of the recording
+    length = sum(scene.length for scene in scenes)
+    lead = intro_length - FADE
+    closing = lead + length - FADE
+    total = _duration(music)
+    intro = cards.render(cards.intro, intro_length, work / "intro.mp4")
+    outro = cards.render(cards.closing, total - closing, work / "closing.mp4")
+    sound = cards.signature(work / "signature.wav")
+    inputs = ["-i", str(intro), "-i", str(work / "screen.mkv"), "-i", str(outro), "-i", str(music), "-i", str(sound)]
+    same = "fps=30,format=yuv420p,setsar=1,settb=AVTB"
+    stereo = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
+    filters = [
+        f"[3:a]{stereo},afade=t=out:st={total - 1.5:.2f}:d=1.5[music]",
+        f"[4:a]{stereo},volume={signature_volume}[sig]",
+        "[music][sig]amix=inputs=2:normalize=0:duration=first[audio]",
+        f"[0:v]{same}[intro]",
+        f"[1:v]fps=30,{_zoom_filter()},trim=start={first:.3f}:end={first + length:.3f},setpts=PTS-STARTPTS,{same}[screen]",
+        f"[2:v]{same}[outro]",
+        f"[intro][screen]xfade=transition=fade:duration={FADE}:offset={lead:.3f}[opened]",
+        f"[opened][outro]xfade=transition=fade:duration={FADE}:offset={closing:.3f}[v0]",
+    ]
+    last, number = "v0", 5
+    for index, scene in enumerate(scenes):
+        for kind, begin, end in scene.overlays:
+            picture = Path(kind) if isinstance(kind, Path) else cards.caption(kind, work / f"caption-{index}-{number}.png")
+            at_video, span = lead + (scene.start - first) + begin, end - begin
+            fade = min(0.35, span / 3)
+            inputs += ["-loop", "1", "-framerate", "30", "-t", f"{span:.3f}", "-i", str(picture)]
+            filters += [
+                f"[{number}:v]format=rgba,fade=t=in:st=0:d={fade:.2f}:alpha=1,fade=t=out:st={span - fade:.3f}:d={fade:.2f}:alpha=1,"
+                f"setpts=PTS-STARTPTS+{at_video:.3f}/TB[o{number}]",
+                f"[{last}][o{number}]overlay=eof_action=pass:format=auto[v{number}]",
+            ]
+            last, number = f"v{number}", number + 1
+    filters.append(f"[{last}]fade=t=out:st={total - 1.0:.2f}:d=1.0,format=yuv420p[video]")
+    return _encode(inputs, filters, total, folder, name)
 
 
 # --- Running the scenes in the app --------------------------------------------
@@ -351,6 +419,8 @@ class Video:
     topic: str  # the section of the website's video page, e.g. "Organize your texts"
     summary: str  # one sentence under the title on the website
     still: float  # second of the finished video shown on the thumbnail
+    credit: str = ""  # e.g. for the music, shown under the video on the website
+    credit_url: str = ""  # where the credit links to
 
 
 def run(video: Video, scenes: list[Scene], before=None) -> None:
@@ -360,18 +430,53 @@ def run(video: Video, scenes: list[Scene], before=None) -> None:
 
     TYPECASE_VIDEO_KEEP=1 keeps the work folder; TYPECASE_VIDEO_REUSE=<that folder> puts the video
     together again from its recording without recording anew (to try out cards or narration)."""
-    name = video.name
-    reuse = os.environ.get("TYPECASE_VIDEO_REUSE")
-    work = Path(reuse) if reuse else Path(tempfile.mkdtemp(prefix=f"typecase-video-{name}-", dir=Path.home() / ".cache"))
+    work, reused = _work(video)
     voices = speak(scenes + OUTRO, LANGUAGE, work)
-    if reuse:
-        take = json.loads((work / "take.json").read_text())
-        for scene, start in zip(scenes, take["starts"]):
-            scene.start = start
-        _zooms[:] = [tuple(zoom) for zoom in take["zooms"]]
-        finish(video, scenes, voices, work)
-        return
-    temp = prepare_home(LANGUAGE)
+    if reused:
+        _restore(scenes, work)
+    else:
+        _record(scenes, work, before, prepare_home(LANGUAGE))
+    folder = OUTPUT / video.name
+    finish(video, work, assemble(scenes, voices, work / "screen.mkv", work, folder, video.name))
+
+
+def run_music(video: Video, scenes: list[Scene], music: Path, before=None, settings: dict | None = None,
+              extras: bool = False, intro: float = 0.0) -> None:
+    """A video without narration, cut to a piece of music: every scene lasts exactly its
+    `length`, and its steps wait for the beat with at(). The intro card lasts `intro` seconds
+    (cross-fading into the first scene), the closing card fills the rest of the music. Captions and
+    pictures from the scenes' `overlays` are laid over the recording. settings and extras are
+    passed to prepare_home. TYPECASE_VIDEO_KEEP and TYPECASE_VIDEO_REUSE work as in run()."""
+    import cards
+
+    work, reused = _work(video)
+    if reused:
+        _restore(scenes, work)
+    else:
+        _record(scenes, work, before, prepare_home(LANGUAGE, settings, extras), timed=True)
+    folder = OUTPUT / video.name
+    finish(video, work, assemble_music(scenes, music, work, folder, video.name, intro or cards.INTRO))
+
+
+def _work(video: Video) -> tuple[Path, bool]:
+    """The work folder of a take and whether it is an earlier one being put together again."""
+    reuse = os.environ.get("TYPECASE_VIDEO_REUSE")
+    if not reuse:
+        return Path(tempfile.mkdtemp(prefix=f"typecase-video-{video.name}-", dir=Path.home() / ".cache")), False
+    return Path(reuse), True
+
+
+def _restore(scenes: list[Scene], work: Path) -> None:
+    take = json.loads((work / "take.json").read_text())
+    for scene, start in zip(scenes, take["starts"]):
+        scene.start = start
+    _zooms[:] = [tuple(zoom) for zoom in take["zooms"]]
+
+
+def _record(scenes: list[Scene], work: Path, before, temp: Path, timed: bool = False) -> None:
+    """Plays the scenes in the real app and records the window to work/screen.mkv. Sets each
+    scene's start (seconds of the recording) and keeps the zooms; both go to work/take.json.
+    timed: every scene ends exactly `length` seconds after it began (music videos)."""
     sys.path.insert(0, str(ROOT / "src"))
 
     import gi
@@ -401,13 +506,22 @@ def run(video: Video, scenes: list[Scene], before=None) -> None:
         _state["window"] = win
         _state["recorder"] = recorder = Recorder(geometry, work / "screen.mkv")
         yield 1.0
+        planned = recorder.now()
         for scene in scenes:
-            scene.start = recorder.now()
+            scene.start = planned if timed else recorder.now()
+            _state["scene_start"] = scene.start
             began = time.monotonic()
             if scene.steps:
                 yield from scene.steps(win)
-            left = scene.duration + GAP - (time.monotonic() - began)
-            yield max(0.0, left) + scene.hold
+            if timed:
+                planned += scene.length
+                late = recorder.now() - planned
+                if late > 0.05:
+                    print(f"scene at {scene.start:.2f}s ran {late:.2f}s too long", file=sys.stderr)
+                yield max(0.0, planned - recorder.now())
+            else:
+                left = scene.duration + GAP - (time.monotonic() - began)
+                yield max(0.0, left) + scene.hold
         offset = recorder.stop()
         for scene in scenes:
             scene.start -= offset
@@ -425,6 +539,9 @@ def run(video: Video, scenes: list[Scene], before=None) -> None:
                 app.quit()
                 return GLib.SOURCE_REMOVE
             except Exception as error:  # end the run instead of leaving it hanging
+                import traceback
+
+                traceback.print_exc()
                 failed.append(repr(error))
                 if _state["recorder"]:
                     _state["recorder"].process.send_signal(signal.SIGINT)
@@ -443,19 +560,20 @@ def run(video: Video, scenes: list[Scene], before=None) -> None:
     if failed:
         sys.exit(f"Recording failed: {failed[0]}")
     (work / "take.json").write_text(json.dumps({"starts": [scene.start for scene in scenes], "zooms": _zooms}))
-    finish(video, scenes, voices, work)
 
 
-def finish(video: Video, scenes: list[Scene], voices: list[Path], work: Path) -> None:
+def finish(video: Video, work: Path, outputs: list[Path]) -> None:
+    """Adds the thumbnail and the details for the website to the finished video."""
     import cards
 
     name, folder = video.name, OUTPUT / video.name
-    outputs = assemble(scenes, voices, work / "screen.mkv", work, folder, name)
     still = work / "still.png"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(video.still), "-i", str(folder / f"{name}.mp4"),
                     "-frames:v", "1", str(still)], check=True)
     outputs.append(cards.thumbnail(video.title, video.topic, still, folder / f"{name}.jpg"))
     details = {"title": video.title, "topic": video.topic, "summary": video.summary}
+    if video.credit:
+        details["credit"] = {"text": video.credit, "url": video.credit_url}
     (folder / f"{name}.json").write_text(json.dumps(details, indent=2, ensure_ascii=False) + "\n")
     outputs.append(folder / f"{name}.json")
     if os.environ.get("TYPECASE_VIDEO_KEEP") or os.environ.get("TYPECASE_VIDEO_REUSE"):

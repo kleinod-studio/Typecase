@@ -5,13 +5,40 @@ screenshots of Endpaper). Every video starts from the same library, so it always
     build(folder, "en")  # or "de"
 
 Icons and colors are left at the standard; a video that wants them sets them itself
-(see LOOKS)."""
+(see LOOKS). build(folder, "en", extras=True) adds what the tour of the app shows: an empty
+chapter to write in, the start of a thesis and a letter (English only)."""
 
 import json
 import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+
+# What build(..., extras=True) adds (the tour video, English only)
+EXTRAS = {
+    "chapter": ("07 The Light", "The Light", "Chapter 7"),
+    "thesis": ("Thesis", "1 Introduction", (
+        "# 1 Introduction\n\n"
+        "Lighthouses have guided ships along dangerous coasts for more than two thousand years.^[The Pharos of "
+        "Alexandria, finished around 280 BC, is the earliest one we know of.] This thesis looks at how their "
+        "keepers lived and worked between 1850 and 1950, when the last towers on the coast were still lit by hand.\n\n"
+        "## 1.1 Research question\n\n"
+        "How did the routine of the light shape the lives of the people who kept it?\n\n"
+        "## 1.2 Sources\n\n"
+        "- Keepers' logs from twelve stations\n"
+        "- Letters to and from the mainland\n"
+        "- Interviews with the families of former keepers\n"
+    )),
+    "letter": ("Letters", "Dear Mira", (
+        "Skerry Island, 3 November\n\n"
+        "Dear Mira,\n\n"
+        "The boat came at last, and with it your parcel. The tea is *wonderful*, and the socks are already on my feet.\n\n"
+        "The nights are long now. I light the lamp at a quarter to five, and some evenings I sit up there until the "
+        "first ship goes by, just to watch it change course.\n\n"
+        "Write soon, and tell me everything.\n\n"
+        "With love,  \nAda\n"
+    )),
+}
 
 # name in English: (icon, color), as set in the icons-and-colors video
 LOOKS = {
@@ -186,7 +213,7 @@ def _sheet(path: Path, body: str, **meta) -> None:
     path.write_text(header + body.rstrip() + "\n", encoding="utf-8")
 
 
-def build(library: Path, language: str = "en") -> Path:
+def build(library: Path, language: str = "en", extras: bool = False) -> Path:
     """Fills the folder `library` (it is created) and returns it."""
     t = TEXT[language]
     library.mkdir(parents=True, exist_ok=True)
@@ -218,9 +245,17 @@ def build(library: Path, language: str = "en") -> Path:
             goal=goal,
             keywords=["chapter"] if number > 2 else ["draft", "chapter"],
         )
-    (manuscript / ".typecase.json").write_text(
-        json.dumps({"order": [f"{name}.md" for name, *_rest in t["chapters"]]}), encoding="utf-8"
-    )
+    order = [f"{name}.md" for name, *_rest in t["chapters"]]
+    if extras:
+        name, title, subtitle = EXTRAS["chapter"]
+        _sheet(manuscript / f"{name}.md", "", title=title, subtitle=subtitle, author=t["author"],
+               status=t["draft"], language=language, goal=300, keywords=["chapter"])
+        order.append(f"{name}.md")
+        for key in ("thesis", "letter"):
+            group, sheet, body = EXTRAS[key]
+            (library / group).mkdir(exist_ok=True)
+            _sheet(library / group / f"{sheet}.md", body, language=language)
+    (manuscript / ".typecase.json").write_text(json.dumps({"order": order}), encoding="utf-8")
     for name, line in t["people"]:
         _sheet(novel / t["characters"] / f"{name}.md", f"# {name}\n\n{line}", language=language)
     for name, line in t["places_list"]:
