@@ -419,8 +419,7 @@ class Video:
     topic: str  # the section of the website's video page, e.g. "Organize your texts"
     summary: str  # one sentence under the title on the website
     still: float  # second of the finished video shown on the thumbnail
-    credit: str = ""  # e.g. for the music, shown under the video on the website
-    credit_url: str = ""  # where the credit links to
+    music: dict | None = None  # credit under the video: title, artist, artist_url, source, source_url
 
 
 def run(video: Video, scenes: list[Scene], before=None) -> None:
@@ -572,8 +571,8 @@ def finish(video: Video, work: Path, outputs: list[Path]) -> None:
                     "-frames:v", "1", str(still)], check=True)
     outputs.append(cards.thumbnail(video.title, video.topic, still, folder / f"{name}.jpg"))
     details = {"title": video.title, "topic": video.topic, "summary": video.summary}
-    if video.credit:
-        details["credit"] = {"text": video.credit, "url": video.credit_url}
+    if video.music:
+        details["music"] = video.music
     (folder / f"{name}.json").write_text(json.dumps(details, indent=2, ensure_ascii=False) + "\n")
     outputs.append(folder / f"{name}.json")
     if os.environ.get("TYPECASE_VIDEO_KEEP") or os.environ.get("TYPECASE_VIDEO_REUSE"):

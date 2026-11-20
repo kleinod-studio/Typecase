@@ -293,8 +293,13 @@ VIDEO = videokit.Video(
     topic="Get started",
     summary="A short tour through Typecase, from the first sentence to the finished page.",
     still=33,
-    credit="Music: “Cinematic” by AtlasAudio, from Pixabay",
-    credit_url="https://pixabay.com/music/",
+    music={
+        "title": "Cinematic",
+        "artist": "AtlasAudio",
+        "artist_url": "https://pixabay.com/users/atlasaudio-54514918/",
+        "source": "Pixabay",
+        "source_url": "https://pixabay.com/",
+    },
 )
 
 
