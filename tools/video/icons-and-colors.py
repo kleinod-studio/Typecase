@@ -213,5 +213,13 @@ SCENES = [
     ),
 ]
 
+VIDEO = videokit.Video(
+    name="icons-and-colors",
+    title="Icons and colors",
+    topic="Organize your texts",
+    summary="Give groups and sheets an icon and a color, so they stand out in your library at a glance.",
+    still=32,
+)
+
 if __name__ == "__main__":
-    videokit.run("icons-and-colors", SCENES, before=opening)
+    videokit.run(VIDEO, SCENES, before=opening)

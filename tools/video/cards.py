@@ -9,6 +9,7 @@ lockup with a line under it, and "With love by" and the kleinod.studio logo once
 gets there. The intro has a sound of its own: a soft wooden tick as each letter lands, then a
 two-note chime when the icon appears."""
 
+import base64
 import math
 import random
 import re
@@ -145,6 +146,65 @@ def outro(t: float, second: float) -> str:
         f'fill="{MUTED}" fill-opacity="{love:.3f}">With love by</text>'
     ) + _studio(HEIGHT - 180, love, 64)
     return _frame(f'<g opacity="{appear:.3f}">{lockup}{line}</g>{credit}')
+
+
+# --- Thumbnail -----------------------------------------------------------------------
+
+VIOLET = "#4B3F9E"
+
+
+def _wrap(text: str, size: int, width: float) -> list[str]:
+    """Breaks text into lines no wider than width, at spaces."""
+    lines = [""]
+    for word in text.split():
+        trial = f"{lines[-1]} {word}".strip()
+        if lines[-1] and _advances(trial, size)[-1] > width:
+            lines.append(word)
+        else:
+            lines[-1] = trial
+    return lines
+
+
+def thumbnail(title: str, topic: str, still: Path, path: Path) -> Path:
+    """The picture that stands for a video before it plays (1280x720 JPEG): the topic and the
+    title on the left, a still of the video on the right, running off the edge."""
+    width, height = 1280, 720
+    picture = base64.b64encode(still.read_bytes()).decode()
+    shot_x, shot_y, shot_w = 640, 150, 820
+    shot_h = shot_w * 9 / 16
+    size = 72
+    lines = _wrap(title, size, 500)
+    top = 330 - (len(lines) - 1) * size * 0.55
+    title_svg = "".join(
+        f'<text x="72" y="{top + 30 + number * size * 1.12:.1f}" font-family="{FONT}" font-weight="700" '
+        f'font-size="{size}" fill="{INK}">{html_escape(line)}</text>'
+        for number, line in enumerate(lines)
+    )
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        f'<defs><clipPath id="shot"><rect x="{shot_x}" y="{shot_y}" width="{shot_w}" height="{shot_h:.1f}" rx="18"/></clipPath>'
+        f'<filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="22" '
+        f'flood-color="{INK}" flood-opacity="0.18"/></filter></defs>'
+        f'<rect width="100%" height="100%" fill="{BACKGROUND}"/>'
+        f'<rect x="{shot_x}" y="{shot_y}" width="{shot_w}" height="{shot_h:.1f}" rx="18" fill="#fff" filter="url(#shadow)"/>'
+        f'<image x="{shot_x}" y="{shot_y}" width="{shot_w}" height="{shot_h:.1f}" clip-path="url(#shot)" '
+        f'preserveAspectRatio="xMidYMid slice" href="data:image/png;base64,{picture}"/>'
+        f'<rect x="{shot_x}" y="{shot_y}" width="{shot_w}" height="{shot_h:.1f}" rx="18" fill="none" stroke="#DEDBF0" stroke-width="2"/>'
+        + _place(ROOT / "data" / "studio.kleinod.Typecase.svg", 66, 62, 72, 72)
+        + f'<text x="150" y="112" font-family="{FONT}" font-weight="700" font-size="40" fill="{INK}">Typecase</text>'
+        f'<text x="74" y="{top - 58:.1f}" font-family="{FONT}" font-weight="700" font-size="26" letter-spacing="3" '
+        f'fill="{VIOLET}">{html_escape(topic.upper())}</text>'
+        + title_svg
+        + _place(HERE / "kleinod-studio-logo-horizontal.svg", 74, height - 96, 36 * 331 / 64, 36)
+        + "</svg>"
+    )
+    png = subprocess.run(["rsvg-convert", "-f", "png"], input=svg.encode(), capture_output=True, check=True).stdout
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "png_pipe", "-i", "-", "-q:v", "2", str(path)], input=png, check=True)
+    return path
+
+
+def html_escape(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # --- Sound ---------------------------------------------------------------------------

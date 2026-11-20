@@ -342,12 +342,25 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
 # --- Running the scenes in the app --------------------------------------------
 
 
-def run(name: str, scenes: list[Scene], before=None) -> None:
+@dataclass
+class Video:
+    """What the website and the thumbnail say about a video."""
+
+    name: str  # file name, also the anchor on the website
+    title: str  # short, it goes on the thumbnail in big letters
+    topic: str  # the section of the website's video page, e.g. "Organize your texts"
+    summary: str  # one sentence under the title on the website
+    still: float  # second of the finished video shown on the thumbnail
+
+
+def run(video: Video, scenes: list[Scene], before=None) -> None:
     """Speaks the narration, plays the scenes in the real app while recording, then puts the
-    video together in dist/videos/<name>/<name>.*. before(window) prepares the first picture.
+    video together in dist/videos/<name>/<name>.*, with a thumbnail (.jpg) and its details for
+    the website (.json). before(window) prepares the first picture.
 
     TYPECASE_VIDEO_KEEP=1 keeps the work folder; TYPECASE_VIDEO_REUSE=<that folder> puts the video
     together again from its recording without recording anew (to try out cards or narration)."""
+    name = video.name
     reuse = os.environ.get("TYPECASE_VIDEO_REUSE")
     work = Path(reuse) if reuse else Path(tempfile.mkdtemp(prefix=f"typecase-video-{name}-", dir=Path.home() / ".cache"))
     voices = speak(scenes + OUTRO, LANGUAGE, work)
@@ -356,7 +369,7 @@ def run(name: str, scenes: list[Scene], before=None) -> None:
         for scene, start in zip(scenes, take["starts"]):
             scene.start = start
         _zooms[:] = [tuple(zoom) for zoom in take["zooms"]]
-        finish(name, scenes, voices, work)
+        finish(video, scenes, voices, work)
         return
     temp = prepare_home(LANGUAGE)
     sys.path.insert(0, str(ROOT / "src"))
@@ -430,11 +443,21 @@ def run(name: str, scenes: list[Scene], before=None) -> None:
     if failed:
         sys.exit(f"Recording failed: {failed[0]}")
     (work / "take.json").write_text(json.dumps({"starts": [scene.start for scene in scenes], "zooms": _zooms}))
-    finish(name, scenes, voices, work)
+    finish(video, scenes, voices, work)
 
 
-def finish(name: str, scenes: list[Scene], voices: list[Path], work: Path) -> None:
-    outputs = assemble(scenes, voices, work / "screen.mkv", work, OUTPUT / name, name)
+def finish(video: Video, scenes: list[Scene], voices: list[Path], work: Path) -> None:
+    import cards
+
+    name, folder = video.name, OUTPUT / video.name
+    outputs = assemble(scenes, voices, work / "screen.mkv", work, folder, name)
+    still = work / "still.png"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", str(video.still), "-i", str(folder / f"{name}.mp4"),
+                    "-frames:v", "1", str(still)], check=True)
+    outputs.append(cards.thumbnail(video.title, video.topic, still, folder / f"{name}.jpg"))
+    details = {"title": video.title, "topic": video.topic, "summary": video.summary}
+    (folder / f"{name}.json").write_text(json.dumps(details, indent=2, ensure_ascii=False) + "\n")
+    outputs.append(folder / f"{name}.json")
     if os.environ.get("TYPECASE_VIDEO_KEEP") or os.environ.get("TYPECASE_VIDEO_REUSE"):
         print(work)
     else:
