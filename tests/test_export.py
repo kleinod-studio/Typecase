@@ -23,6 +23,13 @@ class ExportTest(unittest.TestCase):
         self.assertTrue(self.template.html.is_file() and self.template.css.is_file())
         self.assertIn("$body$", self.template.html.read_text(encoding="utf-8"))
 
+    def test_images_without_alt_get_an_empty_one(self):
+        html = '<img src="a.png" />\n<img src="b.png" alt="B" />\n<img src="c.png">\n<p>No image</p>'
+        self.assertEqual(
+            export.with_empty_alt(html),
+            '<img src="a.png" alt="" />\n<img src="b.png" alt="B" />\n<img src="c.png" alt="">\n<p>No image</p>',
+        )
+
     def test_underline_becomes_pandoc_span(self):
         self.assertEqual(export.prepare_markdown("eine <u>Höhle</u> und <u>noch</u>"), "eine [Höhle]{.underline} und [noch]{.underline}")
         self.assertEqual(export.prepare_markdown("ohne"), "ohne")

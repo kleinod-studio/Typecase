@@ -1002,8 +1002,11 @@ def steps(win, app):
         check(not ed.spell_adapter.get_enabled() and config.load().get("spell_check") is False, "F7 switches it off and remembers that")
         win.lookup_action("spell-check").activate(None)
         check(ed.spell_adapter.get_enabled(), "F7 switches it on again")
-        ed.set_metadata({"lang": "fr-FR"})
-        check(not ed.spell_adapter.get_enabled() and "fr-FR" in win._missing_dictionaries, "Without a dictionary for the sheet's language, a notice appears once")
+        from typecase.spelling import dictionary_for
+        # A language without a dictionary here; Flatpak installs dictionaries only for chosen languages.
+        absent = next(lang for lang in ["fr-FR", "kl-GL", "fo-FO", "zz-ZZ"] if dictionary_for(lang) is None)
+        ed.set_metadata({"lang": absent})
+        check(not ed.spell_adapter.get_enabled() and absent in win._missing_dictionaries, f"Without a dictionary for the sheet's language ({absent}), a notice appears once")
         ed.set_metadata({"lang": "de-XX"})  # a variant no one has a dictionary for
         check(ed.spell_adapter.get_enabled() and ed.spell_adapter.get_checker().get_language().startswith("de_"), "Another variant of the language is used if needed")
         ed.flush()
@@ -1033,7 +1036,7 @@ def steps(win, app):
             run_export(
                 "---\ntitle: Der Drache\n---\nEs war eine <u>Höhle</u>.\n", fmt, export_templates.available(None)[0],
                 TMP / ("export" + export.EXTENSIONS[fmt]), meta, "Der Drache", {"lang": "de-DE"},
-                lambda path, error, fmt=fmt: results.__setitem__(fmt, (path, error)),
+                lambda path, error, *_missing, fmt=fmt: results.__setitem__(fmt, (path, error)),
             )
         yield from wait_until(lambda: len(results) == 3, timeout=30)
         check(results["docx"][1] is None and results["html"][1] is None, f"Export without errors: {results}")
@@ -1044,6 +1047,15 @@ def steps(win, app):
         check((TMP / "export.docx").read_bytes()[:2] == b"PK", "DOCX is created")
         check("Der Drache" in (TMP / "export.html").read_text(encoding="utf-8"), "HTML contains the title")
         check(not [p for p in TMP.iterdir() if "typecase-tmp" in p.name], "No partial export files left behind")
+        gaps = {}
+        run_export(
+            "Text.\n\n![Tower](gone.png)\n", "html", export_templates.available(None)[0], TMP / "gaps.html", meta, None, {},
+            lambda path, error, missing: gaps.update(error=error, missing=missing),
+        )
+        yield from wait_until(lambda: "missing" in gaps, timeout=30)
+        page = (TMP / "gaps.html").read_text(encoding="utf-8")
+        check(gaps["error"] is None and gaps["missing"] == ["gone.png"], f"The export reports a missing image: {gaps}")
+        check('<img src="gone.png" alt=""' in page, "A missing image gets an empty alt text in the web page")
 
     # Manual order of sheets and exporting a whole group
     from typecase.library import FOLDER_FILE, Node as LibNode, scan
@@ -1077,7 +1089,7 @@ def steps(win, app):
     check(combined.index("Chapter 1") < combined.index("Chapter 2") < combined.index("Chapter 10"), "The group is combined in the manual order")
     if export.pandoc_path() is not None:
         results = {}
-        run_export(export.with_title(combined, "Book"), "html", export_templates.available(None)[0], TMP / "book.html", book / "Book.md", "Book", {}, lambda path, error: results.__setitem__("html", error))
+        run_export(export.with_title(combined, "Book"), "html", export_templates.available(None)[0], TMP / "book.html", book / "Book.md", "Book", {}, lambda path, error, *_missing: results.__setitem__("html", error))
         yield from wait_until(lambda: "html" in results, timeout=15)
         html = (TMP / "book.html").read_text(encoding="utf-8") if results.get("html") is None else ""
         check(html.find(">Book<") < html.find("Chapter 1") < html.find("Chapter 10") and html.find(">Book<") > 0, "The exported group has the title and all chapters in order")
@@ -1192,12 +1204,12 @@ def steps(win, app):
     if export.pandoc_path() is not None:
         results = {}
         combined = export.with_title(export.combine_sheets(win._group_sheets(book), book, "title-page"), "Buch")
-        run_export(combined, "html", export_templates.available(None)[0], TMP / "parts.html", book / "Buch.md", "Buch", {}, lambda path, error: results.__setitem__("html", error), toc_title="Inhalt", cover=True)
+        run_export(combined, "html", export_templates.available(None)[0], TMP / "parts.html", book / "Buch.md", "Buch", {}, lambda path, error, *_missing: results.__setitem__("html", error), toc_title="Inhalt", cover=True)
         yield from wait_until(lambda: results, timeout=30)
         page = (TMP / "parts.html").read_text(encoding="utf-8")
         check(results["html"] is None and 'class="cover"' in page and 'id="TOC"' in page and 'class="part title-page"' in page, "Export with cover, contents and parts")
         results = {}
-        run_export(combined, "docx", export_templates.available(None)[0], TMP / "parts.docx", book / "Buch.md", "Buch", {}, lambda path, error: results.__setitem__("docx", error), toc_title="Inhalt", cover=True)
+        run_export(combined, "docx", export_templates.available(None)[0], TMP / "parts.docx", book / "Buch.md", "Buch", {}, lambda path, error, *_missing: results.__setitem__("docx", error), toc_title="Inhalt", cover=True)
         yield from wait_until(lambda: results, timeout=30)
         import zipfile
         with zipfile.ZipFile(TMP / "parts.docx") as docx:
@@ -1297,7 +1309,7 @@ def steps(win, app):
     dialog.force_close()
     if export.pandoc_path() is not None:
         results = {}
-        run_export("Text.\n", "html", chosen, TMP / "eigen.html", meta, None, {}, lambda path, error: results.__setitem__("html", error))
+        run_export("Text.\n", "html", chosen, TMP / "eigen.html", meta, None, {}, lambda path, error, *_missing: results.__setitem__("html", error))
         yield from wait_until(lambda: "html" in results, timeout=15)
         check(results.get("html") is None and (TMP / "eigen.html").is_file(), "Export with the imported template")
     page._remove(chosen)
@@ -1323,7 +1335,7 @@ def steps(win, app):
     if export.pandoc_path() is not None:
         results = {}
         for fmt in ("html", "docx") + (("pdf",) if pdf_available() else ()):
-            run_export("# Kapitel\n\nText.^[Note]\n", fmt, roman, TMP / ("roman" + export.EXTENSIONS[fmt]), meta, "Roman", {}, lambda path, error, fmt=fmt: results.__setitem__(fmt, error), toc_title="Inhalt", cover=True)
+            run_export("# Kapitel\n\nText.^[Note]\n", fmt, roman, TMP / ("roman" + export.EXTENSIONS[fmt]), meta, "Roman", {}, lambda path, error, *_missing, fmt=fmt: results.__setitem__(fmt, error), toc_title="Inhalt", cover=True)
         yield from wait_until(lambda: len(results) == (3 if pdf_available() else 2), timeout=30)
         check(all(error is None for error in results.values()), f"The new template exports every format: {results}")
     assistant = TemplateDialog(saved.append, saved.append, roman)

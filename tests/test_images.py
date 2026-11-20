@@ -85,6 +85,16 @@ class AddressTests(unittest.TestCase):
             self.assertEqual(lines[10], "![Web](https://example.org/a.png)")
             self.assertEqual(lines[13], "![Code](gone.png)")
 
+    def test_missing_files_are_listed_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            Path(folder, "here.png").write_bytes(b"png")
+            text = (
+                "![A](gone.png)\n\nA ![b](other.png) and ![c](gone.png).\n\n![Here](here.png)\n\n"
+                "![Web](https://example.org/a.png)\n\n```\n![Code](code.png)\n```"
+            )
+            self.assertEqual(images.missing_files(text, Path(folder)), ["gone.png", "other.png"])
+            self.assertEqual(images.missing_files("No images.", Path(folder)), [])
+
     def test_uses_file(self):
         self.assertTrue(images.uses_file("![](.attachments/S/a.png)", "a.png"))
         self.assertFalse(images.uses_file("![](.attachments/S/a.png)", "b.png"))

@@ -238,6 +238,15 @@ def with_title(text: str, title: str | None) -> str:
     return frontmatter.join(frontmatter.update(None, {"title": title}), text) if title else text
 
 
+_IMAGE_WITHOUT_ALT = re.compile(r"<img\b(?![^>]*\balt=)([^>]*?)(\s*/?>)")
+
+
+def with_empty_alt(html: str) -> str:
+    """Pandoc leaves out an empty alt attribute, so screen readers would read out the address.
+    Every image without one gets alt="": it is decorative, or its caption describes it."""
+    return _IMAGE_WITHOUT_ALT.sub(r'<img\1 alt=""\2', html)
+
+
 def pandoc_path() -> str | None:
     return shutil.which("pandoc")
 

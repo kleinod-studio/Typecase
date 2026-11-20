@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-14 16:14+0100\n"
+"POT-Creation-Date: 2026-11-20 14:02+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -167,14 +167,14 @@ msgstr ""
 msgid "%(count)s / %(goal)s"
 msgstr ""
 
-#: src/typecase/card_view.py:131 src/typecase/window.py:1121
+#: src/typecase/card_view.py:131 src/typecase/window.py:1126
 #, python-format
 msgid "%(count)s word"
 msgid_plural "%(count)s words"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/card_view.py:162 src/typecase/window.py:884
+#: src/typecase/card_view.py:162 src/typecase/window.py:889
 msgid "not a UTF-8 text file"
 msgstr ""
 
@@ -203,7 +203,7 @@ msgid "Web Page (HTML)"
 msgstr ""
 
 #: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:114
-#: src/typecase/window.py:1490
+#: src/typecase/window.py:1495
 msgid "Export"
 msgstr ""
 
@@ -259,8 +259,8 @@ msgstr ""
 msgid "With a Title Page"
 msgstr ""
 
-#: src/typecase/export_dialog.py:88 src/typecase/window.py:234
-#: src/typecase/window.py:332
+#: src/typecase/export_dialog.py:88 src/typecase/window.py:239
+#: src/typecase/window.py:337
 msgid "Export…"
 msgstr ""
 
@@ -272,18 +272,18 @@ msgstr ""
 msgid "Pandoc is not installed."
 msgstr ""
 
-#: src/typecase/export_dialog.py:200
+#: src/typecase/export_dialog.py:202
 msgid "Pandoc could not convert the text."
 msgstr ""
 
 #. Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
-#: src/typecase/export_dialog.py:232
+#: src/typecase/export_dialog.py:240
 msgid ""
 "PDF export needs WeasyPrint, which is not installed. The Flatpak version of "
 "Typecase includes it."
 msgstr ""
 
-#: src/typecase/export_dialog.py:272
+#: src/typecase/export_dialog.py:280
 msgid "The PDF could not be created."
 msgstr ""
 
@@ -328,41 +328,41 @@ msgstr ""
 msgid "The template contains files outside of its folder."
 msgstr ""
 
-#: src/typecase/find_bar.py:21 src/typecase/window.py:1502
+#: src/typecase/find_bar.py:21 src/typecase/window.py:1507
 msgid "Find"
 msgstr ""
 
-#: src/typecase/find_bar.py:32
+#: src/typecase/find_bar.py:33
 msgid "Previous Match"
 msgstr ""
 
-#: src/typecase/find_bar.py:34
+#: src/typecase/find_bar.py:35
 msgid "Next Match"
 msgstr ""
 
-#: src/typecase/find_bar.py:36 src/typecase/find_bar.py:40
+#: src/typecase/find_bar.py:37 src/typecase/find_bar.py:41
 #: src/typecase/preferences.py:314
 msgid "Replace"
 msgstr ""
 
-#: src/typecase/find_bar.py:38
+#: src/typecase/find_bar.py:39
 msgid "Replace with"
 msgstr ""
 
-#: src/typecase/find_bar.py:42
+#: src/typecase/find_bar.py:43
 msgid "Replace All"
 msgstr ""
 
-#: src/typecase/find_bar.py:160
+#: src/typecase/find_bar.py:161
 msgid "No matches"
 msgstr ""
 
-#: src/typecase/find_bar.py:167
+#: src/typecase/find_bar.py:168
 #, python-format
 msgid "%(current)s of %(total)s"
 msgstr ""
 
-#: src/typecase/find_bar.py:169 src/typecase/window.py:1323
+#: src/typecase/find_bar.py:170 src/typecase/window.py:1328
 #, python-format
 msgid "%(count)s match"
 msgid_plural "%(count)s matches"
@@ -392,7 +392,7 @@ msgid_plural "%(count)s words to go"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/goal_ring.py:115 src/typecase/window.py:2046
+#: src/typecase/goal_ring.py:115 src/typecase/window.py:2057
 msgid "Writing Goal"
 msgstr ""
 
@@ -480,8 +480,8 @@ msgid "Apply"
 msgstr ""
 
 #: src/typecase/image_dialog.py:50 src/typecase/preferences.py:313
-#: src/typecase/window.py:1655 src/typecase/window.py:1753
-#: src/typecase/window.py:1983 src/typecase/template_dialog.py:61
+#: src/typecase/window.py:1666 src/typecase/window.py:1764
+#: src/typecase/window.py:1994 src/typecase/template_dialog.py:61
 msgid "Cancel"
 msgstr ""
 
@@ -604,8 +604,8 @@ msgstr ""
 msgid "Goal"
 msgstr ""
 
-#: src/typecase/inspector.py:138 src/typecase/window.py:339
-#: src/typecase/window.py:404 src/typecase/window.py:1516
+#: src/typecase/inspector.py:138 src/typecase/window.py:344
+#: src/typecase/window.py:409 src/typecase/window.py:1521
 msgid "Properties"
 msgstr ""
 
@@ -643,11 +643,11 @@ msgstr ""
 msgid "%s (according to the file system)"
 msgstr ""
 
-#: src/typecase/inspector.py:300 src/typecase/window.py:1616
+#: src/typecase/inspector.py:300 src/typecase/window.py:1627
 msgid "Open"
 msgstr ""
 
-#: src/typecase/inspector.py:302 src/typecase/window.py:1754
+#: src/typecase/inspector.py:302 src/typecase/window.py:1765
 msgid "Move to Trash"
 msgstr ""
 
@@ -665,7 +665,7 @@ msgstr ""
 msgid "Could not attach “%(name)s”: %(reason)s"
 msgstr ""
 
-#: src/typecase/inspector.py:358 src/typecase/window.py:1767
+#: src/typecase/inspector.py:358 src/typecase/window.py:1778
 #, python-format
 msgid "Could not move to the trash: %s"
 msgstr ""
@@ -798,7 +798,7 @@ msgstr ""
 msgid "Import…"
 msgstr ""
 
-#: src/typecase/preferences.py:234 src/typecase/window.py:185
+#: src/typecase/preferences.py:234 src/typecase/window.py:190
 msgid "New…"
 msgstr ""
 
@@ -874,7 +874,7 @@ msgstr ""
 
 #: src/typecase/preferences.py:358 src/typecase/preferences.py:423
 #: src/typecase/preferences.py:448 src/typecase/preferences.py:464
-#: src/typecase/window.py:1613
+#: src/typecase/window.py:1618
 msgid "Close"
 msgstr ""
 
@@ -941,8 +941,8 @@ msgstr ""
 msgid "Theme “%s” moved to the trash"
 msgstr ""
 
-#: src/typecase/preferences.py:480 src/typecase/window.py:342
-#: src/typecase/window.py:1518
+#: src/typecase/preferences.py:480 src/typecase/window.py:347
+#: src/typecase/window.py:1523
 msgid "Preferences"
 msgstr ""
 
@@ -950,7 +950,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/typecase/preferences.py:485 src/typecase/window.py:1485
+#: src/typecase/preferences.py:485 src/typecase/window.py:1490
 msgid "Editor"
 msgstr ""
 
@@ -980,8 +980,8 @@ msgid ""
 msgstr ""
 
 #: src/typecase/preferences.py:507 src/typecase/preferences.py:561
-#: src/typecase/window.py:337 src/typecase/window.py:465
-#: src/typecase/window.py:1504
+#: src/typecase/window.py:342 src/typecase/window.py:470
+#: src/typecase/window.py:1509
 msgid "Check Spelling"
 msgstr ""
 
@@ -991,8 +991,8 @@ msgid ""
 "off"
 msgstr ""
 
-#: src/typecase/preferences.py:519 src/typecase/window.py:334
-#: src/typecase/window.py:1511
+#: src/typecase/preferences.py:519 src/typecase/window.py:339
+#: src/typecase/window.py:1516
 msgid "Focus Mode"
 msgstr ""
 
@@ -1072,7 +1072,7 @@ msgstr ""
 msgid "Open Link"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:652 src/typecase/window.py:314
+#: src/typecase/sheet_editor.py:652 src/typecase/window.py:319
 #: src/typecase/template_dialog.py:44
 msgid "Text"
 msgstr ""
@@ -1081,8 +1081,8 @@ msgstr ""
 msgid "Images"
 msgstr ""
 
-#: src/typecase/sheet_editor.py:677 src/typecase/window.py:444
-#: src/typecase/window.py:1496
+#: src/typecase/sheet_editor.py:677 src/typecase/window.py:449
+#: src/typecase/window.py:1501
 msgid "Insert Image"
 msgstr ""
 
@@ -1127,469 +1127,476 @@ msgstr ""
 msgid "GtkSourceView could not load this theme."
 msgstr ""
 
-#: src/typecase/window.py:171 src/typecase/window.py:299
-#: src/typecase/window.py:1473
+#: src/typecase/window.py:176 src/typecase/window.py:304
+#: src/typecase/window.py:1478
 msgid "Library"
 msgstr ""
 
-#: src/typecase/window.py:176 src/typecase/window.py:244
+#: src/typecase/window.py:181 src/typecase/window.py:249
 msgid "Choose Library Folder…"
 msgstr ""
 
-#: src/typecase/window.py:182 src/typecase/window.py:222
-#: src/typecase/window.py:1475
+#: src/typecase/window.py:187 src/typecase/window.py:227
+#: src/typecase/window.py:1480
 msgid "New Sheet"
 msgstr ""
 
-#: src/typecase/window.py:183 src/typecase/window.py:223
-#: src/typecase/window.py:1476 src/typecase/window.py:1641
+#: src/typecase/window.py:188 src/typecase/window.py:228
+#: src/typecase/window.py:1481 src/typecase/window.py:1652
 msgid "New Group"
 msgstr ""
 
-#: src/typecase/window.py:187 src/typecase/window.py:209
-#: src/typecase/window.py:1481
+#: src/typecase/window.py:192 src/typecase/window.py:214
+#: src/typecase/window.py:1486
 msgid "Search Library"
 msgstr ""
 
-#: src/typecase/window.py:201
+#: src/typecase/window.py:206
 msgid "Filter by Keyword"
 msgstr ""
 
-#: src/typecase/window.py:206
+#: src/typecase/window.py:211
 msgid "Show All"
 msgstr ""
 
-#: src/typecase/window.py:226
+#: src/typecase/window.py:231
 msgid "Rename…"
 msgstr ""
 
-#: src/typecase/window.py:227
+#: src/typecase/window.py:232
 msgid "Duplicate"
 msgstr ""
 
-#: src/typecase/window.py:228 src/typecase/window.py:1478
+#: src/typecase/window.py:233 src/typecase/window.py:1483
 msgid "Move Up"
 msgstr ""
 
-#: src/typecase/window.py:229 src/typecase/window.py:1479
+#: src/typecase/window.py:234 src/typecase/window.py:1484
 msgid "Move Down"
 msgstr ""
 
-#: src/typecase/window.py:230
+#: src/typecase/window.py:235
 msgid "Move to…"
 msgstr ""
 
-#: src/typecase/window.py:231
+#: src/typecase/window.py:236
 msgid "Move to Trash…"
 msgstr ""
 
-#: src/typecase/window.py:240
+#: src/typecase/window.py:245
 msgid "No Library Yet"
 msgstr ""
 
-#: src/typecase/window.py:241
+#: src/typecase/window.py:246
 msgid ""
 "Choose a folder. Its subfolders become groups, its .md files become sheets."
 msgstr ""
 
-#: src/typecase/window.py:283
+#: src/typecase/window.py:288
 msgid "No Results"
 msgstr ""
 
-#: src/typecase/window.py:284
+#: src/typecase/window.py:289
 msgid "Try a different search term."
 msgstr ""
 
-#: src/typecase/window.py:309 src/typecase/window.py:338
-#: src/typecase/window.py:1515
+#: src/typecase/window.py:314 src/typecase/window.py:343
+#: src/typecase/window.py:1520
 msgid "Show Sidebar"
 msgstr ""
 
-#: src/typecase/window.py:314
+#: src/typecase/window.py:319
 msgid "All sheets as one text"
 msgstr ""
 
-#: src/typecase/window.py:315 src/typecase/window.py:335
+#: src/typecase/window.py:320 src/typecase/window.py:340
 msgid "Cards"
 msgstr ""
 
-#: src/typecase/window.py:315
+#: src/typecase/window.py:320
 msgid "The notes of all sheets as cards"
 msgstr ""
 
-#: src/typecase/window.py:327 src/typecase/window.py:1513
+#: src/typecase/window.py:332 src/typecase/window.py:1518
 msgid "Outline"
 msgstr ""
 
-#: src/typecase/window.py:340 src/typecase/window.py:1517
+#: src/typecase/window.py:345 src/typecase/window.py:1522
 msgid "Fullscreen"
 msgstr ""
 
-#: src/typecase/window.py:343 src/typecase/window.py:1519
+#: src/typecase/window.py:348 src/typecase/window.py:1524
 msgid "Keyboard Shortcuts"
 msgstr ""
 
-#: src/typecase/window.py:344
+#: src/typecase/window.py:349
 msgid "About Typecase"
 msgstr ""
 
-#: src/typecase/window.py:350
+#: src/typecase/window.py:355
 msgid "Main Menu"
 msgstr ""
 
-#: src/typecase/window.py:356
+#: src/typecase/window.py:361
 #, python-format
 msgid "%(count)s replacement"
 msgid_plural "%(count)s replacements"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/window.py:437 src/typecase/window.py:1491
+#: src/typecase/window.py:442 src/typecase/window.py:1496
 msgid "Bold"
 msgstr ""
 
-#: src/typecase/window.py:438 src/typecase/window.py:1492
+#: src/typecase/window.py:443 src/typecase/window.py:1497
 msgid "Italic"
 msgstr ""
 
-#: src/typecase/window.py:439 src/typecase/window.py:1493
+#: src/typecase/window.py:444 src/typecase/window.py:1498
 msgid "Underline"
 msgstr ""
 
-#: src/typecase/window.py:440
+#: src/typecase/window.py:445
 msgid "Strikethrough"
 msgstr ""
 
-#: src/typecase/window.py:441
+#: src/typecase/window.py:446
 msgid "Code"
 msgstr ""
 
-#: src/typecase/window.py:442 src/typecase/window.py:1494
+#: src/typecase/window.py:447 src/typecase/window.py:1499
 msgid "Link"
 msgstr ""
 
-#: src/typecase/window.py:443 src/typecase/window.py:1495
+#: src/typecase/window.py:448 src/typecase/window.py:1500
 msgid "Footnote"
 msgstr ""
 
-#: src/typecase/window.py:448
+#: src/typecase/window.py:453
 #, python-format
 msgid "Heading %d"
 msgstr ""
 
-#: src/typecase/window.py:449 src/typecase/window.py:1499
+#: src/typecase/window.py:454 src/typecase/window.py:1504
 msgid "Normal Text"
 msgstr ""
 
-#: src/typecase/window.py:450 src/typecase/window.py:451
+#: src/typecase/window.py:455 src/typecase/window.py:456
 msgid "Heading"
 msgstr ""
 
-#: src/typecase/window.py:453
+#: src/typecase/window.py:458
 msgid "Bulleted List"
 msgstr ""
 
-#: src/typecase/window.py:454
+#: src/typecase/window.py:459
 msgid "Numbered List"
 msgstr ""
 
-#: src/typecase/window.py:455
+#: src/typecase/window.py:460
 msgid "Quote"
 msgstr ""
 
-#: src/typecase/window.py:456
+#: src/typecase/window.py:461
 msgid "Code Block"
 msgstr ""
 
-#: src/typecase/window.py:462
+#: src/typecase/window.py:467
 msgid "Check Spelling (F7)"
 msgstr ""
 
-#: src/typecase/window.py:482
+#: src/typecase/window.py:487
 msgid "Choose Library Folder"
 msgstr ""
 
-#: src/typecase/window.py:661
+#: src/typecase/window.py:666
 #, python-format
 msgid "Filtered by “%s”"
 msgstr ""
 
-#: src/typecase/window.py:675
+#: src/typecase/window.py:680
 msgid "No keywords yet. Add them in the properties of a sheet."
 msgstr ""
 
-#: src/typecase/window.py:683
+#: src/typecase/window.py:688
 msgid "All Sheets"
 msgstr ""
 
-#: src/typecase/window.py:730
+#: src/typecase/window.py:735
 msgid "No headings yet. Start a line with # to add one."
-msgstr ""
-
-#: src/typecase/window.py:782
-#, python-format
-msgid "“%s” was changed outside Typecase and reloaded."
 msgstr ""
 
 #: src/typecase/window.py:787
 #, python-format
+msgid "“%s” was changed outside Typecase and reloaded."
+msgstr ""
+
+#: src/typecase/window.py:792
+#, python-format
 msgid "“%s” was deleted outside Typecase."
 msgstr ""
 
-#: src/typecase/window.py:789
+#: src/typecase/window.py:794
 #, python-format
 msgid "“%s” was deleted outside Typecase. Your version was saved again."
 msgstr ""
 
-#: src/typecase/window.py:797
+#: src/typecase/window.py:802
 msgid "Sheet Changed Elsewhere"
 msgstr ""
 
-#: src/typecase/window.py:799
+#: src/typecase/window.py:804
 #, python-format
 msgid ""
 "“%s” was changed outside Typecase while you were writing. Which version "
 "should stay in the sheet? The other one is kept as a copy next to it."
 msgstr ""
 
-#: src/typecase/window.py:804
+#: src/typecase/window.py:809
 msgid "Load Other Version"
 msgstr ""
 
-#: src/typecase/window.py:805
+#: src/typecase/window.py:810
 msgid "Keep My Version"
 msgstr ""
 
-#: src/typecase/window.py:824
+#: src/typecase/window.py:829
 msgid ""
 "The other version is not a UTF-8 text file. Your version was saved as a copy."
 msgstr ""
 
-#: src/typecase/window.py:828 src/typecase/window.py:1153
+#: src/typecase/window.py:833 src/typecase/window.py:1158
 #, python-format
 msgid "Could not save: %s"
 msgstr ""
 
-#: src/typecase/window.py:833
+#: src/typecase/window.py:838
 #, python-format
 msgid "The other version was kept as “%s”."
 msgstr ""
 
-#: src/typecase/window.py:886
+#: src/typecase/window.py:891
 #, python-format
 msgid "Could not open “%(name)s”: %(reason)s"
 msgstr ""
 
-#: src/typecase/window.py:935 src/typecase/window.py:994
-#: src/typecase/window.py:1037 src/typecase/window.py:1050
+#: src/typecase/window.py:940 src/typecase/window.py:999
+#: src/typecase/window.py:1042 src/typecase/window.py:1055
 #, python-format
 msgid "Could not open: %s"
 msgstr ""
 
-#: src/typecase/window.py:1014 src/typecase/window.py:1896
-#: src/typecase/window.py:1934
+#: src/typecase/window.py:1019 src/typecase/window.py:1907
+#: src/typecase/window.py:1945
 #, python-format
 msgid "“%s” already exists there."
 msgstr ""
 
-#: src/typecase/window.py:1017 src/typecase/window.py:1899
-#: src/typecase/window.py:1937
+#: src/typecase/window.py:1022 src/typecase/window.py:1910
+#: src/typecase/window.py:1948
 #, python-format
 msgid "Could not move: %s"
 msgstr ""
 
-#: src/typecase/window.py:1116 src/typecase/window.py:2041
+#: src/typecase/window.py:1121 src/typecase/window.py:2052
 #, python-format
 msgid "%(count)s of %(goal)s word"
 msgid_plural "%(count)s of %(goal)s words"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/window.py:1125
+#: src/typecase/window.py:1130
 #, python-format
 msgid "%(count)s character"
 msgid_plural "%(count)s characters"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/typecase/window.py:1162
+#: src/typecase/window.py:1167
 msgid "Could Not Save"
 msgstr ""
 
-#: src/typecase/window.py:1163
+#: src/typecase/window.py:1168
 msgid ""
 "The latest changes to this sheet could not be saved. Closing now would lose "
 "them."
 msgstr ""
 
-#: src/typecase/window.py:1165
+#: src/typecase/window.py:1170
 msgid "Keep Editing"
 msgstr ""
 
-#: src/typecase/window.py:1166
+#: src/typecase/window.py:1171
 msgid "Close Without Saving"
 msgstr ""
 
-#: src/typecase/window.py:1430
+#: src/typecase/window.py:1435
 #, python-format
 msgid "No spelling dictionary for %s is installed, so spelling is not checked."
 msgstr ""
 
-#: src/typecase/window.py:1477 src/typecase/window.py:1656
+#: src/typecase/window.py:1482 src/typecase/window.py:1667
 msgid "Rename"
 msgstr ""
 
-#: src/typecase/window.py:1480
+#: src/typecase/window.py:1485
 msgid "Move Card"
 msgstr ""
 
-#: src/typecase/window.py:1487
+#: src/typecase/window.py:1492
 msgid "Undo"
 msgstr ""
 
-#: src/typecase/window.py:1488
+#: src/typecase/window.py:1493
 msgid "Redo"
 msgstr ""
 
-#: src/typecase/window.py:1489
+#: src/typecase/window.py:1494
 msgid "New Line Without List Marker"
 msgstr ""
 
-#: src/typecase/window.py:1497
+#: src/typecase/window.py:1502
 msgid "Context Menu, for Example to Open a Link"
 msgstr ""
 
-#: src/typecase/window.py:1498
+#: src/typecase/window.py:1503
 msgid "Heading 1 / 2 / 3"
 msgstr ""
 
-#: src/typecase/window.py:1500
+#: src/typecase/window.py:1505
 msgid "Indent List Item"
 msgstr ""
 
-#: src/typecase/window.py:1501
+#: src/typecase/window.py:1506
 msgid "Outdent List Item"
 msgstr ""
 
-#: src/typecase/window.py:1503
+#: src/typecase/window.py:1508
 msgid "Find and Replace"
 msgstr ""
 
-#: src/typecase/window.py:1505
+#: src/typecase/window.py:1510
 msgid "Next / Previous Match"
 msgstr ""
 
-#: src/typecase/window.py:1509
+#: src/typecase/window.py:1514
 msgid "Window"
 msgstr ""
 
-#: src/typecase/window.py:1512
+#: src/typecase/window.py:1517
 msgid "Group as Text or Cards"
 msgstr ""
 
-#: src/typecase/window.py:1514
+#: src/typecase/window.py:1519
 msgid "Leave Focus Mode"
 msgstr ""
 
-#: src/typecase/window.py:1520
+#: src/typecase/window.py:1525
 msgid "Quit"
 msgstr ""
 
-#: src/typecase/window.py:1593
+#: src/typecase/window.py:1598
 msgid "This group has no sheets to export."
 msgstr ""
 
-#: src/typecase/window.py:1612
+#: src/typecase/window.py:1617
 msgid "Export Failed"
 msgstr ""
 
-#: src/typecase/window.py:1616
+#: src/typecase/window.py:1621
 #, python-format
 msgid "Exported “%s”"
 msgstr ""
 
-#: src/typecase/window.py:1628 src/typecase/window.py:1697
-msgid "Untitled"
-msgstr ""
-
-#: src/typecase/window.py:1632
+#: src/typecase/window.py:1625
 #, python-format
-msgid "Could not create the sheet: %s"
+msgid "%(count)s image was not found."
+msgid_plural "%(count)s images were not found."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/typecase/window.py:1639 src/typecase/window.py:1708
+msgid "Untitled"
 msgstr ""
 
 #: src/typecase/window.py:1643
 #, python-format
+msgid "Could not create the sheet: %s"
+msgstr ""
+
+#: src/typecase/window.py:1654
+#, python-format
 msgid "Could not create the group: %s"
 msgstr ""
 
-#: src/typecase/window.py:1653
+#: src/typecase/window.py:1664
 msgid "Rename Group"
 msgstr ""
 
-#: src/typecase/window.py:1653
+#: src/typecase/window.py:1664
 msgid "Rename Sheet"
 msgstr ""
 
-#: src/typecase/window.py:1671
+#: src/typecase/window.py:1682
 msgid "This name is not allowed."
 msgstr ""
 
-#: src/typecase/window.py:1674
+#: src/typecase/window.py:1685
 #, python-format
 msgid "“%s” already exists."
 msgstr ""
 
-#: src/typecase/window.py:1677
+#: src/typecase/window.py:1688
 #, python-format
 msgid "Could not rename: %s"
 msgstr ""
 
 #. Translators: name of a duplicated sheet or group, e.g. "Chapter 1 (Copy)"
-#: src/typecase/window.py:1734
+#: src/typecase/window.py:1745
 #, python-format
 msgid "%(name)s (Copy)"
 msgstr ""
 
-#: src/typecase/window.py:1736
+#: src/typecase/window.py:1747
 #, python-format
 msgid "Could not duplicate: %s"
 msgstr ""
 
-#: src/typecase/window.py:1746
+#: src/typecase/window.py:1757
 #, python-format
 msgid "Move “%s” to the Trash?"
 msgstr ""
 
-#: src/typecase/window.py:1747
+#: src/typecase/window.py:1758
 msgid "The group and everything in it will be moved to the trash."
 msgstr ""
 
-#: src/typecase/window.py:1749
+#: src/typecase/window.py:1760
 msgid "The sheet and its attachments will be moved to the trash."
 msgstr ""
 
-#: src/typecase/window.py:1751
+#: src/typecase/window.py:1762
 msgid "The sheet will be moved to the trash."
 msgstr ""
 
-#: src/typecase/window.py:1889 src/typecase/window.py:1931
+#: src/typecase/window.py:1900 src/typecase/window.py:1942
 msgid "A group cannot be moved into itself."
 msgstr ""
 
-#: src/typecase/window.py:1974
+#: src/typecase/window.py:1985
 msgid "There is no other group to move to."
 msgstr ""
 
-#: src/typecase/window.py:1977
+#: src/typecase/window.py:1988
 msgid "Library (top level)"
 msgstr ""
 
-#: src/typecase/window.py:1981
+#: src/typecase/window.py:1992
 #, python-format
 msgid "Move “%s” to…"
 msgstr ""
 
-#: src/typecase/window.py:1984
+#: src/typecase/window.py:1995
 msgid "Move"
 msgstr ""
 

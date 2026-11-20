@@ -1612,13 +1612,19 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         dialog.present(self)
 
-    def _on_exported(self, output: Path | None, error: str | None):
+    def _on_exported(self, output: Path | None, error: str | None, missing: list[str]):
         if error is not None:
             alert = Adw.AlertDialog(heading=_("Export Failed"), body=error)
             alert.add_response("close", _("Close"))
             alert.present(self)
             return
-        toast = Adw.Toast(title=_("Exported “%s”") % output.name, button_label=_("Open"))
+        title = _("Exported “%s”") % output.name
+        if missing:
+            # Translators: added after "Exported “name”."; images whose file was not found are left out
+            title += " " + ngettext(
+                "%(count)s image was not found.", "%(count)s images were not found.", len(missing)
+            ) % {"count": len(missing)}
+        toast = Adw.Toast(title=title, button_label=_("Open"), timeout=10 if missing else 5)
         toast.connect("button-clicked", lambda _t: Gtk.FileLauncher(file=Gio.File.new_for_path(str(output))).launch(self, None, None))
         self.toasts.add_toast(toast)
 

@@ -15,7 +15,7 @@ def format_name(fmt: str) -> str:
 
 
 class ExportDialog(Adw.Dialog):
-    """Choose format and template, then the location. The result is reported via on_done(path or None, error text)."""
+    """Choose format and template, then the location. The result is reported via on_done(path or None, error text, addresses of missing images)."""
 
     def __init__(
         self,
@@ -145,9 +145,9 @@ class ExportDialog(Adw.Dialog):
             toc_title=_("Contents") if toc else None, cover=cover,
         )
 
-    def _finished(self, output: Path | None, error: str | None):
+    def _finished(self, output: Path | None, error: str | None, missing: list[str]):
         self.close()
-        self._on_done(output, error)
+        self._on_done(output, error, missing)
 
 
 def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done, toc_title=None, cover=False):
@@ -155,7 +155,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
     worked does it replace the target. So an error never leaves a half-written file behind.
     toc_title: a table of contents with this heading; cover: a cover page."""
     if export.pandoc_path() is None:
-        on_done(None, _("Pandoc is not installed."))
+        on_done(None, _("Pandoc is not installed."), [])
         return
     if fmt == "docx" and not cover:
         # Pandoc writes a "date" as its own paragraph under the title in Word files. The export date
@@ -167,6 +167,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         defaults = {**defaults, "title": sheet_path.stem}
     if fmt == "docx" and export.heading_one_breaks_page(template):
         text = export.drop_word_breaks_before_parts(text)
+    missing = images.missing_files(text, sheet_path.parent)
     text = images.without_missing_descriptions(text, sheet_path.parent)  # else shown twice for a missing image
     if fmt == "html":
         text = images.embedded(text, sheet_path.parent)  # one file, with its images inside
@@ -174,7 +175,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
 
     def done(path, error):
         shutil.rmtree(work, ignore_errors=True)
-        on_done(path, error)
+        on_done(path, error, missing)
 
     header = work / "style.html"
     header.write_text(export.style_header(template, pdf=fmt == "pdf"), encoding="utf-8")
@@ -200,6 +201,12 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         if not proc.get_successful() or not pandoc_output.is_file():
             done(None, (stderr or "").strip() or _("Pandoc could not convert the text."))
             return
+        if fmt in ("html", "pdf"):  # the PDF is printed from HTML, and its images keep the attribute
+            try:
+                pandoc_output.write_text(export.with_empty_alt(pandoc_output.read_text(encoding="utf-8")), encoding="utf-8")
+            except OSError as error:
+                done(None, error.strerror or str(error))
+                return
         if fmt == "pdf":
             _print_pdf(pandoc_output, sheet_path.parent, output, work, template, done)
         else:

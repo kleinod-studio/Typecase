@@ -187,6 +187,16 @@ def embedded(text: str, folder: Path) -> str:
     return _map_addresses(text, as_data)
 
 
+def missing_files(text: str, folder: Path) -> list[str]:
+    """The addresses of local images whose file does not exist, each once, in the order of the text."""
+    missing = []
+    for _number, image in in_text(text):
+        file = resolve(image.address, folder)
+        if file is not None and not file.is_file() and image.address not in missing:
+            missing.append(image.address)
+    return missing
+
+
 def without_missing_descriptions(text: str, folder: Path) -> str:
     """For the export: an image of its own whose file is missing gets an empty description.
     Pandoc and WeasyPrint put the description where the image would be, so it stood right above
