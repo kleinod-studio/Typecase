@@ -37,6 +37,17 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v7
+      # The image's runtimes are often a little older than Flathub's. Updating them moves files
+      # between the image's layers, which fails on some runners with "Invalid cross-device link";
+      # copying the installation once puts all of its files in the container's own layer.
+      - name: Copy the preinstalled runtimes into the container's own layer
+        run: |
+          for dir in /var/lib/flatpak "$HOME/.local/share/flatpak"; do
+            if [ -d "$dir" ] && [ ! -L "$dir" ]; then
+              echo "copying $dir ($(du -sh "$dir" | cut -f1))"
+              cp -a "$dir" "$dir.copy" && rm -rf "$dir" && mv "$dir.copy" "$dir"
+            fi
+          done
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
         with:
           bundle: Typecase-${{ matrix.arch }}.flatpak
