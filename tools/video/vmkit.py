@@ -162,9 +162,14 @@ def _record(scenes: list[Scene], work: Path, before) -> None:
             left = scene.duration + GAP - (vm.now() - began)
             time.sleep(max(0.0, left) + scene.hold)
         vm.stop()
+        clock = vm.raw()
     finally:
         vm.close()
     subprocess.run(["scp", "-q", f"{HOST}:{FOLDER}/screen.mkv", str(work / "raw.mkv")], check=True)
+    length = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                                  str(work / "raw.mkv")], capture_output=True, text=True, check=True).stdout)
+    if abs(length - clock) > 1.0:  # the picture would not match the narration
+        print(f"warning: the recording is {length:.1f}s long, the clock says {clock:.1f}s", file=sys.stderr)
     cuts = [(start, end) for start, end in vm.cuts if end and end - start > 0.1]
     _cut(work / "raw.mkv", work / "screen.mkv", cuts)
     for scene in scenes:

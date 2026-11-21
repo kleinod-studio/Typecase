@@ -243,7 +243,8 @@ VIDEO = vmkit.Video(
     summary="Download Typecase, install it with a double click, and add dictionaries for more languages.",
     still=30,
     commands=[
-        ("Install the downloaded file from your Downloads folder", "sudo flatpak install ~/Downloads/Typecase-*.flatpak"),
+        ("Install the downloaded file from your Downloads folder (use the name of the file you downloaded)",
+         "sudo flatpak install ~/Downloads/Typecase-1.3.0-x86_64.flatpak"),
         ("Add dictionaries for more languages, here German and English (use your language codes)", LANGUAGES),
         ("Download them", "sudo flatpak update"),
     ],

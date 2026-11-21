@@ -149,7 +149,10 @@ def handle(command):
             key(name, False)
             time.sleep(args[1] if len(args) > 1 else 0.06)
     elif kind == "record":
-        recording = run(f"pipewiresrc target-object={serial} do-timestamp=true keepalive-time=33 ! videorate ! "
+        # the leaky queue keeps pipewiresrc from waiting on a busy encoder: a frame that waits gets a late
+        # time stamp, and the picture would lag behind the clock that times the cuts and the narration
+        recording = run(f"pipewiresrc target-object={serial} do-timestamp=true keepalive-time=33 ! "
+                        f"queue leaky=downstream max-size-buffers=4 max-size-bytes=0 max-size-time=0 ! videorate ! "
                         f"video/x-raw,framerate={FPS}/1 ! videoconvert ! video/x-raw,format=I420 ! "
                         f"x264enc speed-preset=ultrafast qp-max=18 tune=zerolatency ! matroskamux ! filesink location={args[0]}")
     elif kind == "stop":
