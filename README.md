@@ -33,35 +33,36 @@ Typecase comes as a Flatpak, a format that runs on almost every Linux distributi
 
 ### First time with Flatpak?
 
-Fedora and Linux Mint come with Flatpak and Flathub already set up; you can skip this step. On Ubuntu and most other distributions, set it up once in a terminal:
+Fedora and Linux Mint come with Flatpak and Flathub already set up; you can skip this step. On Ubuntu, set it up once in a terminal:
 
 ```bash
 sudo apt install flatpak
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+sudo apt install gnome-software-plugin-flatpak
+sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 ```
 
-The first command installs Flatpak (on other distributions, use their package manager, see [flatpak.org/setup](https://flatpak.org/setup/)); the second adds Flathub, where the GNOME runtime that Typecase needs comes from. Log out and back in afterwards, so that Flatpak apps appear in your app launcher.
+The first command installs Flatpak (on other distributions, use their package manager, see [flatpak.org/setup](https://flatpak.org/setup/)); the second lets the Software app install Flatpak files; the third adds Flathub, where the GNOME runtime that Typecase needs comes from. Restart your computer afterwards, so that Flatpak apps appear in your app launcher. There is a [video](https://kleinod.studio/typecase/videos/#prepare-flatpak) of these steps.
 
 ### Install Typecase
 
-Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and install it:
+Download the Flatpak bundle for your computer from the [latest release](https://github.com/kleinod-studio/Typecase/releases/latest) (most PCs: `x86_64`, ARM machines: `aarch64`) and double-click it: the Software app installs it. Or in a terminal:
 
 ```bash
-flatpak install --user Typecase-1.3.0-x86_64.flatpak
+sudo flatpak install ~/Downloads/Typecase-1.3.0-x86_64.flatpak
 ```
 
-Bundles don't update by themselves; install the next release the same way. A release on Flathub is planned for later.
+Bundles don't update by themselves; install the next release the same way. A release on Flathub is planned for later. There is a [video](https://kleinod.studio/typecase/videos/#install-typecase) of this too.
 
 ### Spell checking dictionaries
 
-In the Flatpak, the dictionaries come from the GNOME runtime’s language packs, which Flatpak installs only for the languages it is set up for. If Typecase says that no dictionary is installed for a language, add the language (here German and English) and update:
+In the Flatpak, the dictionaries come from the GNOME runtime’s language packs, which Flatpak installs only for the languages it is set up for, usually your system's language. For more languages, add them (here German and English) and update:
 
 ```bash
-flatpak config --user --set languages "de;en"
-flatpak update --user
+sudo flatpak config --set languages "de;en"
+sudo flatpak update
 ```
 
-If you installed the GNOME runtime system-wide instead, run `sudo flatpak config --set languages "de;en"` and `sudo flatpak update`.
+If you installed Typecase with `--user`, keep using `--user` without `sudo`: `flatpak config --user --set languages "de;en"` and `flatpak update --user`.
 
 Outside the Flatpak, install Hunspell dictionaries from your distribution, for example `hunspell-de` and `hunspell-en_us`.
 
