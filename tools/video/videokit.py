@@ -14,6 +14,10 @@ goes online:
         github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0)
 Spoken sentences are kept in ~/.cache/typecase-video/speech/, so a new take only speaks what changed.
 
+The intro plays the sound logo ~/.cache/typecase-video/sound-logo.mp3 ("Sound Soul – This Logo
+Reveal" by Diamond_Tunes from Pixabay; its license allows using it in videos, not passing the file
+on, so it stays out of the repository). Without it the intro has the sound cards.py makes.
+
 The app runs with its own temporary library and configuration; your data is never touched."""
 
 import hashlib
@@ -43,6 +47,11 @@ WIDTH, HEIGHT = 1280, 720  # window size in logical pixels; the video is 1920x10
 GAP = 0.6  # seconds of quiet after each sentence
 SPEECH = 7  # raise when tts.py speaks differently, so the cached sentences are made again
 MAX_ZOOM = 1.5  # the recording has twice the pixels, so this stays sharp enough
+SOUND_LOGO = TOOLS / "sound-logo.mp3"
+SOUND_LOGO_CREDIT = {"title": "Sound Soul – This Logo Reveal", "artist": "Diamond_Tunes",
+                     "artist_url": "https://pixabay.com/users/diamond_tunes-25553362/",
+                     "source": "Pixabay", "source_url": "https://pixabay.com/"}
+SOUND_LOGO_VOLUME = 0.4  # the file is loud
 
 LANGUAGE = "en"  # of the run in progress
 
@@ -315,7 +324,7 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
     outro = cards.render(lambda t: cards.outro(t, OUTRO[1].start - closing), outro_length, work / "outro.mp4")
 
     every = scenes + OUTRO
-    sound = cards.signature(work / "signature.wav")
+    sound = intro_sound(work)
     inputs = ["-i", str(intro), "-i", str(screen), "-i", str(outro), "-i", str(sound)]
     filters = ["[3:a]aresample=48000[a3]"]
     for number, (scene, voice) in enumerate(zip(every, voices), start=4):
@@ -337,6 +346,20 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
         write_subtitles(every, path, language)
         outputs.append(path)
     return outputs
+
+
+def intro_sound(work: Path) -> Path:
+    """The sound of the intro: the sound logo, starting when the first letter lands, or else the
+    sound cards.py makes."""
+    import cards
+
+    if not SOUND_LOGO.exists():
+        return cards.signature(work / "signature.wav")
+    path = work / "sound-logo.wav"
+    delay = int(cards._landed(0) * 1000)
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(SOUND_LOGO), "-af",
+                    f"aresample=48000,adelay={delay}:all=1,volume={SOUND_LOGO_VOLUME}", str(path)], check=True)
+    return path
 
 
 def _encode(inputs: list[str], filters: list[str], total: float, folder: Path, name: str) -> list[Path]:
@@ -363,7 +386,7 @@ def _duration(path: Path) -> float:
 
 
 def assemble_music(scenes: list[Scene], music: Path, work: Path, folder: Path, name: str, intro_length: float,
-                   signature_volume: float = 0.6) -> list[Path]:
+                   signature_volume: float | None = None) -> list[Path]:
     """Music videos: the intro card, the recording from the first scene on with its zooms and
     overlays, and the closing card until the music ends; the signature sound plays over the music."""
     import cards
@@ -376,7 +399,9 @@ def assemble_music(scenes: list[Scene], music: Path, work: Path, folder: Path, n
     total = _duration(music)
     intro = cards.render(cards.intro, intro_length, work / "intro.mp4")
     outro = cards.render(cards.closing, total - closing, work / "closing.mp4")
-    sound = cards.signature(work / "signature.wav")
+    sound = intro_sound(work)
+    if signature_volume is None:  # the sound logo already has its volume; the made-up sound is quieter under music
+        signature_volume = 1.0 if SOUND_LOGO.exists() else 0.6
     inputs = ["-i", str(intro), "-i", str(work / "screen.mkv"), "-i", str(outro), "-i", str(music), "-i", str(sound)]
     same = "fps=30,format=yuv420p,setsar=1,settb=AVTB"
     stereo = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
@@ -573,6 +598,8 @@ def finish(video: Video, work: Path, outputs: list[Path]) -> None:
     details = {"title": video.title, "topic": video.topic, "summary": video.summary}
     if video.music:
         details["music"] = video.music
+    if SOUND_LOGO.exists():
+        details["sound_logo"] = SOUND_LOGO_CREDIT
     (folder / f"{name}.json").write_text(json.dumps(details, indent=2, ensure_ascii=False) + "\n")
     outputs.append(folder / f"{name}.json")
     if os.environ.get("TYPECASE_VIDEO_KEEP") or os.environ.get("TYPECASE_VIDEO_REUSE"):
