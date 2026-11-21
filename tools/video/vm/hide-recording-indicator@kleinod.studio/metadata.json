@@ -1,0 +1,6 @@
+{
+  "uuid": "hide-recording-indicator@kleinod.studio",
+  "name": "Hide recording indicator",
+  "description": "Keeps the screen recording, screen sharing and remote access icons out of the top bar, for recording explainer videos.",
+  "shell-version": ["50"]
+}

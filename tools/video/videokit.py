@@ -331,7 +331,7 @@ def assemble(scenes: list[Scene], voices: list[Path], screen: Path, work: Path, 
         inputs += ["-i", str(voice)]
         filters.append(f"[{number}:a]aresample=48000,adelay={int(scene.start * 1000)}:all=1[a{number}]")
     mixed = "".join(f"[a{n}]" for n in range(3, 4 + len(every)))
-    filters.append(f"{mixed}amix=inputs={len(every) + 1}:normalize=0,apad,aformat=channel_layouts=stereo[audio]")
+    filters.append(f"{mixed}amix=inputs={len(every) + 1}:normalize=0,apad=whole_dur={total:.3f},aformat=channel_layouts=stereo[audio]")
     same = "fps=30,format=yuv420p,setsar=1,settb=AVTB"
     filters += [
         f"[0:v]{same}[intro]",
@@ -445,6 +445,7 @@ class Video:
     summary: str  # one sentence under the title on the website
     still: float  # second of the finished video shown on the thumbnail
     music: dict | None = None  # credit under the video: title, artist, artist_url, source, source_url
+    commands: list[tuple[str, str]] | None = None  # shown under the video, ready to copy: (what it does, command)
 
 
 def run(video: Video, scenes: list[Scene], before=None) -> None:
@@ -598,6 +599,8 @@ def finish(video: Video, work: Path, outputs: list[Path]) -> None:
     details = {"title": video.title, "topic": video.topic, "summary": video.summary}
     if video.music:
         details["music"] = video.music
+    if video.commands:
+        details["commands"] = [{"note": note, "command": command} for note, command in video.commands]
     if SOUND_LOGO.exists():
         details["sound_logo"] = SOUND_LOGO_CREDIT
     (folder / f"{name}.json").write_text(json.dumps(details, indent=2, ensure_ascii=False) + "\n")
