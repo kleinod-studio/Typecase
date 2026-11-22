@@ -278,24 +278,28 @@ def _zoom_filter() -> str:
         return "scale=1920:1080:flags=lanczos"
     views = [(0.0, 0.0, (1.0, 0.5, 0.5))] + sorted(_zooms)
 
+    t = "(in/30)"  # perspective knows no time, only the frame number (the input runs at 30 fps)
+
     def expression(index):
         # Built from the last zoom backwards: before a zoom starts, its eased value is still the
         # view before it, so each step only has to say when it is over.
         expr = f"{views[-1][2][index]:.4f}"
         for (start, length, view), (_s, _l, before) in reversed(list(zip(views[1:], views[:-1]))):
             a, b = before[index], view[index]
-            u = f"clip((t-{start:.3f})/{max(length, 0.01):.3f},0,1)"
+            u = f"clip(({t}-{start:.3f})/{max(length, 0.01):.3f},0,1)"
             eased = f"({a:.4f}+({b - a:.4f})*{u}*{u}*(3-2*{u}))"
-            expr = f"if(lt(t,{start + length:.3f}),{eased},{expr})"
+            expr = f"if(lt({t},{start + length:.3f}),{eased},{expr})"
         return expr
 
     z, cx, cy = expression(0), expression(1), expression(2)
-    # crop keeps the frame size it saw first as in_w/in_h, so the zoomed size is spelled out
-    w, h = f"trunc(1920*{z}/2)*2", f"trunc(1080*{z}/2)*2"
-    return (
-        f"scale=w='{w}':h='{h}':eval=frame:flags=lanczos,"
-        f"crop=1920:1080:x='clip({cx}*{w}-960,0,{w}-1920)':y='clip({cy}*{h}-540,0,{h}-1080)'"
-    )
+    # perspective sends the corners of the shown part to the corners of the frame. Unlike scale
+    # and crop it works between pixels, so a slow glide moves smoothly instead of in pixel steps.
+    left = f"clip(({cx}-0.5/{z})*W,0,W-W/{z})"
+    top = f"clip(({cy}-0.5/{z})*H,0,H-H/{z})"
+    right, bottom = f"{left}+W/{z}", f"{top}+H/{z}"
+    corners = [left, top, right, top, left, bottom, right, bottom]
+    points = ":".join(f"{name}='{value}'" for name, value in zip(["x0", "y0", "x1", "y1", "x2", "y2", "x3", "y3"], corners))
+    return f"perspective={points}:interpolation=cubic:eval=frame,scale=1920:1080:flags=lanczos"
 
 
 # --- Putting the video together ----------------------------------------------
