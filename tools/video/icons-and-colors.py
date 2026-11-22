@@ -130,7 +130,7 @@ SCENES = [
 VIDEO = videokit.Video(
     name="icons-and-colors",
     title="Icons and colors",
-    topic="Organize your texts",
+    topic="Organize",
     summary="Give groups and sheets an icon and a color, so they stand out in your library at a glance.",
     still=32,
 )
