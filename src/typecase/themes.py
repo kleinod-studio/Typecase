@@ -10,18 +10,25 @@ import os
 import re
 import shutil
 import tempfile
+import tomllib
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
 from gettext import gettext as _
 from pathlib import Path
 
-from gi.repository import Gdk, GLib, GtkSource
+from gi.repository import Gdk, Gio, GLib, GtkSource
 
 BUILTIN_DIR = Path(__file__).resolve().parent / "themes"
 USER_DIR = Path(GLib.get_user_data_dir()) / "typecase" / "themes"
 DEFAULT = "typecase-standard"
 BUILTIN = ("typecase-standard", "typecase-paper", "typecase-solarized", "typecase-calm", "typecase-high-contrast")
 MAX_SIZE = 512 * 1024
+
+# Omarchy (an Arch Linux desktop) keeps the colors of its current theme in a small file; from it
+# Typecase builds a theme of its own that follows the desktop. The path is fixed in Omarchy itself.
+OMARCHY_ID = "typecase-omarchy"
+OMARCHY_DIR = Path.home() / ".local" / "state" / "omarchy" / "current"
+GENERATED_DIR = Path(GLib.get_user_cache_dir()) / "typecase" / "themes"
 
 
 def builtin_name(theme_id: str) -> str | None:
@@ -46,6 +53,7 @@ class Theme:
     dark: str
     builtin: bool
     files: tuple[Path, ...] = ()  # imported themes: their scheme files
+    omarchy: bool = False  # follows the colors of the current Omarchy theme
 
 
 _manager: GtkSource.StyleSchemeManager | None = None
@@ -62,8 +70,9 @@ def manager() -> GtkSource.StyleSchemeManager:
     (see available()), the system's schemes serve as their parents."""
     global _manager
     if _manager is None:
+        update_omarchy()
         _manager = GtkSource.StyleSchemeManager()
-        _manager.set_search_path([str(USER_DIR), str(BUILTIN_DIR), *_system_paths()])
+        _manager.set_search_path([str(GENERATED_DIR), str(USER_DIR), str(BUILTIN_DIR), *_system_paths()])
     return _manager
 
 
@@ -92,6 +101,9 @@ def available() -> list[Theme]:
     """The built-in themes in their fixed order, then the imported ones by name."""
     schemes = manager()
     builtin = [Theme(sid, builtin_name(sid), sid, sid + "-dark", True) for sid in BUILTIN]
+    if schemes.get_scheme(OMARCHY_ID) is not None:
+        # One variant: an Omarchy theme is either light or dark (Omarchy is a name, not translated)
+        builtin.append(Theme(OMARCHY_ID, "Omarchy", OMARCHY_ID, OMARCHY_ID, True, omarchy=True))
     imported: list[Theme] = []
     user_files = {}
     for path in USER_DIR.glob("*.xml") if USER_DIR.is_dir() else []:
@@ -126,6 +138,116 @@ def scheme(theme_id: str | None, dark: bool) -> GtkSource.StyleScheme:
     theme = find(theme_id)
     found = manager().get_scheme(theme.dark if dark else theme.light)
     return found or manager().get_scheme(DEFAULT + ("-dark" if dark else ""))
+
+
+# --- Omarchy -------------------------------------------------------------------
+
+_HEX = re.compile(r"#[0-9a-fA-F]{6}")
+_omarchy_monitor: Gio.FileMonitor | None = None
+_omarchy_timeout = 0
+_omarchy_callbacks: list = []
+
+
+def _hex_mix(a: str, b: str, amount: float) -> str:
+    """Hex color a moved towards b by amount (0..1)."""
+    channels = [round(int(a[i:i + 2], 16) + (int(b[i:i + 2], 16) - int(a[i:i + 2], 16)) * amount) for i in (1, 3, 5)]
+    return "#" + "".join(f"{channel:02x}" for channel in channels)
+
+
+def omarchy_xml(colors: dict) -> str | None:
+    """A style scheme from the colors of an Omarchy theme (its colors.toml); None if the colors
+    needed (text and background) are missing."""
+    def color(key, fallback=None):
+        value = colors.get(key)
+        return value.lower() if isinstance(value, str) and _HEX.fullmatch(value) else fallback
+
+    text, background = color("foreground"), color("background")
+    if not text or not background:
+        return None
+    dark = colors.get("mode") != "light"
+    accent = color("accent", color("blue", text))
+    styles = {
+        "text": (text, background),
+        "selection": (None, color("selection", _hex_mix(background, accent, 0.3))),
+        "current-line": (None, color("lighter_background", _hex_mix(background, text, 0.05))),
+        "cursor": (accent, None),
+        "typecase:syntax": (color("dark_foreground", _hex_mix(text, background, 0.55)), None),
+        "typecase:heading": (color("bright_foreground", text), None),
+        "typecase:link": (accent, None),
+        "typecase:code": (None, color("lighter_background", _hex_mix(background, text, 0.07))),
+        "typecase:code-block": (color("muted", _hex_mix(background, text, 0.15)), color("lighter_background", _hex_mix(background, text, 0.04))),
+    }
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        "<!-- Made by Typecase from the colors of the current Omarchy theme; rebuilt when it changes. -->",
+        f'<style-scheme id="{OMARCHY_ID}" name="Omarchy" version="1.0" parent-scheme="{"Adwaita-dark" if dark else "Adwaita"}">',
+        "  <metadata>",
+        f'    <property name="variant">{"dark" if dark else "light"}</property>',
+        "  </metadata>",
+    ]
+    for name, (foreground, fill) in styles.items():
+        attributes = (f' foreground="{foreground}"' if foreground else "") + (f' background="{fill}"' if fill else "")
+        lines.append(f'  <style name="{name}"{attributes}/>')
+    lines.append("</style-scheme>")
+    return "\n".join(lines) + "\n"
+
+
+def update_omarchy() -> bool:
+    """(Re)builds the Omarchy theme from the current Omarchy colors, or removes it when there are
+    none. Returns whether it changed."""
+    from .fileio import atomic_write_text
+
+    target = GENERATED_DIR / f"{OMARCHY_ID}.xml"
+    try:
+        with open(OMARCHY_DIR / "theme" / "colors.toml", "rb") as file:
+            xml = omarchy_xml(tomllib.load(file))
+    except (OSError, tomllib.TOMLDecodeError, UnicodeDecodeError):
+        xml = None
+    try:
+        old = target.read_text(encoding="utf-8")
+    except OSError:
+        old = None
+    if xml == old:
+        return False
+    try:
+        if xml is None:
+            target.unlink(missing_ok=True)
+        else:
+            GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(target, xml)
+    except OSError:
+        return False
+    return True
+
+
+def watch_omarchy(on_change) -> None:
+    """Calls on_change() after the Omarchy theme changed (a new theme was set in Omarchy)."""
+    global _omarchy_monitor
+    _omarchy_callbacks.append(on_change)
+    if _omarchy_monitor is not None or not OMARCHY_DIR.is_dir():
+        return
+
+    def changed():
+        global _omarchy_timeout
+        _omarchy_timeout = 0
+        if update_omarchy():
+            rescan()
+            for callback in list(_omarchy_callbacks):
+                callback()
+        return GLib.SOURCE_REMOVE
+
+    def on_event(*_args):
+        # Omarchy replaces several files in a row; wait until it is done
+        global _omarchy_timeout
+        if _omarchy_timeout:
+            GLib.source_remove(_omarchy_timeout)
+        _omarchy_timeout = GLib.timeout_add(400, changed)
+
+    try:
+        _omarchy_monitor = Gio.File.new_for_path(str(OMARCHY_DIR)).monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, None)
+    except GLib.Error:
+        return
+    _omarchy_monitor.connect("changed", on_event)
 
 
 # --- Colors for the Markdown styling ------------------------------------------

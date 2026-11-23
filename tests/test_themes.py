@@ -31,12 +31,14 @@ class ThemesTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
-        self._original = themes.USER_DIR
+        self._original = (themes.USER_DIR, themes.OMARCHY_DIR, themes.GENERATED_DIR)
         themes.USER_DIR = self.root / "themes"
+        themes.OMARCHY_DIR = self.root / "omarchy" / "current"
+        themes.GENERATED_DIR = self.root / "generated"
         themes._manager = None
 
     def tearDown(self):
-        themes.USER_DIR = self._original
+        themes.USER_DIR, themes.OMARCHY_DIR, themes.GENERATED_DIR = self._original
         themes._manager = None
         self._tmp.cleanup()
 
@@ -111,6 +113,42 @@ class ThemesTest(unittest.TestCase):
         with self.assertRaises(themes.ThemeError):
             themes.install(scheme_file(self.root, "typecase-paper", "Fake"))
         self.assertFalse(any(themes.USER_DIR.glob("*.xml")) if themes.USER_DIR.exists() else False)
+
+    def omarchy_colors(self, text: str) -> None:
+        folder = themes.OMARCHY_DIR / "theme"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "colors.toml").write_text(text)
+
+    def test_omarchy_theme_follows_the_desktop_colors(self):
+        self.omarchy_colors('mode = "dark"\naccent = "#8bc9eb"\nbackground = "#16242d"\nforeground = "#d6e2ee"\n')
+        available = themes.available()
+        self.assertEqual([t.id for t in available], [*themes.BUILTIN, themes.OMARCHY_ID])
+        omarchy = available[-1]
+        self.assertTrue(omarchy.omarchy and omarchy.builtin)
+        self.assertEqual((omarchy.name, omarchy.light, omarchy.dark), ("Omarchy", themes.OMARCHY_ID, themes.OMARCHY_ID))
+        palette = themes.palette(themes.scheme(themes.OMARCHY_ID, False))
+        self.assertTrue(palette["dark"])
+        self.assertEqual((palette["background"].to_string(), palette["text"].to_string(), palette["link"].to_string()),
+                         ("rgb(22,36,45)", "rgb(214,226,238)", "rgb(139,201,235)"))
+        # A light theme set in Omarchy: rebuilt once, then unchanged
+        self.omarchy_colors('mode = "light"\nbackground = "#eff1f5"\nforeground = "#4c4f69"\n')
+        self.assertTrue(themes.update_omarchy())
+        self.assertFalse(themes.update_omarchy())
+        themes.rescan()
+        self.assertFalse(themes.palette(themes.scheme(themes.OMARCHY_ID, True))["dark"])
+
+    def test_omarchy_theme_is_left_out_without_usable_colors(self):
+        self.assertNotIn(themes.OMARCHY_ID, [t.id for t in themes.available()])
+        for text in ("not toml [", 'background = "#ffffff"\n', 'background = "white"\nforeground = "#000000"\n'):
+            self.omarchy_colors(text)
+            themes._manager = None
+            self.assertNotIn(themes.OMARCHY_ID, [t.id for t in themes.available()], text)
+        self.assertFalse((themes.GENERATED_DIR / f"{themes.OMARCHY_ID}.xml").exists())
+
+    def test_omarchy_colors_are_not_written_into_the_file_unchecked(self):
+        xml = themes.omarchy_xml({"background": "#000000", "foreground": "#ffffff", "accent": '#fff"/><evil'})
+        self.assertNotIn("evil", xml)
+        self.assertIn('name="typecase:link" foreground="#ffffff"', xml)
 
 
 if __name__ == "__main__":

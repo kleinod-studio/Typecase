@@ -172,6 +172,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
 
         style = Adw.StyleManager.get_default()
         style.connect("notify::dark", lambda *_args: self._apply_style_scheme())
+        themes.watch_omarchy(self._omarchy_changed)
         self.apply_settings()
         self._apply_style_scheme()
 
@@ -2161,6 +2162,14 @@ class TypecaseWindow(Adw.ApplicationWindow):
         )
         editor.previews.calm = editor.pills.calm = self.focus_mode
         self._style_scheme(editor)
+
+    def _omarchy_changed(self):
+        """A new theme was set in Omarchy: the Omarchy theme has new colors."""
+        dialog = self.get_visible_dialog()
+        if isinstance(dialog, PreferencesDialog):
+            dialog.themes_group.refresh()
+            dialog._themes_changed()
+        self._apply_style_scheme()
 
     def _apply_style_scheme(self):
         for editor in [self.editor, *self.group_view.editors]:

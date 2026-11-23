@@ -383,6 +383,12 @@ class _ThemesGroup(Adw.PreferencesGroup):
             self.remove(row)
         self._rows = []
         for theme in themes.available():
+            if theme.omarchy:
+                # Built from the desktop's colors: nothing to save or remove
+                row = Adw.ActionRow(title=theme.name, subtitle=_("Follows the current Omarchy theme"))
+                self.add(row)
+                self._rows.append(row)
+                continue
             variants = _("Light and dark") if theme.light != theme.dark else _("One variant for light and dark")
             row = Adw.ActionRow(title=theme.name, subtitle=variants)
             if theme.builtin:

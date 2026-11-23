@@ -36,6 +36,11 @@ gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import GdkPixbuf, Gio, GLib, Gtk  # noqa: E402
 
 from typecase.main import TypecaseApplication, _fall_back_to_utf8  # noqa: E402
+from typecase import themes as _themes  # noqa: E402
+
+_themes.OMARCHY_DIR = TMP / "omarchy" / "current"  # never the desktop's own Omarchy theme
+_themes.GENERATED_DIR = TMP / "generated-themes"
+_themes.OMARCHY_DIR.mkdir(parents=True)  # Omarchy is there, but without a theme so far
 from typecase import images  # noqa: E402
 from typecase.image_dialog import ImageDialog  # noqa: E402
 
@@ -1581,6 +1586,22 @@ def steps(win, app):
     check("nacht" not in prefs.editor_page._previews and config.settings()["editor_theme"] == themes.DEFAULT, "Removing the chosen theme falls back to Standard")
     check(ed.buffer.get_style_scheme().get_id() == "typecase-standard-dark", "The editor falls back to Standard, too")
     check("--sidebar-bg-color" not in win._theme_css_text, "Standard keeps the usual GNOME colors")
+    # Omarchy: setting a theme there adds the Omarchy tile, and the next theme recolors the editor
+    omarchy_theme = themes.OMARCHY_DIR / "theme"
+    omarchy_theme.mkdir()
+    (omarchy_theme / "colors.toml").write_text('mode = "dark"\naccent = "#8bc9eb"\nbackground = "#16242d"\nforeground = "#d6e2ee"\n')
+    yield from wait_until(lambda: themes.OMARCHY_ID in prefs.editor_page._previews)
+    check(themes.OMARCHY_ID in prefs.editor_page._previews and "Omarchy" in [row.get_title() for row in prefs.themes_group._rows], "Setting a theme in Omarchy adds the Omarchy theme")
+    prefs.editor_page._previews[themes.OMARCHY_ID].emit("activate")
+    check("--accent-bg-color: rgb(139,201,235)" in win._theme_css_text, "The Omarchy theme takes the desktop's colors")
+    # As omarchy-theme-set does it: the next theme is prepared beside the current one, then takes its place
+    next_theme = themes.OMARCHY_DIR / "next-theme"
+    next_theme.mkdir()
+    (next_theme / "colors.toml").write_text('mode = "dark"\naccent = "#ff9e64"\nbackground = "#1a1b26"\nforeground = "#a9b1d6"\n')
+    shutil.rmtree(omarchy_theme)
+    next_theme.rename(omarchy_theme)
+    yield from wait_until(lambda: "rgb(255,158,100)" in win._theme_css_text)
+    check("--accent-bg-color: rgb(255,158,100)" in win._theme_css_text, "A new Omarchy theme recolors the editor right away")
     prefs.editor_page._previews["typecase-calm"].emit("activate")
     prefs.editor_page.reset()
     check(ed.path and ed.path.name == "a.md", "Checkpoint after reset: a.md still open (open: " + str(ed.path and ed.path.name) + ")")
