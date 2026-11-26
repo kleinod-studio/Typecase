@@ -344,6 +344,9 @@ class _TemplatesPage(Adw.PreferencesPage):
         self._toast(_("Saved “%s”") % path.name)
 
     def _remove(self, template):
+        # Built-in templates belong to the app and are never removed.
+        if template.builtin:
+            return
         # Into the trash, not permanently: something removed by accident can be restored.
         try:
             Gio.File.new_for_path(str(template.path)).trash(None)

@@ -101,6 +101,14 @@ class ExportDialog(Adw.Dialog):
         self.set_default_widget(self.export_button)
         self.format_row.connect("notify::selected", lambda *_a: self._check_format())
         self._check_format()
+        self.template_row.connect("notify::selected", lambda *_a: self._check_template())
+        self._check_template()
+
+    def _check_template(self):
+        """A template for one-page documents (a letter) has no table of contents or cover page."""
+        allowed = self._templates[self.template_row.get_selected()].structure if self._templates else True
+        self.toc_row.set_visible(allowed)
+        self.cover_row.set_visible(allowed)
 
     def _check_format(self):
         """Tells right away when a format cannot be exported here (PDF without WeasyPrint)."""
@@ -134,7 +142,10 @@ class ExportDialog(Adw.Dialog):
         config.update(export_template=template.id)
         text, title = self._text, self._title
         toc, cover = self.toc_row.get_active(), self.cover_row.get_active()
-        config.update(export_toc=toc, export_cover=cover)
+        if template.structure:
+            config.update(export_toc=toc, export_cover=cover)
+        else:
+            toc = cover = False  # the switches stay as they were for the next export with another template
         if self._group is not None:
             parts = export.PARTS[self.parts_row.get_selected()]
             if self.parts_row.get_visible():

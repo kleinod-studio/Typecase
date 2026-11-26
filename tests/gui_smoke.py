@@ -1404,28 +1404,31 @@ def steps(win, app):
     check(tc_config.TEMPLATES_DIR.is_relative_to(TMP), "Test uses its own templates folder")
     prefs = PreferencesDialog(win.apply_settings)
     page = prefs.templates_page
-    check(len(page._rows) == 1, "Preferences show the bundled template")
+    check(len(page._rows) == 2, "Preferences show the bundled templates")
     template_file = TMP / ("Mein Brief" + export_templates.EXTENSION)
     export_templates.pack(export_templates.available(None)[0], template_file)
     check(template_file.is_file(), "Template can be saved as a file")
     page._install(template_file)
-    check(len(page._rows) == 2 and (tc_config.TEMPLATES_DIR / "mein-brief").is_dir(), "Imported template appears in the preferences")
+    check(len(page._rows) == 3 and (tc_config.TEMPLATES_DIR / "mein-brief").is_dir(), "Imported template appears in the preferences")
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
-    check(dialog.template_row.get_model().get_n_items() == 2, "Export dialog offers the imported template")
+    check(dialog.template_row.get_model().get_n_items() == 3, "Export dialog offers the imported template")
     check(dialog.template_row.get_selected() == 0, "Without a template of its own, the sheet gets the one used before")
-    dialog.template_row.set_selected(1)
-    chosen = dialog._templates[1]
+    dialog.template_row.set_selected(2)
+    chosen = next(t for t in dialog._templates if t.id == "mein-brief")
     dialog.force_close()
     own_dialog = ExportDialog("---\ntemplate: mein-brief\n---\nText\n", meta, None, {}, lambda *_a: None)
     check(own_dialog._templates[own_dialog.template_row.get_selected()].id == "mein-brief", "The export dialog picks the sheet's own template")
+    check(own_dialog.toc_row.get_visible() and own_dialog.cover_row.get_visible(), "A normal template offers contents and cover page")
+    letter_dialog = ExportDialog("---\ntemplate: letter\n---\nText\n", meta, None, {}, lambda *_a: None)
+    check(not letter_dialog.toc_row.get_visible() and not letter_dialog.cover_row.get_visible(), "The letter template leaves out contents and cover page")
     if export.pandoc_path() is not None:
         results = {}
         run_export("Text.\n", "html", chosen, TMP / "eigen.html", meta, None, {}, lambda path, error, *_missing: results.__setitem__("html", error))
         yield from wait_until(lambda: "html" in results, timeout=15)
         check(results.get("html") is None and (TMP / "eigen.html").is_file(), "Export with the imported template")
     page._remove(chosen)
-    check(len(page._rows) == 1 and not (tc_config.TEMPLATES_DIR / "mein-brief").exists(), "Removed template goes to the trash")
+    check(len(page._rows) == 2 and not (tc_config.TEMPLATES_DIR / "mein-brief").exists(), "Removed template goes to the trash")
 
     # Template assistant: settings instead of files, and they can be changed later
     from typecase.template_dialog import TemplateDialog
@@ -1443,7 +1446,7 @@ def steps(win, app):
     assistant._save()
     roman = saved[0]
     page.refresh()
-    check(roman.id == "mein-roman" and len(page._rows) == 2 and (roman.path / "reference.docx").is_file(), "The assistant creates a complete template")
+    check(roman.id == "mein-roman" and len(page._rows) == 3 and (roman.path / "reference.docx").is_file(), "The assistant creates a complete template")
     if export.pandoc_path() is not None:
         results = {}
         for fmt in ("html", "docx") + (("pdf",) if pdf_available() else ()):
@@ -1458,7 +1461,7 @@ def steps(win, app):
     assistant._save()
     check(saved[1].id == roman.id and "font-size: 13pt" in saved[1].css.read_text(encoding="utf-8"), "Editing replaces the template")
     page._remove(saved[1])
-    check(len(page._rows) == 1, "A template from the assistant can be removed")
+    check(len(page._rows) == 2, "A template from the assistant can be removed")
 
     from typecase import config as cfg
 

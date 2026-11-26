@@ -124,7 +124,14 @@ def with_fields(text: str, template: Template, today: datetime.date | None = Non
             except ValueError:
                 pass  # written by hand in another form: stays as it is
         elif field.type == "lines" and value:
-            changes[field.key] = "\n".join(_LINE_START_MARKUP.sub(_escape_markup, line) for line in value.split("\n"))
+            # A blank line stays visible as an empty line (Pandoc would drop it inside a field)
+            lines = [_LINE_START_MARKUP.sub(_escape_markup, line) if line.strip() else "&nbsp;" for line in value.split("\n")]
+            changes[field.key] = "\n".join(lines)
+            # One line up to the first blank line: a sender's postal address without phone or email
+            first = value.split("\n\n")[0].split("\n")
+            changes[field.key + "-oneline"] = " · ".join(
+                _LINE_START_MARKUP.sub(_escape_markup, line).strip() for line in first if line.strip()
+            )
     if not changes:
         return text
     return frontmatter.join(frontmatter.update(header, changes), body)
@@ -325,9 +332,11 @@ def pandoc_args(
             args += ["--metadata", "typecase-heading-breaks=true"]
     if fmt == "docx":
         # Word files ignore template.html; the template's fields go above the text instead.
-        placed = [field.key for field in template.fields if field.key != "date"]  # Pandoc writes the date itself
-        if placed:
+        placed = [field.key for field in template.fields]
+        if placed or not template.structure:
             args += ["--lua-filter", str(FIELDS_FILTER), "--metadata", "typecase-fields=" + ",".join(placed)]
+        if not template.structure:
+            args += ["--metadata", "typecase-no-title-block=true"]  # a letter has no title on top
         args += ["--to", "docx"]
         if template.reference_docx:
             args += ["--reference-doc", str(template.reference_docx)]

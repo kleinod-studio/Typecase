@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "name": {"en": "Letter (DIN 5008)", "de": "Brief (DIN 5008)"},
+  "description": {
+    "en": "A business letter after the German standard DIN 5008, for window envelopes",
+    "de": "Ein Geschäftsbrief nach DIN 5008, passend für Fensterumschläge"
+  },
+  "author": "Typecase",
+  "version": "1.0",
+  "structure": false,
+  "pdf": {"paper": "a4", "margins_mm": {"top": 20, "right": 20, "bottom": 20, "left": 25}},
+  "fields": [
+    {"key": "sender", "label": {"en": "Sender", "de": "Absender"}, "type": "lines"},
+    {"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+    {"key": "place", "label": {"en": "Place", "de": "Ort"}},
+    {"key": "date", "label": {"en": "Date", "de": "Datum"}, "type": "date"},
+    {"key": "subject", "label": {"en": "Subject", "de": "Betreff"}}
+  ]
+}

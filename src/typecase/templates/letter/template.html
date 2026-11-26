@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="$lang$">
+<head>
+<meta charset="utf-8">
+<meta name="generator" content="Typecase">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$if(subject)$$subject$$else$$if(title-meta)$$title-meta$$else$$pagetitle$$endif$$endif$</title>
+$for(header-includes)$
+$header-includes$
+$endfor$
+</head>
+<body class="letter$if(pdf)$ pdf$endif$">
+<div class="letter-head">
+$if(sender)$
+<header class="sender">$sender$</header>
+$endif$
+<div class="address">
+$if(sender-oneline)$
+<p class="return">$sender-oneline$</p>
+$endif$
+$if(recipient)$
+<div class="recipient">$recipient$</div>
+$endif$
+</div>
+<p class="place-date">$if(place)$$place$, $endif$$date$</p>
+<span class="mark fold-top"></span><span class="mark punch"></span><span class="mark fold-bottom"></span>
+</div>
+$if(subject)$
+<p class="subject">$subject$</p>
+$endif$
+<main>
+$body$
+</main>
+</body>
+</html>

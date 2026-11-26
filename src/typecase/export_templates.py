@@ -25,6 +25,13 @@ A sheet names its template in the front matter: template: letter
 On export, a date is written the way the user's language writes dates, and the lines of a
 "lines" field stay apart ($recipient$ gives them with <br />). Word files have no template.html,
 so there the fields come above the text, each in a paragraph style named after its key.
+For a field of several lines, $key-oneline$ gives its lines in one line, separated by " · ",
+up to the first blank line (a letter's return address above the recipient, without the phone
+number and email that follow a blank line).
+
+A template for one-page documents (a letter) can leave out the table of contents and cover
+page; the export dialog then does not offer them:
+  "structure": false
 
 Imported templates are stored unpacked in the app's data folder; the built-in ones live in the code."""
 
@@ -121,6 +128,11 @@ class Template:
         return margins
 
     @property
+    def structure(self) -> bool:
+        """Whether exports with this template may have a table of contents and a cover page."""
+        return self.info.get("structure") is not False
+
+    @property
     def fields(self) -> list[Field]:
         """The fields the template asks for. Unusable entries are skipped instead of rejecting
         the template: a key Typecase uses itself, a repeated key, an unknown type."""
@@ -203,7 +215,8 @@ def available(user_dir: Path | None) -> list[Template]:
                     found.append(read_folder(folder, builtin))
                 except TemplateError:
                     pass
-    builtins = [t for t in found if t.builtin]
+    # "Text" first: it is the default for anything without a template of its own
+    builtins = sorted((t for t in found if t.builtin), key=lambda t: (t.id != "text", t.title.casefold()))
     others = sorted((t for t in found if not t.builtin), key=lambda t: t.title.casefold())
     return builtins + others
 

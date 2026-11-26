@@ -71,7 +71,7 @@ class TemplatesTest(unittest.TestCase):
 
     def test_builtin_text(self):
         templates = available(self.user)
-        self.assertEqual([t.id for t in templates], ["text"])
+        self.assertEqual([t.id for t in templates], ["text", "letter"])
         self.assertTrue(templates[0].builtin and templates[0].title == "Text")
 
     def test_builtin_roundtrip_as_file(self):
@@ -82,7 +82,7 @@ class TemplatesTest(unittest.TestCase):
         imported = install(file, self.user)
         self.assertFalse(imported.builtin)
         self.assertEqual((imported.path / "style.css").read_text(), builtin.css.read_text())
-        self.assertEqual([t.id for t in available(self.user)], ["text", "mein-text"])
+        self.assertEqual([t.id for t in available(self.user)], ["text", "letter", "mein-text"])
 
     def test_pack_old_timestamps(self):
         folder = self.tmp / "alt"
