@@ -70,7 +70,8 @@ Ideas for after 1.0:
 - [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
 - [x] Outline: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O)
 - [x] Table of contents, cover page and parts in the export: a table of contents from the headings (with page numbers in the PDF), a cover page, and the subgroups of a group as parts with their own heading or title page; PDFs get page numbers
-- [ ] Bibliography: cite sources in the text and get a list of references in the export, in a citation style of your choice
+- [ ] Bibliography: manage your sources (books, articles, web pages) in the library, or bring them in from a BibTeX or CSL JSON file, for example exported from Zotero; cite them in the text and get a list of references in the export, in a citation style of your choice
+- [ ] Quote collection: keep quotes with their author, source and keywords as plain Markdown in the library, find them by search or keyword while writing, and insert one as a block quote with its source
 - [ ] Comments: select a passage and attach a comment to it, for notes to yourself while revising; comments stay in the sheet's plain `.md` file and are left out of the export
 - [x] Footnotes: written right in the text (`^[note]`), inserted with Ctrl+Alt+F or the formatting bar, styled in the editor and placed at the page bottom in PDF and Word exports
 - [ ] Touch support for tablets, convertible laptops and Linux phones: test and refine dragging, context menus and text selection by touch, then list Typecase as adaptive in software centers ([testers wanted](https://github.com/kleinod-studio/Typecase/issues/4))
