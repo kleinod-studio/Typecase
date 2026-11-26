@@ -43,6 +43,32 @@ class TemplatesTest(unittest.TestCase):
     def info(self, **extra):
         return json.dumps({"format": 1, "name": {"en": "Letter", "de": "Brief"}, **extra})
 
+    def test_fields_from_the_description(self):
+        fields = [
+            {"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+            {"key": "subject", "label": "Subject"},
+            {"key": "date", "label": {"en": "Date"}, "type": "date"},
+        ]
+        template = install(make_file(self.tmp / "letter.typecase-template", {"template.json": self.info(fields=fields), "template.html": HTML}), self.user)
+        self.assertEqual(
+            [(f.key, f.label, f.type) for f in template.fields],
+            [("recipient", "Empfänger", "lines"), ("subject", "Subject", "text"), ("date", "Date", "date")],
+        )
+
+    def test_unusable_fields_are_skipped(self):
+        fields = [
+            {"key": "title", "label": "Title"},  # Typecase uses it itself
+            {"key": "Subject Line", "label": "Subject"},  # not usable as a key
+            {"key": "subject", "type": "choice"},  # unknown type
+            {"key": "subject"},  # label falls back to the key
+            {"key": "subject", "label": "Again"},  # repeated
+            "recipient",
+        ]
+        template = install(make_file(self.tmp / "letter.typecase-template", {"template.json": self.info(fields=fields), "template.html": HTML}), self.user)
+        self.assertEqual([(f.key, f.label, f.type) for f in template.fields], [("subject", "subject", "text")])
+        broken = install(make_file(self.tmp / "other.typecase-template", {"template.json": self.info(fields="subject"), "template.html": HTML}), self.user)
+        self.assertEqual(broken.fields, [])
+
     def test_builtin_text(self):
         templates = available(self.user)
         self.assertEqual([t.id for t in templates], ["text"])

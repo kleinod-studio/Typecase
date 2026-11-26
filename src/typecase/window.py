@@ -100,6 +100,8 @@ def _install_css():
         .typecase-card-status { padding: 1px 8px; border-radius: 99px; background-color: alpha(currentColor, 0.1); }
         .typecase-card.drop-before { box-shadow: inset 3px 0 0 0 var(--accent-bg-color); }
         .typecase-card.drop-after { box-shadow: inset -3px 0 0 0 var(--accent-bg-color); }
+        /* Template fields of several lines: the text sits on the row's own background. */
+        .typecase-field-lines, .typecase-field-lines > text { background: none; }
         .goal-badge:hover { background-image: image(alpha(currentColor, 0.05)); }
         .goal-badge:active { background-image: image(alpha(currentColor, 0.1)); }
         """

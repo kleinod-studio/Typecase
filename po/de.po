@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-23 14:24+0100\n"
+"POT-Creation-Date: 2026-11-26 18:02+0100\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -174,8 +174,8 @@ msgstr "Dieses Blatt einzeln öffnen"
 msgid "Notes on “%s”"
 msgstr "Notizen zu „%s“"
 
-#: src/typecase/card_view.py:76 src/typecase/inspector.py:124
-#: src/typecase/inspector.py:150 src/typecase/inspector.py:160
+#: src/typecase/card_view.py:76 src/typecase/inspector.py:135
+#: src/typecase/inspector.py:161 src/typecase/inspector.py:171
 msgid "Notes"
 msgstr "Notizen"
 
@@ -221,7 +221,7 @@ msgstr "Word-Dokument (DOCX)"
 msgid "Web Page (HTML)"
 msgstr "Webseite (HTML)"
 
-#: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:114
+#: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:118
 #: src/typecase/window.py:1523
 msgid "Export"
 msgstr "Exportieren"
@@ -230,7 +230,7 @@ msgstr "Exportieren"
 msgid "Format"
 msgstr "Format"
 
-#: src/typecase/export_dialog.py:50
+#: src/typecase/export_dialog.py:50 src/typecase/inspector.py:104
 msgid "Template"
 msgstr "Vorlage"
 
@@ -238,65 +238,65 @@ msgstr "Vorlage"
 msgid "Import more templates in the preferences"
 msgstr "Weitere Vorlagen lassen sich in den Einstellungen importieren"
 
-#: src/typecase/export_dialog.py:59 src/typecase/inspector.py:94
+#: src/typecase/export_dialog.py:63 src/typecase/inspector.py:94
 msgid "Title"
 msgstr "Titel"
 
-#: src/typecase/export_dialog.py:65
+#: src/typecase/export_dialog.py:69
 msgid "Table of Contents"
 msgstr "Inhaltsverzeichnis"
 
-#: src/typecase/export_dialog.py:66
+#: src/typecase/export_dialog.py:70
 msgid "From the headings, with page numbers in the PDF"
 msgstr "Aus den Überschriften, im PDF mit Seitenzahlen"
 
-#: src/typecase/export_dialog.py:71
+#: src/typecase/export_dialog.py:75
 msgid "Cover Page"
 msgstr "Deckblatt"
 
-#: src/typecase/export_dialog.py:72
+#: src/typecase/export_dialog.py:76
 msgid "Title, subtitle, author and date on a page of their own"
 msgstr "Titel, Untertitel, Autor und Datum auf einer eigenen Seite"
 
-#: src/typecase/export_dialog.py:78
+#: src/typecase/export_dialog.py:82
 msgid "Parts"
 msgstr "Teile"
 
-#: src/typecase/export_dialog.py:79
+#: src/typecase/export_dialog.py:83
 msgid "Subgroups become parts with their name as heading"
 msgstr "Untergruppen werden zu Teilen mit ihrem Namen als Überschrift"
 
-#: src/typecase/export_dialog.py:80
+#: src/typecase/export_dialog.py:84
 msgid "Continuous"
 msgstr "Fortlaufend"
 
-#: src/typecase/export_dialog.py:80
+#: src/typecase/export_dialog.py:84
 msgid "Each on a New Page"
 msgstr "Jeder auf einer neuen Seite"
 
-#: src/typecase/export_dialog.py:80
+#: src/typecase/export_dialog.py:84
 msgid "With a Title Page"
 msgstr "Mit eigener Titelseite"
 
-#: src/typecase/export_dialog.py:88 src/typecase/window.py:266
+#: src/typecase/export_dialog.py:92 src/typecase/window.py:266
 #: src/typecase/window.py:364
 msgid "Export…"
 msgstr "Exportieren …"
 
-#: src/typecase/export_dialog.py:145
+#: src/typecase/export_dialog.py:149
 msgid "Contents"
 msgstr "Inhalt"
 
-#: src/typecase/export_dialog.py:158
+#: src/typecase/export_dialog.py:162
 msgid "Pandoc is not installed."
 msgstr "Pandoc ist nicht installiert."
 
-#: src/typecase/export_dialog.py:202
+#: src/typecase/export_dialog.py:206
 msgid "Pandoc could not convert the text."
 msgstr "Pandoc konnte den Text nicht umwandeln."
 
 #. Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
-#: src/typecase/export_dialog.py:240
+#: src/typecase/export_dialog.py:244
 msgid ""
 "PDF export needs WeasyPrint, which is not installed. The Flatpak version of "
 "Typecase includes it."
@@ -304,48 +304,48 @@ msgstr ""
 "Für den PDF-Export wird WeasyPrint benötigt, das nicht installiert ist. In "
 "der Flatpak-Version von Typecase ist es enthalten."
 
-#: src/typecase/export_dialog.py:280
+#: src/typecase/export_dialog.py:284
 msgid "The PDF could not be created."
 msgstr "Das PDF konnte nicht erstellt werden."
 
-#: src/typecase/export_templates.py:121
+#: src/typecase/export_templates.py:171
 msgid "The template description (template.json) is missing."
 msgstr "Die Beschreibung der Vorlage (template.json) fehlt."
 
-#: src/typecase/export_templates.py:125
+#: src/typecase/export_templates.py:175
 msgid "The template description (template.json) cannot be read."
 msgstr "Die Beschreibung der Vorlage (template.json) ist nicht lesbar."
 
-#: src/typecase/export_templates.py:127
+#: src/typecase/export_templates.py:177
 msgid "The template has no name."
 msgstr "Die Vorlage hat keinen Namen."
 
-#: src/typecase/export_templates.py:129
+#: src/typecase/export_templates.py:179
 msgid "This template needs a newer version of Typecase."
 msgstr "Diese Vorlage braucht eine neuere Version von Typecase."
 
-#: src/typecase/export_templates.py:132
+#: src/typecase/export_templates.py:182
 msgid "The HTML template (template.html) is missing."
 msgstr "Die HTML-Vorlage (template.html) fehlt."
 
-#: src/typecase/export_templates.py:135
+#: src/typecase/export_templates.py:185
 msgid ""
 "The HTML template does not contain $body$, so the text would be missing."
 msgstr "Die HTML-Vorlage enthält kein $body$, der Text würde also fehlen."
 
-#: src/typecase/export_templates.py:137
+#: src/typecase/export_templates.py:187
 msgid "The HTML template (template.html) cannot be read."
 msgstr "Die HTML-Vorlage (template.html) ist nicht lesbar."
 
-#: src/typecase/export_templates.py:223
+#: src/typecase/export_templates.py:273
 msgid "This is not a Typecase template file."
 msgstr "Das ist keine Typecase-Vorlagendatei."
 
-#: src/typecase/export_templates.py:227
+#: src/typecase/export_templates.py:277
 msgid "The template is too large."
 msgstr "Die Vorlage ist zu groß."
 
-#: src/typecase/export_templates.py:244
+#: src/typecase/export_templates.py:294
 msgid "The template contains files outside of its folder."
 msgstr "Die Vorlage enthält Dateien außerhalb ihres Ordners."
 
@@ -591,114 +591,130 @@ msgstr "Untertitel"
 msgid "Author"
 msgstr "Autor"
 
-#: src/typecase/inspector.py:101
+#: src/typecase/inspector.py:104
+msgid "Used for export"
+msgstr "Für den Export"
+
+#: src/typecase/inspector.py:112
 msgid "Organize"
 msgstr "Einordnung"
 
-#: src/typecase/inspector.py:102
+#: src/typecase/inspector.py:113
 msgid "Keywords, separated by commas"
 msgstr "Schlagwörter, durch Kommas getrennt"
 
-#: src/typecase/inspector.py:105
+#: src/typecase/inspector.py:116
 msgid "Status"
 msgstr "Status"
 
-#: src/typecase/inspector.py:108 src/typecase/preferences.py:208
+#: src/typecase/inspector.py:119 src/typecase/preferences.py:208
 msgid "Language"
 msgstr "Sprache"
 
-#: src/typecase/inspector.py:114
+#: src/typecase/inspector.py:125
 msgid "Dates"
 msgstr "Daten"
 
-#: src/typecase/inspector.py:115
+#: src/typecase/inspector.py:126
 msgid "Created"
 msgstr "Erstellt"
 
-#: src/typecase/inspector.py:117
+#: src/typecase/inspector.py:128
 msgid "Last Modified"
 msgstr "Zuletzt geändert"
 
-#: src/typecase/inspector.py:122
+#: src/typecase/inspector.py:133
 msgid "Details"
 msgstr "Angaben"
 
-#: src/typecase/inspector.py:123
+#: src/typecase/inspector.py:134
 msgid "Goal"
 msgstr "Ziel"
 
-#: src/typecase/inspector.py:138 src/typecase/window.py:371
+#: src/typecase/inspector.py:149 src/typecase/window.py:371
 #: src/typecase/window.py:436 src/typecase/window.py:1549
 msgid "Properties"
 msgstr "Eigenschaften"
 
-#: src/typecase/inspector.py:150
+#: src/typecase/inspector.py:161
 msgid "Not part of the text or the export"
 msgstr "Nicht Teil des Textes oder des Exports"
 
-#: src/typecase/inspector.py:173
+#: src/typecase/inspector.py:184
 msgid "Attachments"
 msgstr "Anhänge"
 
-#: src/typecase/inspector.py:173
+#: src/typecase/inspector.py:184
 msgid "Copies kept next to the sheet; drop files here"
 msgstr "Kopien, neben dem Blatt aufbewahrt; Dateien hierher ziehen"
 
-#: src/typecase/inspector.py:175
+#: src/typecase/inspector.py:186
 msgid "Add Attachment…"
 msgstr "Anhang hinzufügen…"
 
-#: src/typecase/inspector.py:178
+#: src/typecase/inspector.py:189
 msgid "No attachments"
 msgstr "Keine Anhänge"
 
-#: src/typecase/inspector.py:204
+#: src/typecase/inspector.py:215
 #, python-format
 msgid "Default (%s)"
 msgstr "Voreinstellung (%s)"
 
-#: src/typecase/inspector.py:205 src/typecase/template_dialog.py:41
+#: src/typecase/inspector.py:216 src/typecase/template_dialog.py:41
 msgid "None"
 msgstr "Keiner"
 
-#: src/typecase/inspector.py:256
+#: src/typecase/inspector.py:272
 #, python-format
 msgid "%s (according to the file system)"
 msgstr "%s (laut Dateisystem)"
 
-#: src/typecase/inspector.py:300 src/typecase/window.py:1656
+#: src/typecase/inspector.py:362
+msgid "Choose Date"
+msgstr "Datum wählen"
+
+#: src/typecase/inspector.py:365
+msgid "Use the Day of the Export"
+msgstr "Tag des Exports verwenden"
+
+#: src/typecase/inspector.py:373
+msgid "The day of the export"
+msgstr "Der Tag des Exports"
+
+#: src/typecase/inspector.py:427 src/typecase/window.py:1656
 msgid "Open"
 msgstr "Öffnen"
 
-#: src/typecase/inspector.py:302 src/typecase/window.py:1830
+#: src/typecase/inspector.py:429 src/typecase/window.py:1830
 msgid "Move to Trash"
 msgstr "In den Papierkorb"
 
-#: src/typecase/inspector.py:313
+#: src/typecase/inspector.py:440
 msgid "Add Attachment"
 msgstr "Anhang hinzufügen"
 
-#: src/typecase/inspector.py:334
+#: src/typecase/inspector.py:461
 msgid "Only files can be attached."
 msgstr "Nur Dateien können angehängt werden."
 
-#: src/typecase/inspector.py:339 src/typecase/sheet_editor.py:699
+#: src/typecase/inspector.py:466 src/typecase/sheet_editor.py:699
 #: src/typecase/sheet_editor.py:786
 #, python-format
 msgid "Could not attach “%(name)s”: %(reason)s"
 msgstr "„%(name)s“ konnte nicht angehängt werden: %(reason)s"
 
-#: src/typecase/inspector.py:358 src/typecase/window.py:1843
+#: src/typecase/inspector.py:485 src/typecase/window.py:1843
 #, python-format
 msgid "Could not move to the trash: %s"
 msgstr "Verschieben in den Papierkorb fehlgeschlagen: %s"
 
-#: src/typecase/inspector.py:366
+#: src/typecase/inspector.py:493
 #, python-format
 msgid "“%s” was moved to the trash, but the text still shows it."
 msgstr "„%s“ liegt jetzt im Papierkorb, steht aber noch im Text."
 
-#: src/typecase/inspector.py:368
+#: src/typecase/inspector.py:495
 #, python-format
 msgid "“%s” was moved to the trash."
 msgstr "„%s“ wurde in den Papierkorb gelegt."

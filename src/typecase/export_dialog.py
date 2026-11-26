@@ -8,7 +8,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gio, GLib, Gtk
 
-from . import config, export, export_templates, images, pdf_render
+from . import config, export, export_templates, frontmatter, images, pdf_render
 
 def format_name(fmt: str) -> str:
     return {"pdf": _("PDF"), "docx": _("Word Document (DOCX)"), "html": _("Web Page (HTML)")}[fmt]
@@ -52,8 +52,12 @@ class ExportDialog(Adw.Dialog):
             model=Gtk.StringList.new([t.title for t in self._templates]),
         )
         ids = [t.id for t in self._templates]
-        if saved.get("export_template") in ids:
-            self.template_row.set_selected(ids.index(saved["export_template"]))
+        # The sheet's own template comes first, then the one used last
+        own = frontmatter.parse(frontmatter.split(text)[0]).get("template") if self._group is None and text else None
+        for wanted in (own, saved.get("export_template")):
+            if wanted in ids:
+                self.template_row.set_selected(ids.index(wanted))
+                break
         group.add(self.template_row)
         # Exporting a group: its sheets have no common front matter, so the title is asked here.
         self.title_row = Adw.EntryRow(title=_("Title"), text=title or "", visible=editable_title)

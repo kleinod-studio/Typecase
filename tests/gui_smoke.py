@@ -928,6 +928,54 @@ def steps(win, app):
     check("author" not in parse(split(meta.read_text())[0]), "Cleared field disappears from the front matter")
     check(not ed.buffer.props.can_undo or text(ed) == "Es war einmal.\nEnde.", "Text is unaffected by metadata changes")
 
+    # Template fields: a template names its fields, the properties pane shows them for sheets using it
+    import json as json_fields
+    from typecase import config as cfg_fields
+
+    letter = cfg_fields.TEMPLATES_DIR / "brief"
+    letter.mkdir(parents=True, exist_ok=True)
+    (letter / "template.html").write_text("<html><body>$recipient$ $body$</body></html>", encoding="utf-8")
+    (letter / "template.json").write_text(json_fields.dumps({"format": 1, "name": "Brief", "fields": [
+        {"key": "recipient", "label": "Empfänger", "type": "lines"},
+        {"key": "subject", "label": "Betreff"},
+        {"key": "date", "label": "Datum", "type": "date"},
+    ]}), encoding="utf-8")
+    inspector.refresh()
+    check(not inspector._field_rows, "Without a template, no field rows are shown")
+    choices = inspector._choices["template"]
+    inspector.template_row.set_selected(choices.index("brief"))
+    check([r.get_title() for r in inspector._field_rows] == ["Empfänger", "Betreff", "Datum"], "Choosing a template shows its fields, in its order")
+    inspector._field_rows[1].set_text("Ihre Anfrage ")
+    def text_view_in(widget):
+        if isinstance(widget, Gtk.TextView):
+            return widget
+        child = widget.get_first_child()
+        while child is not None:
+            found = text_view_in(child)
+            if found is not None:
+                return found
+            child = child.get_next_sibling()
+        return None
+
+    recipient_view = text_view_in(inspector._field_rows[0])
+    recipient_view.get_buffer().set_text("Frau Anna Berg\nHafenstraße 3\n")
+    check(inspector._field_rows[2].get_subtitle() == "The day of the export", "An empty date stands for the day of the export")
+    ed.flush()
+    data = parse(split(meta.read_text())[0])
+    check(data.get("template") == "brief" and data.get("subject") == "Ihre Anfrage" and data.get("recipient") == "Frau Anna Berg\nHafenstraße 3",
+          f"Field values end up in the front matter ({data})")
+    inspector.refresh()
+    check(inspector.template_row.get_selected() == choices.index("brief") and inspector._field_rows[1].get_text() == "Ihre Anfrage",
+          "Fields are shown again when the sheet is opened again")
+    inspector.template_row.set_selected(0)
+    ed.flush()
+    data = parse(split(meta.read_text())[0])
+    check("template" not in data and data.get("subject") == "Ihre Anfrage" and not inspector._field_rows,
+          "Removing the template hides the fields but keeps their values")
+    check(text(ed) == "Es war einmal.\nEnde.", "Template fields leave the text alone")
+    shutil.rmtree(letter)
+    inspector.refresh()
+
     meta.write_text(meta.read_text().replace("title: Der Drache", "title: Fridolin"), encoding="utf-8")
     yield from wait_until(lambda: inspector.title_row.get_text() == "Fridolin")
     check(inspector.title_row.get_text() == "Fridolin" and not ed.in_conflict, "External change to the front matter is picked up")
@@ -1365,9 +1413,12 @@ def steps(win, app):
     win.lookup_action("export").activate(None)
     dialog = win.get_visible_dialog()
     check(dialog.template_row.get_model().get_n_items() == 2, "Export dialog offers the imported template")
+    check(dialog.template_row.get_selected() == 0, "Without a template of its own, the sheet gets the one used before")
     dialog.template_row.set_selected(1)
     chosen = dialog._templates[1]
     dialog.force_close()
+    own_dialog = ExportDialog("---\ntemplate: mein-brief\n---\nText\n", meta, None, {}, lambda *_a: None)
+    check(own_dialog._templates[own_dialog.template_row.get_selected()].id == "mein-brief", "The export dialog picks the sheet's own template")
     if export.pandoc_path() is not None:
         results = {}
         run_export("Text.\n", "html", chosen, TMP / "eigen.html", meta, None, {}, lambda path, error, *_missing: results.__setitem__("html", error))

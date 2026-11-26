@@ -6,7 +6,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from . import config, images
+from . import config, export_templates, images
 from .goal import DEFAULT_GOAL, MAX_GOAL, parse_goal
 from .goal_ring import GoalView
 from .library import add_attachment, attachments, attachments_folder, remove_empty_attachments_dir
@@ -97,6 +97,16 @@ class Inspector(Adw.Bin):
         self.author_default = Gtk.Label(css_classes=["dim-label"], ellipsize=3, max_width_chars=14)
         self.author_row.add_suffix(self.author_default)
         details_page.add(text_group)
+
+        # The export template of the sheet, with the fields it asks for (see export_templates.Field)
+        self.details_page = details_page
+        self.template_group = Adw.PreferencesGroup()
+        self.template_row = Adw.ComboRow(title=_("Template"), subtitle=_("Used for export"))
+        self.template_row.connect("notify::selected", lambda *_a: self._on_template_chosen())
+        self.template_group.add(self.template_row)
+        details_page.add(self.template_group)
+        self._field_rows: list[Adw.PreferencesRow] = []  # rows in template_group, in the template's order
+        self._templates: dict[str, export_templates.Template] = {}
 
         sort_group = Adw.PreferencesGroup(title=_("Organize"))
         self.keywords_row = Adw.EntryRow(title=_("Keywords, separated by commas"))
@@ -216,6 +226,11 @@ class Inspector(Adw.Bin):
             value = data.get(key, "")
             return ", ".join(value) if isinstance(value, list) else str(value)
 
+        self._templates = {t.id: t for t in export_templates.available(config.TEMPLATES_DIR)}
+        chosen = text("template")
+        ids = list(self._templates)
+        self._fill_choice(self.template_row, "template", ids, [self._templates[i].title for i in ids], chosen)
+        self._build_fields(chosen, data)
         self.title_row.set_text(text("title"))
         self.subtitle_row.set_text(text("subtitle"))
         self.author_row.set_text(text("author"))
@@ -267,6 +282,104 @@ class Inspector(Adw.Bin):
         self._update_defaults_visibility()
         if not self._loading:
             self.editor.set_metadata({key: value})
+
+    def _on_template_chosen(self):
+        if self._loading:
+            return
+        choices = self._choices.get("template", [""])
+        chosen = choices[self.template_row.get_selected()]
+        self.editor.set_metadata({"template": chosen})
+        self._loading = True
+        self._build_fields(chosen, self.editor.metadata())
+        self._loading = False
+
+    def _build_fields(self, template_id: str, data: dict):
+        """Input rows for the fields of the chosen template. Values of fields that are no longer
+        asked for stay in the front matter; nothing typed is lost by switching templates."""
+        for row in self._field_rows:
+            self.template_group.remove(row)
+        self._field_rows = []
+        template = self._templates.get(template_id)
+        if template is None:
+            return
+        build = {"lines": self._lines_field, "date": self._date_field}
+        for field in template.fields:
+            value = data.get(field.key, "")
+            value = "\n".join(value) if isinstance(value, list) else str(value)
+            row = build.get(field.type, self._text_field)(field, value)
+            self.template_group.add(row)
+            self._field_rows.append(row)
+
+    def _text_field(self, field, value: str) -> Adw.EntryRow:
+        row = Adw.EntryRow(title=field.label, text=value)
+        row.connect("changed", lambda r: self._set(field.key, r.get_text().strip()))
+        return row
+
+    def _lines_field(self, field, value: str) -> Adw.PreferencesRow:
+        """A field of several lines (an address): its name above, room for a few lines below.
+        Enter starts a new line; the lines stay separate in the export."""
+        row = Adw.PreferencesRow(title=field.label, activatable=False)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, margin_top=8, margin_bottom=8, margin_start=12, margin_end=12)
+        label = Gtk.Label(label=field.label, xalign=0, css_classes=["caption", "dim-label"])
+        view = Gtk.TextView(
+            wrap_mode=Gtk.WrapMode.WORD_CHAR, accepts_tab=False, height_request=84,
+            css_classes=["typecase-field-lines"],
+        )
+        view.update_property([Gtk.AccessibleProperty.LABEL], [field.label])
+        view.get_buffer().set_text(value)
+        view.get_buffer().connect(
+            "changed", lambda buffer: self._set(field.key, buffer.get_text(*buffer.get_bounds(), False).strip())
+        )
+        click = Gtk.GestureClick()
+        click.connect("released", lambda *_a: view.grab_focus())
+        row.add_controller(click)
+        box.append(label)
+        box.append(view)
+        row.set_child(box)
+        return row
+
+    def _date_field(self, field, value: str) -> Adw.ActionRow:
+        """A date picked from a calendar, stored as YYYY-MM-DD; empty means the day of the export."""
+        row = Adw.ActionRow(title=field.label, css_classes=["property"])
+        calendar = Gtk.Calendar()
+        popover = Gtk.Popover(child=calendar)
+        pick = Gtk.MenuButton(
+            icon_name="x-office-calendar-symbolic", popover=popover, valign=Gtk.Align.CENTER,
+            tooltip_text=_("Choose Date"), css_classes=["flat"],
+        )
+        clear = Gtk.Button(
+            icon_name="edit-clear-symbolic", valign=Gtk.Align.CENTER, tooltip_text=_("Use the Day of the Export"),
+            css_classes=["flat"],
+        )
+        row.add_suffix(clear)
+        row.add_suffix(pick)
+        row.set_activatable_widget(pick)
+
+        def show(current: str):
+            row.set_subtitle(format_created(current) if current else _("The day of the export"))
+            clear.set_visible(bool(current))
+
+        def picked(cal):
+            date = cal.get_date()
+            chosen = f"{date.get_year():04d}-{date.get_month():02d}-{date.get_day_of_month():02d}"
+            show(chosen)
+            self._set(field.key, chosen)
+            popover.popdown()
+
+        def cleared(_button):
+            show("")
+            self._set(field.key, "")
+
+        try:
+            moment = datetime.fromisoformat(value.strip()) if value.strip() else None
+        except ValueError:
+            moment = None
+        if moment is not None:
+            calendar.select_day(GLib.DateTime.new_local(moment.year, moment.month, moment.day, 0, 0, 0))
+        calendar.connect("day-selected", picked)
+        clear.connect("clicked", cleared)
+        show(value.strip())
+        return row
 
     def _on_goal_changed(self):
         self._update_goal_view()

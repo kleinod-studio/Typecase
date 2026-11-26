@@ -14,6 +14,15 @@ ZIP archive (like a .docx file) containing:
 For PDF, template.json can set paper and margins (otherwise paper by language, 25 mm):
   "pdf": {"paper": "a4", "margins_mm": {"top": 25, "right": 50, "bottom": 25, "left": 25}}
 
+A template can name the fields it needs (a letter: recipient, subject). Sheets that use the
+template show them as input rows in the properties pane; the values go into the sheet's front
+matter under the field's key, where template.html finds them as $key$:
+  "fields": [{"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+             {"key": "subject", "label": {"en": "Subject", "de": "Betreff"}},
+             {"key": "date", "label": {"en": "Date", "de": "Datum"}, "type": "date"}]
+Types: "text" (one line, the default), "lines" (several lines) and "date" (today if left empty).
+A sheet names its template in the front matter: template: letter
+
 Imported templates are stored unpacked in the app's data folder; the built-in ones live in the code."""
 
 import json
@@ -36,8 +45,28 @@ MAX_FILES = 200
 MAX_TOTAL_BYTES = 50 * 1024 * 1024  # unpacked
 
 
+FIELD_TYPES = ("text", "lines", "date")
+MAX_FIELDS = 30
+_FIELD_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,39}$")
+# Front matter keys that Typecase or the export already use for something else
+RESERVED_KEYS = frozenset({
+    "title", "subtitle", "author", "lang", "keywords", "status", "goal", "notes", "created", "changed",
+    "order", "icon", "color", "template", "abstract", "pagetitle", "toc", "pdf", "spell_check",
+    "focus_spell_check",
+})
+
+
 class TemplateError(Exception):
     """The template is unusable; the message is meant for the user."""
+
+
+@dataclass(frozen=True)
+class Field:
+    """An input a template asks for, filled in per sheet and stored in its front matter."""
+
+    key: str
+    label: str
+    type: str = "text"
 
 
 @dataclass(frozen=True)
@@ -87,6 +116,27 @@ class Template:
             ok = isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value <= 100
             margins[side] = float(value) if ok else float(DEFAULT_MARGIN_MM)
         return margins
+
+    @property
+    def fields(self) -> list[Field]:
+        """The fields the template asks for. Unusable entries are skipped instead of rejecting
+        the template: a key Typecase uses itself, a repeated key, an unknown type."""
+        given = self.info.get("fields")
+        if not isinstance(given, list):
+            return []
+        fields, seen = [], set()
+        for entry in given[:MAX_FIELDS]:
+            if not isinstance(entry, dict):
+                continue
+            key = entry.get("key")
+            if not isinstance(key, str) or not _FIELD_KEY.match(key) or key in RESERVED_KEYS or key in seen:
+                continue
+            kind = entry.get("type", "text")
+            if kind not in FIELD_TYPES:
+                continue
+            seen.add(key)
+            fields.append(Field(key, localized(entry.get("label")) or key, kind))
+        return fields
 
 
 def localized(value) -> str:
