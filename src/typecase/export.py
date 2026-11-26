@@ -30,6 +30,7 @@ _CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
 FOOTNOTE_FILTER = Path(__file__).resolve().parent / "filters" / "page-footnotes.lua"
 STRUCTURE_FILTER = Path(__file__).resolve().parent / "filters" / "structure.lua"
 IMAGE_FILTER = Path(__file__).resolve().parent / "filters" / "images.lua"
+FIELDS_FILTER = Path(__file__).resolve().parent / "filters" / "fields.lua"
 TOC_DEPTH = 2  # parts and chapters, or chapters and sections
 
 # Defaults for the cover page, table of contents and parts, before the template's CSS so a
@@ -92,6 +93,41 @@ def export_date(today: datetime.date | None = None, time_locale: str | None = No
     if language.startswith("en"):
         return today.strftime("%d/%m/%Y")
     return today.isoformat()
+
+
+_LINE_START_MARKUP = re.compile(r"^(\s*)([-+*>#]|\d+[.)])(?=\s|$)")
+
+
+def _escape_markup(match: re.Match) -> str:
+    """"- " or "1. " at the start of a line as plain text: the backslash goes before the sign."""
+    marker = match.group(2)
+    return match.group(1) + (marker[:-1] + "\\" + marker[-1] if marker[0].isdigit() else "\\" + marker)
+
+
+def with_fields(text: str, template: Template, today: datetime.date | None = None) -> str:
+    """Prepares the values of the template's fields in the front matter for the export: a date
+    is written the way the user's language writes dates (today if left empty), and a line of an
+    address that looks like Markdown (a list, a heading) stays plain text. The sheet's file is
+    not changed; this is only the text handed to Pandoc."""
+    fields = template.fields
+    if not fields:
+        return text
+    header, body = frontmatter.split(text)
+    data = frontmatter.parse(header)
+    changes = {}
+    for field in fields:
+        value = data.get(field.key, "")
+        value = "\n".join(value) if isinstance(value, list) else str(value).strip()
+        if field.type == "date":
+            try:
+                changes[field.key] = export_date(datetime.date.fromisoformat(value) if value else today)
+            except ValueError:
+                pass  # written by hand in another form: stays as it is
+        elif field.type == "lines" and value:
+            changes[field.key] = "\n".join(_LINE_START_MARKUP.sub(_escape_markup, line) for line in value.split("\n"))
+    if not changes:
+        return text
+    return frontmatter.join(frontmatter.update(header, changes), body)
 
 
 # Breaks for Word, as raw OpenXML that only the DOCX writer keeps. In HTML and PDF, CSS classes
@@ -283,9 +319,15 @@ def pandoc_args(
             args += ["--metadata", f"typecase-toc={TOC_DEPTH}", "--metadata", f"typecase-toc-title={toc_title}"]
         if cover:
             args += ["--metadata", "typecase-cover=true"]
+            if template.fields:
+                args += ["--metadata", "typecase-keep=" + ",".join(field.key for field in template.fields)]
         if fmt == "docx" and heading_one_breaks_page(template):
             args += ["--metadata", "typecase-heading-breaks=true"]
     if fmt == "docx":
+        # Word files ignore template.html; the template's fields go above the text instead.
+        placed = [field.key for field in template.fields if field.key != "date"]  # Pandoc writes the date itself
+        if placed:
+            args += ["--lua-filter", str(FIELDS_FILTER), "--metadata", "typecase-fields=" + ",".join(placed)]
         args += ["--to", "docx"]
         if template.reference_docx:
             args += ["--reference-doc", str(template.reference_docx)]

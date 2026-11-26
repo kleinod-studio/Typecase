@@ -171,6 +171,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
         defaults = {**defaults, "title": sheet_path.stem}
     if fmt == "docx" and export.heading_one_breaks_page(template):
         text = export.drop_word_breaks_before_parts(text)
+    text = export.with_fields(text, template)
     missing = images.missing_files(text, sheet_path.parent)
     text = images.without_missing_descriptions(text, sheet_path.parent)  # else shown twice for a missing image
     if fmt == "html":

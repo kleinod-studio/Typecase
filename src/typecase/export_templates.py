@@ -22,6 +22,9 @@ matter under the field's key, where template.html finds them as $key$:
              {"key": "date", "label": {"en": "Date", "de": "Datum"}, "type": "date"}]
 Types: "text" (one line, the default), "lines" (several lines) and "date" (today if left empty).
 A sheet names its template in the front matter: template: letter
+On export, a date is written the way the user's language writes dates, and the lines of a
+"lines" field stay apart ($recipient$ gives them with <br />). Word files have no template.html,
+so there the fields come above the text, each in a paragraph style named after its key.
 
 Imported templates are stored unpacked in the app's data folder; the built-in ones live in the code."""
 

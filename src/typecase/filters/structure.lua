@@ -5,6 +5,8 @@
 --   typecase-toc: "2"            a table of contents with that many heading levels
 --   typecase-toc-title: "…"      its heading, in the user's language
 --   typecase-heading-breaks: true  (Word) top-level headings of the template start a page anyway
+--   typecase-keep: "date,…"      fields the template asks for itself: the cover shows them too,
+--                                but leaves them to the template instead of taking them away
 -- For HTML and PDF they become <div class="cover"> and <div class="toc">; CSS sets the pages.
 -- For Word they use the reference document's paragraph styles and a TOC field.
 
@@ -31,8 +33,19 @@ end
 
 local page_break = pandoc.RawBlock("openxml", '<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
 
+local function kept(meta)
+  local keys = {}
+  if meta["typecase-keep"] ~= nil then
+    for key in stringify(meta["typecase-keep"]):gmatch("[^,]+") do
+      keys[key] = true
+    end
+  end
+  return keys
+end
+
 local function cover(meta)
   local blocks = pandoc.List()
+  local keep = kept(meta)
   for _, field in ipairs({"title", "subtitle", "author", "date"}) do
     if meta[field] ~= nil then
       for _, value in ipairs(values_of(meta[field])) do
@@ -44,7 +57,9 @@ local function cover(meta)
         end
       end
       -- Printed here instead of by the template, so it does not appear twice
-      meta[field] = nil
+      if not keep[field] then
+        meta[field] = nil
+      end
     end
   end
   if docx then

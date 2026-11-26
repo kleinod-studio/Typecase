@@ -270,6 +270,74 @@ class StructureFilterTest(unittest.TestCase):
 _ONE_PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
 
 
+@unittest.skipIf(export.pandoc_path() is None, "Pandoc is not installed")
+class FieldsExportTest(unittest.TestCase):
+    TEXT = (
+        "---\ntemplate: letter\nrecipient: |\n  Frau Anna Berg\n  1. Etage\n  Hafenstraße 3\n"
+        "subject: Ihre Anfrage\nsent: 2026-12-24\n---\nSehr geehrte Frau Berg,\n"
+    )
+
+    def _template(self, folder: Path) -> export_templates.Template:
+        (folder / "template.html").write_text(
+            "<html><body><address>$recipient$</address><p class=\"date\">$sent$</p><h2>$subject$</h2>$body$</body></html>",
+            encoding="utf-8",
+        )
+        (folder / "template.json").write_text(
+            '{"format": 1, "name": "Letter", "fields": ['
+            '{"key": "recipient", "type": "lines"}, {"key": "subject"}, {"key": "sent", "type": "date"}]}',
+            encoding="utf-8",
+        )
+        return export_templates.read_folder(folder, builtin=False)
+
+    def _export(self, fmt: str, folder: Path) -> Path:
+        template = self._template(folder)
+        output = folder / ("out.docx" if fmt == "docx" else "out.html")
+        text = export.with_fields(self.TEXT, template)
+        subprocess.run(export.pandoc_args(fmt, template, output, "Probe"), input=text, text=True, check=True, cwd=folder)
+        return output
+
+    def test_html_places_the_fields(self):
+        with tempfile.TemporaryDirectory() as folder:
+            html = self._export("html", Path(folder)).read_text(encoding="utf-8")
+        self.assertIn("<address>Frau Anna Berg<br />\n1. Etage<br />\nHafenstraße 3</address>", html)
+        self.assertRegex(html, r"<h2>Ihre\s+Anfrage</h2>")
+        self.assertIn(f'<p class="date">{export.export_date(export.datetime.date(2026, 12, 24))}</p>', html)
+
+    def test_word_puts_the_fields_above_the_text(self):
+        with tempfile.TemporaryDirectory() as folder:
+            docx = self._export("docx", Path(folder))
+            with zipfile.ZipFile(docx) as archive:
+                document = archive.read("word/document.xml").decode("utf-8")
+        recipient, subject, text = (document.index(s) for s in ("Frau Anna Berg", "Ihre Anfrage", "Sehr geehrte"))
+        self.assertLess(recipient, subject)
+        self.assertLess(subject, text)
+        self.assertIn('w:val="recipient"', document)
+        self.assertIn("1. Etage", document)
+
+    def test_the_cover_leaves_the_template_its_fields(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / "template.json").write_text(
+                '{"format": 1, "name": "Letter", "fields": [{"key": "date", "type": "date"}]}', encoding="utf-8"
+            )
+            (folder / "template.html").write_text('<p class="when">$date$</p>$body$', encoding="utf-8")
+            template = export_templates.read_folder(folder, builtin=False)
+            output = folder / "out.html"
+            text = export.with_fields("---\ntitle: Brief\ndate: 2026-12-24\n---\nText\n", template)
+            args = export.pandoc_args("html", template, output, None, cover=True)
+            subprocess.run(args, input=text, text=True, check=True, cwd=folder)
+            html = output.read_text(encoding="utf-8")
+        day = export.export_date(export.datetime.date(2026, 12, 24))
+        self.assertIn(f'<p class="when">{day}</p>', html)
+        self.assertRegex(html, rf'<div class="date">\s*{re.escape(day)}\s*</div>')
+
+    def test_an_empty_date_is_the_day_of_the_export(self):
+        template = export_templates.Template("t", Path("."), False, {"name": "T", "fields": [{"key": "date", "type": "date"}]})
+        day = export.datetime.date(2026, 11, 26)
+        prepared = export.with_fields("Text\n", template, today=day)
+        self.assertEqual(export.frontmatter.parse(export.frontmatter.split(prepared)[0]), {"date": export.export_date(day)})
+
+
 @unittest.skipUnless(shutil.which("pandoc"), "Pandoc is missing")
 class ImageExportTest(unittest.TestCase):
     def _export(self, fmt, text, work):
