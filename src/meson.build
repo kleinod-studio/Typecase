@@ -8,6 +8,7 @@ install_data(
     'typecase/card_view.py',
     'typecase/cards.py',
     'typecase/comments.py',
+    'typecase/weblinks.py',
     'typecase/config.py',
     'typecase/docx_style.py',
     'typecase/export.py',

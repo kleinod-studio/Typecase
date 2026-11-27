@@ -1105,6 +1105,43 @@ def steps(win, app):
     check((sheet.parent / ".attachments" / "Beilage" / "Foto.jpg").exists() and not folder.exists(), "Attachments follow a renamed sheet")
     inspector._remove_attachment("Foto 2.jpg")
     check([r.get_title() for r in inspector._attachment_rows] == ["Foto.jpg"], "Removing an attachment moves it to the trash")
+
+    # Links as attachments: kept in the front matter, listed after the files
+    check(inspector.add_attachment_button.get_menu_model().get_n_items() == 2, "The add button offers a file or a link")
+    inspector.add_link()
+    dialog = inspector.link_dialog
+    check(not dialog.get_response_enabled("add"), "Without an address, the link cannot be added")
+    rows = [dialog.get_extra_child().get_row_at_index(i) for i in range(2)]
+    rows[0].set_text("www.example.org/tides")
+    check(dialog.get_response_enabled("add"), "A web address can be added")
+    rows[1].set_text("Tide tables")
+    dialog.emit("response", "add")
+    check(ed.flush() and parse(split(sheet.read_text())[0]).get("links") == ["[Tide tables](https://www.example.org/tides)"], "The link is saved in the front matter")
+    titles = [(r.get_title(), r.get_subtitle()) for r in inspector._attachment_rows]
+    check(titles == [("Foto.jpg", titles[0][1]), ("Tide tables", "https://www.example.org/tides")], "The link is listed after the files, with its address")
+    check("Tide tables" not in text(ed), "The link stays out of the text")
+    dropped = Gdk.FileList.new_from_list([Gio.File.new_for_uri("https://en.wikipedia.org/wiki/Lighthouse")])
+    inspector._on_dropped(None, dropped, 0, 0)
+    inspector._on_dropped(None, "https://en.wikipedia.org/wiki/Lighthouse", 0, 0)
+    check([r.get_title() for r in inspector._attachment_rows][1:] == ["Tide tables", "en.wikipedia.org"], "A link dropped from a browser is added once")
+    check(not inspector._on_dropped(None, "just words", 0, 0), "Dropped text without an address is refused")
+    check(sorted(p.name for p in (sheet.parent / ".attachments" / "Beilage").iterdir()) == ["Foto.jpg"], "Dropped links are no files")
+    dialog.close()
+    inspector.add_link("https://en.wikipedia.org/wiki/Lighthouse", "", 1)
+    dialog = inspector.link_dialog
+    check(dialog.get_heading() == "Edit Link", "A link opens for editing")
+    dialog.get_extra_child().get_row_at_index(1).set_text("Lighthouse")
+    dialog.emit("response", "add")
+    dialog.close()
+    check([r.get_title() for r in inspector._attachment_rows][1:] == ["Tide tables", "Lighthouse"], "Editing changes the link in its place")
+    toasts = []
+    handler = inspector.connect("toast", lambda _i, toast: toasts.append(toast))
+    inspector.remove_link(0)
+    check([r.get_title() for r in inspector._attachment_rows][1:] == ["Lighthouse"], "A link can be removed")
+    check(ed.flush() and parse(split(sheet.read_text())[0]).get("links") == ["[Lighthouse](https://en.wikipedia.org/wiki/Lighthouse)"], "The removed link is gone from the front matter")
+    toasts[-1].emit("button-clicked")
+    check([r.get_title() for r in inspector._attachment_rows][1:] == ["Tide tables", "Lighthouse"], "Undo brings the link back to its place")
+    inspector.disconnect(handler)
     win._do_delete(win._selected_node())
     check(not sheet.exists() and not (sheet.parent / ".attachments").exists(), "Deleting a sheet takes its attachments along into the trash")
     select(meta)

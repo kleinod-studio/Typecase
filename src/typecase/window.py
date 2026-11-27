@@ -423,6 +423,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         # Properties pane on the right for the metadata (GNOME pattern: second sidebar at the end).
         self.inspector = Inspector(self.editor)
         self.inspector.connect("message", lambda _i, text: self._toast(text))
+        self.inspector.connect("toast", lambda _i, toast: self.toasts.add_toast(toast))
         self.inspector_split = Adw.OverlaySplitView(
             sidebar_position=Gtk.PackType.END,
             show_sidebar=False,

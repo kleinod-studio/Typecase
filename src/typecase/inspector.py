@@ -6,7 +6,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk
 
-from . import config, export_templates, images
+from . import config, export_templates, images, weblinks
 from .goal import DEFAULT_GOAL, MAX_GOAL, parse_goal
 from .goal_ring import GoalView
 from .library import add_attachment, attachments, attachments_folder, remove_empty_attachments_dir
@@ -55,10 +55,12 @@ class Inspector(Adw.Bin):
     from the app preferences; only what you enter yourself goes into the file.
 
     The notes tab holds free notes (field "notes") and attachments: copies of files kept in a
-    hidden folder next to the sheet (see library.attachments)."""
+    hidden folder next to the sheet (see library.attachments), and links to web pages (field
+    "links", see weblinks)."""
 
     __gsignals__ = {
         "message": (GObject.SignalFlags.RUN_FIRST, None, (str,)),  # a short notice for a toast
+        "toast": (GObject.SignalFlags.RUN_FIRST, None, (Adw.Toast,)),  # a toast of its own, with a button
     }
 
     def __init__(self, editor):
@@ -180,18 +182,32 @@ class Inspector(Adw.Bin):
         page.add(notes_group)
 
         self.attachments_group = Adw.PreferencesGroup(
-            title=_("Attachments"), description=_("Copies kept next to the sheet; drop files here")
+            title=_("Attachments"), description=_("Copies of files and links to web pages; drop them here")
         )
-        add_button = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("Add Attachment…"), valign=Gtk.Align.CENTER, css_classes=["flat"])
-        add_button.connect("clicked", lambda _b: self._choose_attachments())
-        self.attachments_group.set_header_suffix(add_button)
+        actions = Gio.SimpleActionGroup()
+        for name, callback in (("attach-file", self._choose_attachments), ("add-link", self.add_link)):
+            action = Gio.SimpleAction(name=name)
+            action.connect("activate", lambda _a, _p, callback=callback: callback())
+            actions.add_action(action)
+        self.insert_action_group("inspector", actions)
+        menu = Gio.Menu()
+        menu.append(_("Attach File…"), "inspector.attach-file")
+        menu.append(_("Add Link…"), "inspector.add-link")
+        self.add_attachment_button = Gtk.MenuButton(
+            icon_name="list-add-symbolic", menu_model=menu, tooltip_text=_("Add Attachment"),
+            valign=Gtk.Align.CENTER, css_classes=["flat"],
+        )
+        self.attachments_group.set_header_suffix(self.add_attachment_button)
         self.attachments_empty = Adw.ActionRow(title=_("No attachments"), css_classes=["dim-label"])
         self.attachments_group.add(self.attachments_empty)
         self._attachment_rows: list[Adw.ActionRow] = []
+        self._link_field: list[str] = []  # the front matter's "links", other items included
         page.add(self.attachments_group)
 
-        drop = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
-        drop.connect("drop", self._on_files_dropped)
+        # Files from the file manager; links from a browser come as a web address (or as text)
+        drop = Gtk.DropTarget.new(GObject.TYPE_NONE, Gdk.DragAction.COPY)
+        drop.set_gtypes([Gdk.FileList, GObject.TYPE_STRING])
+        drop.connect("drop", self._on_dropped)
         page.add_controller(drop)
         return page
 
@@ -404,13 +420,13 @@ class Inspector(Adw.Bin):
     # --- Attachments ----------------------------------------------------------
 
     def refresh_attachments(self):
-        """Lists the open sheet's attachments (also after it was renamed or moved)."""
+        """Lists the open sheet's attachments and links (also after it was renamed or moved)."""
         for row in self._attachment_rows:
             self.attachments_group.remove(row)
         self._attachment_rows = []
         files = attachments(self.editor.path) if self.editor.path else []
         for path in files:
-            row = Adw.ActionRow(title=path.name, title_lines=2, subtitle=_file_size(path), activatable=True, tooltip_text=_("Open"))
+            row = Adw.ActionRow(title=path.name, title_lines=2, subtitle=_file_size(path), activatable=True, tooltip_text=_("Open"), use_markup=False)
             row.add_prefix(Gtk.Image(gicon=_file_icon(path)))
             remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Move to Trash"), valign=Gtk.Align.CENTER, css_classes=["flat"])
             remove.connect("clicked", lambda _b, name=path.name: self._remove_attachment(name))
@@ -418,7 +434,124 @@ class Inspector(Adw.Bin):
             row.connect("activated", lambda _r, name=path.name: self._open_attachment(name))
             self.attachments_group.add(row)
             self._attachment_rows.append(row)
-        self.attachments_empty.set_visible(not files)
+        self._link_field = weblinks.items(self.editor.metadata().get(weblinks.FIELD)) if self.editor.path else []
+        found = weblinks.links(self._link_field)
+        for index, link in found:
+            row = Adw.ActionRow(
+                title=link.label(), title_lines=2, subtitle=link.address, subtitle_lines=1,
+                activatable=True, tooltip_text=_("Open in Browser"), use_markup=False,
+            )
+            row.add_prefix(Gtk.Image(icon_name="typecase-link-symbolic"))
+            edit = Gtk.Button(icon_name="document-edit-symbolic", tooltip_text=_("Edit Link"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+            edit.connect("clicked", lambda _b, index=index, link=link: self.add_link(link.address, link.title, index))
+            row.add_suffix(edit)
+            remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Remove Link"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+            remove.connect("clicked", lambda _b, index=index: self.remove_link(index))
+            row.add_suffix(remove)
+            row.connect("activated", lambda _r, address=link.address: self._open_link(address))
+            self.attachments_group.add(row)
+            self._attachment_rows.append(row)
+        self.attachments_empty.set_visible(not files and not found)
+
+    # --- Links ------------------------------------------------------------------
+
+    def add_link(self, address: str = "", title: str = "", index: int | None = None):
+        """Asks for a web address and a title; the address field starts with one from the
+        clipboard, if it holds one. With index, it changes the link at that place in the field."""
+        if self.editor.path is None:
+            return
+        if index is None:
+            dialog = Adw.AlertDialog(heading=_("Add Link"), body=_("A web page to keep with this sheet, for research or sources."))
+        else:
+            dialog = Adw.AlertDialog(heading=_("Edit Link"))
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("add", _("Add") if index is None else _("Save"))
+        dialog.set_response_appearance("add", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("add")
+        dialog.set_close_response("cancel")
+        address_row = Adw.EntryRow(title=_("Address"), activates_default=True, input_purpose=Gtk.InputPurpose.URL)
+        title_row = Adw.EntryRow(title=_("Title (optional)"), activates_default=True)
+        fields = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, css_classes=["boxed-list"])
+        fields.append(address_row)
+        fields.append(title_row)
+        dialog.set_extra_child(fields)
+
+        def check(*_args):
+            dialog.set_response_enabled("add", weblinks.make(address_row.get_text()) is not None)
+
+        address_row.connect("changed", check)
+        address_row.set_text(address)
+        title_row.set_text(title)
+        check()
+        if not address:
+            self._paste_address(address_row)
+        sheet = self.editor.path
+        dialog.connect(
+            "response",
+            lambda _d, response: response == "add" and self._save_link(address_row.get_text(), title_row.get_text(), index, sheet),
+        )
+        self.link_dialog = dialog  # for the tests
+        dialog.present(self.get_root())
+        address_row.grab_focus()
+
+    def _paste_address(self, row: Adw.EntryRow):
+        clipboard = self.get_clipboard()
+
+        def done(_clipboard, result):
+            try:
+                text = clipboard.read_text_finish(result)
+            except GLib.Error:
+                return
+            if text and not row.get_text() and weblinks.make(text) is not None and "\n" not in text.strip():
+                row.set_text(text.strip())
+                row.select_region(0, -1)
+
+        clipboard.read_text_async(None, done)
+
+    def _save_link(self, address: str, title: str, index: int | None = None, sheet: Path | None = None) -> bool:
+        """Adds the link, or changes the one at index; only while the sheet the dialog was opened
+        for is still open."""
+        link = weblinks.make(address, title)
+        if link is None or self.editor.path is None or (sheet is not None and sheet != self.editor.path):
+            return False
+        if index is None or index >= len(self._link_field):
+            field = weblinks.add(self._link_field, link)
+        else:
+            field = weblinks.replace(self._link_field, index, link)
+        self._set_links(field)
+        return True
+
+    def remove_link(self, index: int):
+        """Removes the link at index from the field; a toast offers to bring it back."""
+        if self.editor.path is None or index >= len(self._link_field):
+            return
+        item, sheet = self._link_field[index], self.editor.path
+        self._set_links(weblinks.remove(self._link_field, index))
+        link = weblinks.parse(item)
+        toast = Adw.Toast(title=_("“%s” was removed.") % (link.label() if link else item), button_label=_("Undo"))
+        toast.connect("button-clicked", lambda _t: self._restore_link(sheet, index, item))
+        self.emit("toast", toast)
+
+    def _restore_link(self, sheet: Path, index: int, item: str):
+        if self.editor.path != sheet or item in self._link_field:
+            return
+        self._set_links(self._link_field[:index] + [item] + self._link_field[index:])
+
+    def _set_links(self, field: list[str]):
+        self.editor.set_metadata({weblinks.FIELD: field})
+        self.refresh_attachments()
+
+    def _open_link(self, address: str):
+        Gtk.UriLauncher.new(address).launch(self.get_root(), None, self._on_link_opened)
+
+    @staticmethod
+    def _on_link_opened(launcher, result):
+        try:
+            launcher.launch_finish(result)
+        except GLib.Error:
+            pass  # no browser, or the portal dialog was cancelled
+
+    # --- Files ------------------------------------------------------------------
 
     def _choose_attachments(self):
         if self.editor.path is None:
@@ -433,13 +566,25 @@ class Inspector(Adw.Bin):
             return  # cancelled
         self._add_files([files.get_item(i) for i in range(files.get_n_items())])
 
-    def _on_files_dropped(self, _target, value, _x, _y):
+    def _on_dropped(self, _target, value, _x, _y):
         if self.editor.path is None:
             return False
-        self._add_files(value.get_files())
+        if isinstance(value, Gdk.FileList):
+            files = value.get_files()
+            web = [file.get_uri() for file in files if file.get_uri_scheme() in ("http", "https")]
+            self._add_files([file for file in files if file.get_uri_scheme() not in ("http", "https")])
+        else:
+            web = [line for line in (value or "").split() if weblinks.make(line) is not None]
+            if not web:
+                self.emit("message", _("Only files and web addresses can be attached."))
+                return False
+        for address in web:
+            self._save_link(address, "")
         return True
 
     def _add_files(self, files):
+        if not files:
+            return
         sheet = self.editor.path
         for file in files:
             path = file.get_path()

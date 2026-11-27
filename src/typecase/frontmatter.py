@@ -12,7 +12,8 @@ _CLOSE = re.compile(r"^(?:---|\.\.\.)[ \t]*(?:\r?\n|\Z)", re.MULTILINE)
 _KEY = re.compile(r"^([A-Za-z_][\w-]*)[ \t]*:(?:[ \t]+(.*?))?[ \t]*$")
 _LIST_ITEM = re.compile(r"^[ \t]+-[ \t]+(.*?)[ \t]*$")
 _BLOCK = re.compile(r"^([|>])([+-]?)([1-9]?)([+-]?)$")  # block scalar header: | |- >+ |2- …
-_NEEDS_QUOTES = re.compile(r"""^[\s\-?:,\[\]{}#&*!|>'"%@`]|[:#]\s|\s$|^$|^(?:true|false|null|yes|no|~)$""", re.IGNORECASE)
+_INLINE_WIDTH = 80  # a longer list is written with one item per line
+_NEEDS_QUOTES =re.compile(r"""^[\s\-?:,\[\]{}#&*!|>'"%@`]|[:#]\s|\s$|^$|^(?:true|false|null|yes|no|~)$""", re.IGNORECASE)
 
 
 def split(text: str) -> tuple[str | None, str]:
@@ -147,7 +148,11 @@ def _block_text(lines: list[str], block: re.Match) -> str:
 
 def _render(key: str, value) -> list[str]:
     if isinstance(value, (list, tuple)):
-        return [f"{key}: [" + ", ".join(_quote(str(item)) for item in value) + "]"]
+        items = [_quote(str(item)) for item in value]
+        inline = f"{key}: [" + ", ".join(items) + "]"
+        if len(inline) <= _INLINE_WIDTH:
+            return [inline]
+        return [f"{key}:"] + [f"  - {item}" for item in items]  # long items (links, say): one per line
     value = str(value)
     if "\n" in value.strip("\n"):
         # Several lines: a literal block, readable in any editor. An indentation indicator
