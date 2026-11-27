@@ -3,7 +3,7 @@ from gettext import gettext as _
 from gi.repository import Adw, Gtk
 
 from . import config, template_builder as builder
-from .export_templates import TemplateError
+from .export_templates import FIELD_TYPES, MAX_FIELDS, TemplateError
 from .template_builder import Settings
 
 
@@ -56,6 +56,26 @@ class TemplateDialog(Adw.Dialog):
         headings.add(self.chapters_row)
         page.add(headings)
 
+        # Fields: what sheets fill in for this template (a letter's sender, recipient, subject)
+        self.fields_group = Adw.PreferencesGroup(
+            title=_("Fields"),
+            description=_("Sheets that use this template fill them in, in the properties pane. The export puts them below the title, in this order."),
+        )
+        add = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("Add Field"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+        add.connect("clicked", lambda _b: self._add_field(focus=True))
+        self.fields_group.set_header_suffix(add)
+        self._add_field_button = add
+        self._field_rows = []  # (row, key, type drop-down)
+        page.add(self.fields_group)
+
+        document = Adw.PreferencesGroup(title=_("Export"))
+        self.structure_row = Adw.SwitchRow(
+            title=_("Offer Contents and Cover Page"),
+            subtitle=_("Switch off for letters and forms; then the title is left out as well"),
+        )
+        document.add(self.structure_row)
+        page.add(document)
+
         self.save_button = Gtk.Button(label=_("Save") if template else _("Create"), css_classes=["suggested-action"])
         self.save_button.connect("clicked", lambda _b: self._save())
         cancel = Gtk.Button(label=_("Cancel"))
@@ -71,6 +91,8 @@ class TemplateDialog(Adw.Dialog):
         self._show(settings or self._presets["text"][1])
         if template:
             self.name_row.set_text(template.title)
+            for key, label, kind in (settings.fields if settings else ()):
+                self._add_field(key, label, kind)
         self.preset_row.connect("notify::selected", lambda *_a: self._apply_preset())
         self._update_save()
 
@@ -90,6 +112,48 @@ class TemplateDialog(Adw.Dialog):
         group.add(row)
         return row
 
+    def _add_field(self, key="", label="", kind="text", focus=False):
+        if len(self._field_rows) >= MAX_FIELDS:
+            return
+        row = Adw.EntryRow(title=_("Field Name"), text=label)
+        types = Gtk.DropDown(
+            model=Gtk.StringList.new([_("One Line"), _("Several Lines"), _("Date")]),
+            valign=Gtk.Align.CENTER,
+            tooltip_text=_("Kind of Field"),
+        )
+        types.set_selected(FIELD_TYPES.index(kind))
+        row.add_suffix(types)
+        up = Gtk.Button(icon_name="go-up-symbolic", tooltip_text=_("Move Up"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+        up.connect("clicked", lambda _b: self._move_field(row, -1))
+        row.add_suffix(up)
+        remove = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text=_("Remove Field"), valign=Gtk.Align.CENTER, css_classes=["flat"])
+        remove.connect("clicked", lambda _b: self._remove_field(row))
+        row.add_suffix(remove)
+        self._field_rows.append((row, key, types))
+        self.fields_group.add(row)
+        self._add_field_button.set_sensitive(len(self._field_rows) < MAX_FIELDS)
+        if focus:
+            row.grab_focus()
+
+    def _remove_field(self, row):
+        self._field_rows = [entry for entry in self._field_rows if entry[0] is not row]
+        self.fields_group.remove(row)
+        self._add_field_button.set_sensitive(True)
+
+    def _move_field(self, row, step):
+        index = next(i for i, entry in enumerate(self._field_rows) if entry[0] is row)
+        target = index + step
+        if not 0 <= target < len(self._field_rows):
+            return
+        rows = self._field_rows
+        rows[index], rows[target] = rows[target], rows[index]
+        # A preferences group only appends, so the rows are put in again in their new order
+        for entry in rows:
+            self.fields_group.remove(entry[0])
+        for entry in rows:
+            self.fields_group.add(entry[0])
+        row.grab_focus()
+
     def _apply_preset(self):
         self._show(list(self._presets.values())[self.preset_row.get_selected()][1])
 
@@ -106,6 +170,7 @@ class TemplateDialog(Adw.Dialog):
         self.heading_font_row.set_selected(builder.FONTS.index(settings.heading_font))
         self.center_row.set_selected(1 if settings.heading_center else 0)
         self.chapters_row.set_active(settings.chapters_on_new_page)
+        self.structure_row.set_active(settings.structure)
 
     def settings(self) -> Settings:
         return Settings(
@@ -124,6 +189,12 @@ class TemplateDialog(Adw.Dialog):
             heading_center=self.center_row.get_selected() == 1,
             chapters_on_new_page=self.chapters_row.get_active(),
             page_numbers=builder.PAGE_NUMBERS[self.numbers_row.get_selected()],
+            fields=tuple(
+                (key, row.get_text().strip(), FIELD_TYPES[types.get_selected()])
+                for row, key, types in self._field_rows
+                if row.get_text().strip()
+            ),
+            structure=self.structure_row.get_active(),
         )
 
     def _update_save(self):

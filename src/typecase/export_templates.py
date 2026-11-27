@@ -57,7 +57,7 @@ MAX_TOTAL_BYTES = 50 * 1024 * 1024  # unpacked
 
 FIELD_TYPES = ("text", "lines", "date")
 MAX_FIELDS = 30
-_FIELD_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,39}$")
+FIELD_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,39}$")
 # Front matter keys that Typecase or the export already use for something else
 RESERVED_KEYS = frozenset({
     "title", "subtitle", "author", "lang", "keywords", "status", "goal", "notes", "created", "changed",
@@ -144,7 +144,7 @@ class Template:
             if not isinstance(entry, dict):
                 continue
             key = entry.get("key")
-            if not isinstance(key, str) or not _FIELD_KEY.match(key) or key in RESERVED_KEYS or key in seen:
+            if not isinstance(key, str) or not FIELD_KEY.match(key) or key in RESERVED_KEYS or key in seen:
                 continue
             kind = entry.get("type", "text")
             if kind not in FIELD_TYPES:

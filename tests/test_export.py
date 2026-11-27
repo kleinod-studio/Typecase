@@ -207,6 +207,38 @@ class TemplateBuilderTest(unittest.TestCase):
         self.assertEqual((settings.margin_top, settings.justify), (10, True))
         self.assertIsNone(template_builder.settings_of(export_templates.Template("y", Path("/y"), False, {})))
 
+    def test_fields_are_saved_and_keep_their_keys(self):
+        fields = (("", "Empfänger", "lines"), ("", "Betreff", "text"), ("", "  ", "text"), ("", "Title", "date"))
+        with tempfile.TemporaryDirectory() as folder:
+            template = self.build(folder, fields=fields)
+            self.assertEqual(
+                [(f.key, f.label, f.type) for f in template.fields],
+                [("empfanger", "Empfänger", "lines"), ("betreff", "Betreff", "text"), ("title-2", "Title", "date")],
+            )
+            html = template.html.read_text(encoding="utf-8")
+            self.assertIn('<div class="field field-empfanger">$empfanger$</div>', html)
+            self.assertLess(html.index("</header>"), html.index('class="fields"'))
+            settings = template_builder.settings_of(template)
+            renamed = ((settings.fields[0][0], "Anschrift", "lines"),) + settings.fields[1:]
+            changed = template_builder.save(template_builder.replace(settings, fields=renamed), Path(folder), template)
+            self.assertEqual([(f.key, f.label) for f in changed.fields][0], ("empfanger", "Anschrift"))
+
+    def test_field_keys(self):
+        self.assertEqual(template_builder.field_key("Straße & Nr.", set()), "strasse-nr")
+        self.assertEqual(template_builder.field_key("1. Etage", set()), "field-1-etage")
+        self.assertEqual(template_builder.field_key("!!", set()), "field")
+        self.assertEqual(template_builder.field_key("Ort", {"ort"}), "ort-2")
+        self.assertEqual(template_builder.field_key("Author", set()), "author-2")
+        self.assertTrue(export_templates.FIELD_KEY.match(template_builder.field_key("x" * 80, set())))
+
+    def test_without_structure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            template = self.build(folder, structure=False)
+            self.assertFalse(template.structure)
+            self.assertNotIn("title-block", template.html.read_text(encoding="utf-8"))
+            self.assertFalse(template_builder.settings_of(template).structure)
+            self.assertTrue(self.build(folder).structure)
+
     def test_chapters_on_new_page_with_parts(self):
         css = template_builder.stylesheet(template_builder.Settings(chapters_on_new_page=True))
         for rule in ("main h1 { break-before: page; }", "main > h1:first-child { break-before: auto; }", "main h1.part ~ h2 { break-before: page; }"):
@@ -295,6 +327,17 @@ class FieldsExportTest(unittest.TestCase):
         text = export.with_fields(self.TEXT, template)
         subprocess.run(export.pandoc_args(fmt, template, output, "Probe"), input=text, text=True, check=True, cwd=folder)
         return output
+
+    def test_an_assistant_template_places_its_fields(self):
+        with tempfile.TemporaryDirectory() as folder:
+            settings = template_builder.Settings(name="Brief", fields=(("recipient", "Empfänger", "lines"), ("subject", "Betreff", "text")))
+            template = template_builder.save(settings, Path(folder) / "templates")
+            output = Path(folder) / "out.html"
+            text = export.with_fields(self.TEXT, template)
+            subprocess.run(export.pandoc_args("html", template, output, "Probe"), input=text, text=True, check=True, cwd=folder)
+            html = output.read_text(encoding="utf-8")
+        self.assertIn('<div class="field field-recipient">Frau Anna Berg<br />', html)
+        self.assertRegex(html, r'<div class="field field-subject">Ihre\s+Anfrage</div>')
 
     def test_html_places_the_fields(self):
         with tempfile.TemporaryDirectory() as folder:

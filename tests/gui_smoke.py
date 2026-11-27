@@ -1458,8 +1458,26 @@ def steps(win, app):
     yield 0.2
     check(assistant.name_row.get_text() == "Mein Roman" and assistant.size_row.get_value() == 11 and not assistant.preset_row.get_visible(), "Editing shows the template's settings")
     assistant.size_row.set_value(13)
+    check(assistant.structure_row.get_active() and not assistant._field_rows, "A template starts without fields and offers contents and cover page")
+    assistant._add_field(focus=True)
+    assistant._field_rows[0][0].set_text("Betreff")
+    assistant._add_field(label="Empfänger", kind="lines")
+    assistant._add_field(label="Unbenutzt")
+    assistant._add_field()
+    assistant._move_field(assistant._field_rows[1][0], -1)
+    assistant._remove_field(assistant._field_rows[2][0])
+    assistant.structure_row.set_active(False)
     assistant._save()
     check(saved[1].id == roman.id and "font-size: 13pt" in saved[1].css.read_text(encoding="utf-8"), "Editing replaces the template")
+    check(
+        [(f.key, f.type) for f in saved[1].fields] == [("empfanger", "lines"), ("betreff", "text")] and not saved[1].structure,
+        "The assistant saves fields in their order and can leave out contents and cover page",
+    )
+    assistant = TemplateDialog(saved.append, saved.append, saved[1])
+    assistant.present(win)
+    yield 0.2
+    check([row.get_text() for row, _key, _types in assistant._field_rows] == ["Empfänger", "Betreff"] and not assistant.structure_row.get_active(), "Editing shows the fields again")
+    assistant.close()
     page._remove(saved[1])
     check(len(page._rows) == 2, "A template from the assistant can be removed")
 

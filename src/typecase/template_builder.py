@@ -3,19 +3,21 @@
 The assistant in the preferences fills in the settings; this writes the template folder:
 style.css and template.html for HTML and PDF, reference.docx for Word and template.json. The
 settings are stored in template.json as well, so such a template can be opened and changed later.
-Files are written to a hidden folder first and only then take the place of the template."""
+A template can ask for fields (see export_templates); the assistant places them as lines below the
+title, in their order. Files are written to a hidden folder first and only then take the place of the template."""
 
 import json
 import os
 import re
 import shutil
 import tempfile
+import unicodedata
 from dataclasses import asdict, dataclass, fields, replace
 from gettext import gettext as _
 from pathlib import Path
 
 from . import docx_style
-from .export_templates import BUILTIN_DIR, Template, read_folder
+from .export_templates import FIELD_KEY, BUILTIN_DIR, FIELD_TYPES, MAX_FIELDS, RESERVED_KEYS, Template, read_folder
 
 ASSETS = Path(__file__).resolve().parent / "template_assets"
 SETTINGS_KEY = "assistant"
@@ -47,6 +49,10 @@ class Settings:
     heading_center: bool = False
     chapters_on_new_page: bool = False
     page_numbers: str = "center"
+    # (key, label, type) per field; an empty key gets one from the label when saving
+    fields: tuple[tuple[str, str, str], ...] = ()
+    # Offer a table of contents and a cover page in the export (off for letters and forms)
+    structure: bool = True
 
 
 def presets() -> dict[str, tuple[str, Settings]]:
@@ -78,6 +84,8 @@ def settings_of(template: Template) -> Settings | None:
         return None
     values = {}
     for field in fields(Settings):
+        if field.name == "fields":
+            continue
         value = stored.get(field.name)
         default = getattr(Settings(), field.name)
         numeric = isinstance(default, (int, float)) and not isinstance(default, bool)
@@ -85,7 +93,7 @@ def settings_of(template: Template) -> Settings | None:
             values[field.name] = float(value)
         elif isinstance(value, type(default)) and not numeric:
             values[field.name] = value
-    settings = replace(Settings(), **values)
+    settings = replace(Settings(), **values, fields=_stored_fields(stored.get("fields")))
     # A file edited by hand must not bring in unknown choices
     return replace(
         settings,
@@ -94,6 +102,63 @@ def settings_of(template: Template) -> Settings | None:
         heading_font=settings.heading_font if settings.heading_font in FONTS else FONTS[0],
         page_numbers=settings.page_numbers if settings.page_numbers in PAGE_NUMBERS else "center",
     )
+
+
+def _stored_fields(value) -> tuple[tuple[str, str, str], ...]:
+    if not isinstance(value, list):
+        return ()
+    found = []
+    for entry in value[:MAX_FIELDS]:
+        if isinstance(entry, (list, tuple)) and len(entry) == 3 and all(isinstance(part, str) for part in entry):
+            key, label, kind = entry
+            if label.strip() and kind in FIELD_TYPES:
+                found.append((key, label.strip(), kind))
+    return tuple(found)
+
+
+def field_key(label: str, taken: set[str]) -> str:
+    """A key for a new field from its label ("Straße" → "strasse") that no other field and
+    nothing Typecase uses itself has."""
+    text = label.casefold().replace("ß", "ss")
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", text).strip("-")[:32].strip("-")
+    if not slug or not slug[0].isalpha():
+        slug = "field-" + slug if slug else "field"
+    candidate, number = slug, 2
+    while candidate in taken or candidate in RESERVED_KEYS:
+        candidate, number = f"{slug}-{number}", number + 1
+    return candidate
+
+
+def with_keys(settings: Settings) -> Settings:
+    """Settings whose fields all have a usable key; fields without a label are left out.
+    Existing keys stay, so sheets keep their values when a label changes."""
+    kept, taken = [], set()
+    for key, label, kind in settings.fields[:MAX_FIELDS]:
+        label = label.strip()
+        if not label or kind not in FIELD_TYPES:
+            continue
+        if not FIELD_KEY.match(key) or key in RESERVED_KEYS or key in taken:
+            key = field_key(label, taken)
+        taken.add(key)
+        kept.append((key, label, kind))
+    return replace(settings, fields=tuple(kept))
+
+
+def page_template(settings: Settings) -> str:
+    """template.html: the one of the built-in text template, with the fields below the title. Without
+    structure (a letter, a form) there is no title block, as in Word."""
+    html = (BUILTIN_DIR / "text" / "template.html").read_text(encoding="utf-8")
+    if not settings.structure:
+        start, end = html.index("$if(title)$\n<header"), html.index("</header>\n$endif$\n") + len("</header>\n$endif$\n")
+        html = html[:start] + html[end:]
+    if settings.fields:
+        block = ['<div class="fields">']
+        for key, _label, _kind in settings.fields:
+            block += [f"$if({key})$", f'<div class="field field-{key}">${key}$</div>', "$endif$"]
+        block.append("</div>\n")
+        html = html.replace("<main>\n", "\n".join(block) + "<main>\n", 1)
+    return html
 
 
 def _font_stack(font: str) -> str:
@@ -119,6 +184,8 @@ def stylesheet(settings: Settings) -> str:
         f"h1, h2, h3, h4, h5, h6 {{ line-height: 1.25; margin: 1.6em 0 0.5em; text-align: {align}; break-after: avoid; }}",
         "h1 { font-size: 1.6em; } h2 { font-size: 1.3em; } h3 { font-size: 1.1em; } h4, h5, h6 { font-size: 1em; }",
         "main p { orphans: 3; widows: 3; }",
+        ".fields { margin: 0 0 2em; }",
+        ".field { margin: 0 0 0.6em; }",
     ]
     if settings.first_line_indent:
         rules += ["main p { margin: 0; }", f"main p + p {{ text-indent: {FIRST_LINE_INDENT_CM}cm; }}"]
@@ -176,6 +243,7 @@ def _reference_docx(settings: Settings, output: Path) -> None:
 
 
 def write_files(settings: Settings, folder: Path) -> None:
+    settings = with_keys(settings)
     folder.mkdir(parents=True, exist_ok=True)
     info = {
         "format": 1,
@@ -190,8 +258,12 @@ def write_files(settings: Settings, folder: Path) -> None:
         },
         SETTINGS_KEY: asdict(settings),
     }
+    if settings.fields:
+        info["fields"] = [{"key": key, "label": label, "type": kind} for key, label, kind in settings.fields]
+    if not settings.structure:
+        info["structure"] = False
     (folder / "template.json").write_text(json.dumps(info, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    shutil.copyfile(BUILTIN_DIR / "text" / "template.html", folder / "template.html")
+    (folder / "template.html").write_text(page_template(settings), encoding="utf-8")
     (folder / "style.css").write_text(stylesheet(settings), encoding="utf-8")
     _reference_docx(settings, folder / "reference.docx")
 
