@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from typecase import export
+from typecase import export, export_templates
 from typecase.export_templates import EXTENSION, TemplateError, available, install, localized, pack, peek
 
 HTML = "<html><body>$body$</body></html>"
@@ -177,6 +177,22 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("url('data:font/woff2;base64,AAE=')", header)
         self.assertIn("url(https://x.org/a.png)", header)
         self.assertIn("url(../geheim.png)", header)
+
+
+class SkillInStepTest(unittest.TestCase):
+    """The Claude skill checks templates on its own; its rules for fields must match the app's."""
+
+    def test_field_rules_match(self):
+        import importlib.util
+
+        script = Path(__file__).resolve().parent.parent / "skills" / "typecase-template" / "scripts" / "build_template.py"
+        spec = importlib.util.spec_from_file_location("build_template", script)
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        self.assertEqual(build.RESERVED_KEYS, set(export_templates.RESERVED_KEYS))
+        self.assertEqual(build.FIELD_TYPES, export_templates.FIELD_TYPES)
+        self.assertEqual(build.MAX_FIELDS, export_templates.MAX_FIELDS)
+        self.assertEqual(build.FIELD_KEY.pattern, export_templates.FIELD_KEY.pattern)
 
 
 if __name__ == "__main__":

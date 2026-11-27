@@ -167,6 +167,76 @@ def edit_styles(root: ET.Element, args) -> None:
         if args.title_align:
             child(ppr(element), "jc", after("jc", PPR_ORDER)).set(w("val"), "center" if args.title_align == "center" else "left")
 
+    edit_field_styles(root, args.field_styles)
+
+
+FIELD_STYLE_KEYS = {"align", "size", "color", "bold", "italic", "before", "after", "font"}
+
+
+def parse_field_style(text: str) -> tuple[str, dict[str, str]]:
+    """'sender:align=right,size=9,color=5E5E5E,after=0' → ("sender", {...})."""
+    key, _sep, rest = text.partition(":")
+    key = key.strip()
+    if not re.fullmatch(r"[a-z][a-z0-9_-]{0,39}", key):
+        raise ValueError(f"field key {key!r} must start with a letter and use only a-z, 0-9, - and _")
+    options = {}
+    for part in filter(None, (p.strip() for p in rest.split(","))):
+        name, _eq, value = part.partition("=")
+        if name not in FIELD_STYLE_KEYS:
+            raise ValueError(f"unknown field style option {name!r} (use {', '.join(sorted(FIELD_STYLE_KEYS))})")
+        options[name] = value.strip() or "true"
+    return key, options
+
+
+def edit_field_styles(root: ET.Element, field_styles: list[tuple[str, dict[str, str]]]) -> None:
+    """Paragraph styles named after template fields: Typecase puts each field's value into a
+    paragraph with the style of the same name (Pandoc's custom-style)."""
+    for key, options in field_styles:
+        # Word matches style names without regard to case: a field "date" takes Pandoc's "Date"
+        # style, which is based on the title. As a field it starts from Normal instead.
+        element = next(
+            (s for s in root.findall(w("style")) if key in (
+                (s.get(w("styleId")) or "").casefold(),
+                (s.find(w("name")).get(w("val")) if s.find(w("name")) is not None else "").casefold(),
+            )),
+            None,
+        )
+        if element is not None and element.get(w("type")) == "paragraph":
+            based = element.find(w("basedOn"))
+            if based is not None and based.get(w("val")) != "Normal":
+                based.set(w("val"), "Normal")
+                for old_rpr in element.findall(w("rPr")):
+                    element.remove(old_rpr)
+                old_ppr = element.find(w("pPr"))
+                if old_ppr is not None:
+                    for tag in ("jc", "spacing"):
+                        for found in old_ppr.findall(w(tag)):
+                            old_ppr.remove(found)
+        if element is None:
+            element = ET.SubElement(root, w("style"), {w("type"): "paragraph", w("customStyle"): "1", w("styleId"): key})
+            ET.SubElement(element, w("name"), {w("val"): key})
+            ET.SubElement(element, w("basedOn"), {w("val"): "Normal"})
+            ET.SubElement(element, w("qFormat"))
+        if "align" in options:
+            child(ppr(element), "jc", after("jc", PPR_ORDER)).set(w("val"), {"justify": "both"}.get(options["align"], options["align"]))
+        for side in ("before", "after"):
+            if side in options:
+                child(ppr(element), "spacing", after("spacing", PPR_ORDER)).set(w(side), str(round(float(options[side]) * 20)))
+        properties = rpr(element)
+        if "font" in options:
+            set_font(properties, options["font"])
+        if "size" in options:
+            set_size(properties, float(options["size"]))
+        if "color" in options:
+            set_color(properties, options["color"])
+        for flag in ("bold", "italic"):
+            if flag in options:
+                tag = "b" if flag == "bold" else "i"
+                element_flag = child(properties, tag, after(tag, RPR_ORDER))
+                element_flag.attrib.clear()
+                if options[flag] in ("false", "0", "no"):
+                    element_flag.set(w("val"), "0")
+
 
 def edit_document(root: ET.Element, args) -> None:
     body = root.find(w("body"))
@@ -289,7 +359,24 @@ def main() -> int:
     parser.add_argument("--page-numbers", choices=("center", "right"), help="page number in the footer")
     parser.add_argument("--header-lines", help='small right-aligned header, lines separated by "|" (first line bold), e.g. a letterhead')
     parser.add_argument("--header-first-page-only", action="store_true", help="show the header on page 1 only (page numbers then start on page 2)")
+    parser.add_argument("--field-style", action="append", default=[], metavar="KEY:OPTIONS",
+                        help="Word style of a template field, repeatable, e.g. 'sender:align=right,size=9,color=5E5E5E,after=0' "
+                             "or 'subject:bold,before=12,after=18'. Options: align (left/right/center/justify), size (pt), "
+                             "font, color (hex), bold, italic, before and after (space in pt)")
     args = parser.parse_args()
+    try:
+        args.field_styles = [parse_field_style(text) for text in args.field_style]
+    except ValueError as error:
+        parser.error(str(error))
+    for _key, options in args.field_styles:
+        if "color" in options and not re.fullmatch(r"[0-9A-Fa-f]{6}", options["color"]):
+            parser.error("a field's color must be six hex digits, e.g. 5E5E5E")
+        for number in ("size", "before", "after"):
+            if number in options:
+                try:
+                    float(options[number])
+                except ValueError:
+                    parser.error(f"a field's {number} must be a number")
 
     if args.margins and len(args.margins.split(",")) != 4:
         parser.error("--margins needs four numbers: top,right,bottom,left")

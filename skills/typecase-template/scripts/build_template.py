@@ -21,6 +21,14 @@ FORMAT_VERSION = 1
 PAPERS = {"a3", "a4", "a5", "letter", "legal"}
 MAX_FILES = 200
 MAX_TOTAL_BYTES = 50 * 1024 * 1024
+FIELD_TYPES = ("text", "lines", "date")
+MAX_FIELDS = 30
+FIELD_KEY = re.compile(r"^[a-z][a-z0-9_-]{0,39}$")
+# Keys Typecase uses itself (properties pane, export); keep in step with export_templates.RESERVED_KEYS
+RESERVED_KEYS = {
+    "title", "subtitle", "author", "lang", "keywords", "status", "goal", "notes", "created", "changed", "order",
+    "icon", "color", "template", "abstract", "pagetitle", "toc", "pdf", "spell_check", "focus_spell_check",
+}
 CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
 
 
@@ -67,6 +75,11 @@ def check(folder: Path) -> tuple[list[str], list[str]]:
         elif isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
             warnings.append(f'template.json: margin "{side}" must be a number of millimetres between 0 and 100 (falls back to 25).')
 
+    keys = check_fields(info, warnings)
+    structure = info.get("structure", True)
+    if not isinstance(structure, bool):
+        warnings.append('template.json: "structure" must be true or false (Typecase treats anything else as true).')
+
     html_file = folder / "template.html"
     if not html_file.is_file():
         errors.append("template.html is missing.")
@@ -80,6 +93,9 @@ def check(folder: Path) -> tuple[list[str], list[str]]:
             errors.append("template.html does not contain $body$ — the text would be missing from the export.")
         if html and "header-includes" not in html:
             warnings.append("template.html has no $for(header-includes)$$header-includes$$endfor$ in <head>, so style.css will NOT be applied.")
+        for key in keys:
+            if html and f"${key}$" not in html and f"${key}-oneline$" not in html:
+                warnings.append(f"template.html never uses the field ${key}$, so its value will be missing from HTML and PDF.")
         if html and re.search(r"<script", html, re.IGNORECASE):
             warnings.append("template.html contains <script>; scripts are not run for PDF and should be avoided.")
 
@@ -120,6 +136,38 @@ def check(folder: Path) -> tuple[list[str], list[str]]:
     if total > MAX_TOTAL_BYTES:
         errors.append(f"Too large ({total // 1024 // 1024} MB; at most 50 MB).")
     return errors, warnings
+
+
+def check_fields(info: dict, warnings: list[str]) -> list[str]:
+    """Warns about every field entry Typecase would skip; returns the keys it will use."""
+    given = info.get("fields")
+    if given is None:
+        return []
+    if not isinstance(given, list):
+        warnings.append('template.json: "fields" must be a list; Typecase ignores it.')
+        return []
+    if len(given) > MAX_FIELDS:
+        warnings.append(f"template.json: only the first {MAX_FIELDS} fields are used.")
+    keys = []
+    for number, entry in enumerate(given[:MAX_FIELDS], 1):
+        if not isinstance(entry, dict):
+            warnings.append(f"template.json: field {number} is not an object and is skipped.")
+            continue
+        key = entry.get("key")
+        if not isinstance(key, str) or not FIELD_KEY.match(key):
+            warnings.append(f'template.json: field {number} needs a "key" of lower-case letters, digits, "-" or "_", starting with a letter; it is skipped.')
+        elif key in RESERVED_KEYS:
+            warnings.append(f'template.json: field "{key}" is a key Typecase uses itself; it is skipped. Choose another key.')
+        elif key in keys:
+            warnings.append(f'template.json: field "{key}" appears twice; the second one is skipped.')
+        elif entry.get("type", "text") not in FIELD_TYPES:
+            warnings.append(f'template.json: field "{key}" has an unknown type; use one of {list(FIELD_TYPES)}. It is skipped.')
+        else:
+            keys.append(key)
+            label = entry.get("label")
+            if not (isinstance(label, str) and label.strip()) and not (isinstance(label, dict) and label):
+                warnings.append(f'template.json: field "{key}" has no "label"; Typecase shows the key instead.')
+    return keys
 
 
 def pack(folder: Path, output: Path) -> None:

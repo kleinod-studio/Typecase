@@ -21,12 +21,14 @@ Find out what the document is for and what must be true of it. Typical decisions
 - paper size and margins (PDF and Word)
 - fonts and sizes for body text and headings, line spacing, paragraph style (spacing between paragraphs vs. first-line indent), alignment (left or justified)
 - title block: show title, subtitle, author, date? where and how?
+- **fields**: does every document of this kind need its own details beyond title and author — a letter's sender, recipient and subject, an invoice number, a client? Then the template asks for them as fields (see below) instead of the user typing them into the text.
+- table of contents and cover page: useful for long texts; for letters and forms set `"structure": false`
 - chapters on new pages? special elements (logo, letterhead, coloured headings)?
 
 Fill gaps with sensible conventions for the document type rather than interrogating the user; ask only about things that genuinely change the result and that you cannot infer (for example, the user's name for a letterhead). State the choices you made so the user can correct them. Conventions that help:
 
 - *Manuscript for an editor / Lektorat*: 12 pt serif, line spacing 1.5–2, wide right margin (40–50 mm) for notes, left-aligned, no justification, first-line indent, chapters on new pages.
-- *Business letter (DIN 5008 in German-speaking countries)*: A4, left margin 25 mm, right 20 mm, 11–12 pt sans or serif, sender line and date at the top right.
+- *Business letter (DIN 5008 in German-speaking countries)*: A4, left margin 25 mm, right 20 mm, 11–12 pt sans or serif, sender at the top right, recipient in the address window, place and date right-aligned above the subject. Fields: sender and recipient (`lines`), place, date (`date`), subject; `"structure": false`. Typecase has a built-in "Letter (DIN 5008)" template — mention it, and start from it (Preferences → Templates → Save as File…) when the user wants a variation.
 - *Essay/thesis*: A4, 25 mm margins (often 30–35 mm left for binding), 12 pt, line spacing 1.5, justified with hyphenation, numbered-looking headings.
 - *Novel manuscript (Normseite)*: monospace or serif 12 pt, double spacing, wide margins.
 
@@ -44,6 +46,26 @@ Then edit:
 - **template.html** — keep `$body$` and the `$for(header-includes)$…$endfor$` loop in `<head>`. Change the title block or add elements (e.g. a letterhead with `$author$` and `$date$`). Keep `<body$if(pdf)$ class="pdf"$endif$>` so the CSS can tell print from screen.
 - **style.css** — the look for HTML and PDF. Keep `body.pdf { max-width: none; margin: 0; padding: 0; }`. Scope rules for the text to `main` (`main h1`, `main p`): the title block sits outside `<main>` and its title is an `h1` too, so a plain `h1 { break-before: page }` would start the PDF with an empty page and a plain `p { … }` rule would undo the title block's alignment. Use fonts that exist on a GNOME system or embed font files (see `references/format.md` §4); if you embed fonts, make sure their licence allows it and mention the licence to the user.
 
+### Fields: details each sheet fills in
+
+When a kind of document needs details of its own, list them in `template.json` under `"fields"`. A sheet that uses the template (chosen in its properties pane, row "Template") then shows one input row per field; the values are saved in the sheet's front matter, so the text itself holds only the letter, invoice or form body.
+
+```json
+"structure": false,
+"fields": [
+  {"key": "sender", "label": {"en": "Sender", "de": "Absender"}, "type": "lines"},
+  {"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+  {"key": "date", "label": {"en": "Date", "de": "Datum"}, "type": "date"},
+  {"key": "subject", "label": {"en": "Subject", "de": "Betreff"}}
+]
+```
+
+- Types: `text` (one line, the default), `lines` (several lines, e.g. an address), `date` (a calendar; left empty it is the day of the export, written in the sheet's language).
+- Keys: lower-case letters, digits, `-`, `_`; never one Typecase uses itself (title, author, lang, status, …; `build_template.py` warns). Keep keys in English and stable — sheets store their values under the key, so renaming a key loses them; labels can change any time.
+- **HTML and PDF**: the template places each field where it belongs, `$if(recipient)$<div class="recipient">$recipient$</div>$endif$`. Line breaks of a `lines` field stay line breaks (use a `div`, not a `p`, as the value may contain several paragraphs). `$sender-oneline$` gives a `lines` field in one line, joined with " · " and only up to its first blank line — the return line above a window address, without the phone number and email that follow a blank line.
+- **Word** places the fields itself, as paragraphs in their order before the text, each with the paragraph style named like its key. Style them with `style_docx.py --field-style` (step 3). A field with the key `date` takes the place of Word's usual date paragraph; style it with `--field-style date:align=right`.
+- `"structure": false` hides the switches for table of contents and cover page in the export dialog and leaves the title, subtitle and author out of the Word file; leave the title block out of `template.html` too.
+
 ### 3. Make the Word part
 
 Users compare the PDF and the Word file side by side, so they must look like the same document. Pandoc's default Word styles are *not* neutral — headings are blue, left-aligned and not bold, the title is centred — so every visual decision you made in the CSS has to be repeated explicitly for Word. Go through this list and pass the matching option for each:
@@ -59,6 +81,7 @@ Users compare the PDF and the Word file side by side, so they must look like the
 | title alignment | `--title-align` |
 | chapters on new pages | `--chapter-page-break` |
 | paper and margins (from template.json) | `--paper`, `--margins top,right,bottom,left` |
+| look of each field (right-aligned, small, bold, spacing) | `--field-style "sender:align=right,size=9,color=5E5E5E,after=0"`, once per field |
 
 Always set `--heading-color`, `--heading-bold`/`--no-heading-bold` and `--heading-align`, even when the CSS just uses black, bold, left-aligned headings — otherwise Word shows Pandoc's blue defaults.
 
@@ -99,7 +122,8 @@ Give the user the `.typecase-template` file and a short note, in their language:
 - what the template does (the choices you made: paper, margins, fonts, spacing)
 - how to use it: Typecase → Preferences → Templates → **Import…**, then choose it in the export dialog (Ctrl+E)
 - anything that does not carry over between PDF, Word and HTML
-- only describe Typecase features that exist: sheets have a title, subtitle, author, keywords, status and language in the properties pane; there is no date field there (`$date$` is the export date)
+- if the template has fields: choose the template in the sheet's properties pane (row "Template"), and the fields appear there as input rows
+- only describe Typecase features that exist: sheets have a title, subtitle, author, keywords, status and language in the properties pane, plus the fields of the template they use; without a `date` field, `$date$` is the export date
 
 ## Changing an existing template
 

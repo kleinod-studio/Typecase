@@ -2,7 +2,7 @@
 
 Typecase exportiert Blätter als PDF, Word-Dokument (DOCX) und Webseite (HTML). Wie das Ergebnis aussieht, bestimmt die **Vorlage**. Eine Vorlage ist eine einzelne Datei mit der Endung `.typecase-template`. Sie lässt sich weitergeben und in Typecase unter **Einstellungen → Vorlagen → Importieren …** einlesen. Beim Exportieren wählst du sie dann im Dropdown „Vorlage“.
 
-Diese Anleitung beschreibt, wie eine Vorlage aufgebaut ist und wie du eine eigene baust. Am einfachsten geht das mit dem **Vorlagen-Assistenten**: Unter **Einstellungen → Vorlagen → Neu …** wählst du einen Ausgangspunkt, passt Papier, Schriften und Abstände an, und die Vorlage ist fertig, für PDF, Word und HTML. Später kannst du sie über den Bearbeiten-Knopf ändern. Für Sonderwünsche wie einen Briefkopf oder Verlagsrichtlinien gibt es den **Claude-Skill „typecase-template“**: Du beschreibst Claude, wie dein Dokument aussehen soll, und bekommst eine fertige Vorlagendatei. Wer lieber selbst Hand anlegt, findet hier alles Nötige.
+Diese Anleitung beschreibt, wie eine Vorlage aufgebaut ist und wie du eine eigene baust. Am einfachsten geht das mit dem **Vorlagen-Assistenten**: Unter **Einstellungen → Vorlagen → Neu …** wählst du einen Ausgangspunkt, passt Papier, Schriften und Abstände an, und die Vorlage ist fertig, für PDF, Word und HTML. Dort kannst du auch **Felder** anlegen, etwa Empfänger und Betreff für einen Brief (siehe [Felder](#felder-angaben-die-jedes-blatt-ausfüllt)). Später kannst du die Vorlage über den Bearbeiten-Knopf ändern. Für Geschäftsbriefe bringt Typecase die Vorlage **Brief (DIN 5008)** schon mit. Für Sonderwünsche wie einen Briefkopf oder Verlagsrichtlinien gibt es den **Claude-Skill „typecase-template“**: Du beschreibst Claude, wie dein Dokument aussehen soll, und bekommst eine fertige Vorlagendatei. Wer lieber selbst Hand anlegt, findet hier alles Nötige.
 
 ## Schnellstart: von einer vorhandenen Vorlage ausgehen
 
@@ -45,6 +45,8 @@ Alle Dateien liegen direkt im Archiv (oder gemeinsam in genau einem Ordner darin
 - **author**, **version**: zur Information.
 - **pdf.paper**: `a4`, `a5`, `a3`, `letter` oder `legal`. Ohne Angabe nimmt Typecase das übliche Papier der Systemsprache.
 - **pdf.margins_mm**: Seitenränder des PDFs in Millimetern (0 bis 100). Fehlende Seiten bekommen 25 mm.
+- **structure** (optional): `false` für Briefe und Formulare. Der Export-Dialog bietet dann kein Inhaltsverzeichnis und keine Titelseite an, und Word-Dateien lassen Titel, Untertitel und Autor weg.
+- **fields** (optional): Angaben, die jedes Blatt ausfüllt; siehe [Felder](#felder-angaben-die-jedes-blatt-ausfüllt).
 
 Papier und Ränder für **Word** stehen nicht hier, sondern in `reference.docx` (Seite einrichten).
 
@@ -67,6 +69,8 @@ Weitere Platzhalter:
 | `$lang$` | Sprache, z. B. `de-DE` (für `<html lang="…">`, wichtig für Silbentrennung) |
 | `$pagetitle$` | Fenstertitel, wenn das Blatt keinen Titel hat (der Blattname) |
 | `$created$`, `$status$`, `$keywords$`, … | jedes weitere Feld aus dem Dateikopf des Blatts |
+| `$empfaenger$` usw. | der Wert eines [Felds](#felder-angaben-die-jedes-blatt-ausfüllt) der Vorlage |
+| `$absender-oneline$` | ein mehrzeiliges Feld in einer Zeile, mit „ · “ verbunden, bis zur ersten Leerzeile |
 | `$if(pdf)$…$endif$` | nur beim PDF-Export; die mitgelieferte Vorlage setzt damit `<body class="pdf">` |
 | `$highlighting-css$` | Farben für Codeblöcke |
 
@@ -138,7 +142,35 @@ So entsteht eins:
 
 Ohne Textverarbeitung geht es mit dem Skript `style_docx.py` aus dem Claude-Skill: Es setzt Schriften, Größen, Zeilenabstand, Einzug, Papier und Ränder und fügt auf Wunsch Seitenzahlen und einen kleinen Briefkopf hinzu (`python3 style_docx.py --help`).
 
-Pandoc schreibt Titel, Untertitel und Autor im Word-Dokument immer als erste Absätze vor den Text; frei positionierte Bereiche aus dem HTML (etwa ein Anschriftfeld) lassen sich in Word nicht nachbilden.
+Pandoc schreibt Titel, Untertitel und Autor im Word-Dokument immer als erste Absätze vor den Text; frei positionierte Bereiche aus dem HTML (etwa ein Anschriftfeld) lassen sich in Word nicht nachbilden. Felder der Vorlage folgen danach als eigene Absätze, in ihrer Reihenfolge; jeder bekommt die Formatvorlage, die so heißt wie sein Schlüssel (mit `style_docx.py --field-style` lässt sie sich gestalten).
+
+## Felder: Angaben, die jedes Blatt ausfüllt
+
+Manche Dokumente brauchen mehr als Titel und Autor: Ein Brief hat Absender, Empfänger und Betreff, eine Rechnung eine Nummer. Solche Angaben gehören nicht in den Text, sondern in **Felder** der Vorlage.
+
+So sieht das beim Schreiben aus: Im Eigenschaften-Bereich des Blatts wählst du unter **Vorlage** die gewünschte Vorlage. Darunter erscheint für jedes Feld eine Eingabezeile. Was du einträgst, speichert Typecase im Dateikopf des Blatts, und beim Export setzt die Vorlage es an die richtige Stelle. Im Editor steht nur der eigentliche Text. Der Export-Dialog wählt die Vorlage des Blatts dann von selbst.
+
+Im **Vorlagen-Assistenten** legst du Felder im Bereich „Felder“ an: Name, Art (eine Zeile, mehrere Zeilen, Datum) und Reihenfolge. Seine Vorlagen setzen die Felder unter den Titel. Wer die Felder frei anordnen möchte, etwa die Anschrift im Adressfeld eines Briefs, schreibt sie selbst in `template.html`.
+
+In `template.json` stehen die Felder so:
+
+```json
+"structure": false,
+"fields": [
+  {"key": "absender", "label": {"en": "Sender", "de": "Absender"}, "type": "lines"},
+  {"key": "empfaenger", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+  {"key": "datum", "label": {"en": "Date", "de": "Datum"}, "type": "date"},
+  {"key": "betreff", "label": {"en": "Subject", "de": "Betreff"}}
+]
+```
+
+- **key**: der Name, unter dem das Blatt den Wert speichert und unter dem `template.html` ihn findet: Kleinbuchstaben, Ziffern, `-` und `_`, beginnend mit einem Buchstaben. Schlüssel, die Typecase selbst verwendet (`title`, `author`, `lang`, `status` usw.), sind ausgenommen. Ändere den Schlüssel einer verwendeten Vorlage nicht mehr, sonst finden die Blätter ihre Werte nicht wieder; die Beschriftung darfst du jederzeit ändern.
+- **label**: die Beschriftung der Eingabezeile, als Text oder je Sprache.
+- **type**: `text` (eine Zeile, Voreinstellung), `lines` (mehrere Zeilen, etwa eine Anschrift) oder `date` (Datum mit Kalender; leer bedeutet: der Tag des Exports).
+
+In `template.html` setzt du ein Feld mit seinem Schlüssel ein, am besten in eine Bedingung: `$if(empfaenger)$<div class="empfaenger">$empfaenger$</div>$endif$`. Zeilenumbrüche und Leerzeilen eines mehrzeiligen Felds bleiben erhalten. `$absender-oneline$` gibt die Zeilen bis zur ersten Leerzeile in einer Zeile aus, etwa für die kleine Absenderzeile über dem Anschriftfeld; Telefon und E-Mail stehen dann einfach nach einer Leerzeile.
+
+Ein vollständiges Beispiel ist die mitgelieferte Vorlage **Brief (DIN 5008)**: In den Einstellungen unter **Vorlagen** speicherst du sie mit **Als Datei speichern** und schaust sie dir an.
 
 ## Prüfen und weitergeben
 

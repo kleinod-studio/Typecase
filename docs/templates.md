@@ -2,7 +2,7 @@
 
 Typecase exports sheets as PDF, Word document (DOCX), and web page (HTML). The **template** determines what the result looks like. A template is a single file with the extension `.typecase-template`. You can share it with others and load it in Typecase under **Preferences → Templates → Import…**. When exporting (Ctrl+E), you then pick it under “Template” in the export dialog, next to “Format”.
 
-This guide describes how a template is structured and how to build your own. The easiest way is the **template assistant**: under **Preferences → Templates → New…**, choose a starting point, adjust paper, fonts and spacing, and the template is ready, for PDF, Word and HTML. You can change it later with the edit button. For special wishes, such as a letterhead or a publisher's guidelines, there is the **Claude skill “typecase-template”**: you describe to Claude what your document should look like and get a finished template file. The skill can be downloaded from https://kleinod.studio/typecase. If you prefer to do it by hand, you will find everything you need here.
+This guide describes how a template is structured and how to build your own. The easiest way is the **template assistant**: under **Preferences → Templates → New…**, choose a starting point, adjust paper, fonts and spacing, and the template is ready, for PDF, Word and HTML. You can also add **fields** there, such as the recipient and subject of a letter (see [Fields](#fields-details-every-sheet-fills-in)). You can change the template later with the edit button. For business letters, Typecase comes with the template **Letter (DIN 5008)**. For special wishes, such as a letterhead or a publisher's guidelines, there is the **Claude skill “typecase-template”**: you describe to Claude what your document should look like and get a finished template file. The skill can be downloaded from https://kleinod.studio/typecase. If you prefer to do it by hand, you will find everything you need here.
 
 ## Quick start: begin with an existing template
 
@@ -45,6 +45,8 @@ All files sit at the top level of the archive (or together in exactly one folder
 - **author**, **version**: informational only.
 - **pdf.paper**: `a4`, `a5`, `a3`, `letter`, or `legal`. If omitted, Typecase uses the usual paper size for the system locale.
 - **pdf.margins_mm**: page margins of the PDF in millimeters (0 to 100). Any side not specified gets 25 mm.
+- **structure** (optional): `false` for letters and forms. The export dialog then offers no table of contents and no cover page, and Word files leave out the title, subtitle, and author.
+- **fields** (optional): details every sheet fills in; see [Fields](#fields-details-every-sheet-fills-in).
 
 Paper size and margins for **Word** are not set here but in `reference.docx` (page setup).
 
@@ -67,6 +69,8 @@ Other placeholders:
 | `$lang$` | Language, e.g. `de-DE` (for `<html lang="…">`, important for hyphenation) |
 | `$pagetitle$` | Window title if the sheet has no title (the sheet name) |
 | `$created$`, `$status$`, `$keywords$`, … | any other field from the sheet’s front matter |
+| `$recipient$` etc. | the value of one of the template’s [fields](#fields-details-every-sheet-fills-in) |
+| `$sender-oneline$` | a multi-line field on one line, joined with “ · ”, up to the first blank line |
 | `$if(pdf)$…$endif$` | PDF export only; the bundled template uses it to set `<body class="pdf">` |
 | `$highlighting-css$` | Colors for code blocks |
 
@@ -138,7 +142,35 @@ To create one:
 
 Without a word processor, you can use the `style_docx.py` script from the Claude skill: it sets fonts, sizes, line spacing, indentation, paper size, and margins, and can optionally add page numbers and a small letterhead (`python3 style_docx.py --help`).
 
-In Word documents, Pandoc always writes the title, subtitle, and author as the first paragraphs before the text; freely positioned areas from the HTML (such as an address field) cannot be reproduced in Word.
+In Word documents, Pandoc always writes the title, subtitle, and author as the first paragraphs before the text; freely positioned areas from the HTML (such as an address field) cannot be reproduced in Word. The template’s fields follow as paragraphs of their own, in their order; each gets the paragraph style named like its key (style it with `style_docx.py --field-style`).
+
+## Fields: details every sheet fills in
+
+Some documents need more than a title and an author: a letter has a sender, a recipient and a subject, an invoice has a number. Such details don’t belong in the text but in the template’s **fields**.
+
+This is how it looks while writing: in the sheet’s properties pane, choose the template under **Template**. An input row for each field appears below it. Typecase saves what you enter in the sheet’s front matter, and on export the template puts it in the right place. The editor holds only the text itself. The export dialog then picks the sheet’s template by itself.
+
+In the **template assistant**, add fields in the “Fields” section: name, kind (one line, several lines, date) and order. Its templates put the fields below the title. To arrange fields freely, such as the address in a letter’s address window, write them into `template.html` yourself.
+
+In `template.json`, fields look like this:
+
+```json
+"structure": false,
+"fields": [
+  {"key": "sender", "label": {"en": "Sender", "de": "Absender"}, "type": "lines"},
+  {"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"},
+  {"key": "date", "label": {"en": "Date", "de": "Datum"}, "type": "date"},
+  {"key": "subject", "label": {"en": "Subject", "de": "Betreff"}}
+]
+```
+
+- **key**: the name under which the sheet stores the value and `template.html` finds it: lower-case letters, digits, `-` and `_`, starting with a letter. Keys Typecase uses itself (`title`, `author`, `lang`, `status`, and so on) are excluded. Don’t change the key once a template is in use, or sheets won’t find their values again; the label can change any time.
+- **label**: the caption of the input row, as text or per language.
+- **type**: `text` (one line, the default), `lines` (several lines, such as an address) or `date` (a date with a calendar; empty means the day of the export).
+
+In `template.html`, insert a field by its key, best inside a condition: `$if(recipient)$<div class="recipient">$recipient$</div>$endif$`. Line breaks and blank lines of a multi-line field are kept. `$sender-oneline$` gives the lines up to the first blank line on one line, for example for the small return address above the address window; phone and email simply follow after a blank line.
+
+A complete example is the bundled template **Letter (DIN 5008)**: in Preferences under **Templates**, save it with **Save as File…** and take a look.
 
 ## Checking and sharing
 

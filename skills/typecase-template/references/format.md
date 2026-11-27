@@ -33,6 +33,13 @@ The file name (without extension) becomes the template id: lower-cased, non-alph
 
 - `format`: always `1`.
 - `name` (required), `description`: a string, or an object per language code (`en`, `de`, ...). Typecase shows the UI language, falls back to `en`, then to the first entry. Provide at least `en` plus the user's language.
+- `structure` (optional): `false` for letters and forms. The export dialog then offers no table of contents and no cover page, and Word files leave out title, subtitle and author. Default `true`.
+- `fields` (optional): details each sheet fills in, at most 30, in the order of the input rows:
+  `[{"key": "recipient", "label": {"en": "Recipient", "de": "Empfänger"}, "type": "lines"}, …]`.
+  - `key`: `^[a-z][a-z0-9_-]{0,39}$`, unique, and not one of Typecase's own keys: `title`, `subtitle`, `author`, `lang`, `keywords`, `status`, `goal`, `notes`, `created`, `changed`, `order`, `icon`, `color`, `template`, `abstract`, `pagetitle`, `toc`, `pdf`, `spell_check`, `focus_spell_check`. Unusable entries are skipped, not rejected.
+  - `label`: a string or an object per language, like `name`; without one the key is shown.
+  - `type`: `text` (one line, default), `lines` (several lines), `date` (stored as YYYY-MM-DD; empty means the day of the export).
+  - A sheet names its template in its front matter (`template: <id>`) and keeps the values under the keys.
 - `pdf.paper`: `a4`, `a5`, `a3`, `letter`, `legal`. Omit for the system's usual paper.
 - `pdf.margins_mm`: PDF page margins in millimetres, 0–100 each; missing sides get 25. These are the *only* way to set PDF margins — CSS `@page` margins are not used by Typecase's PDF printer.
 - Word page size/margins are not here; they live in `reference.docx`.
@@ -51,7 +58,9 @@ Variables:
 | --- | --- |
 | `$title$`, `$subtitle$` | from the sheet's properties (YAML front matter) |
 | `$for(author)$$author$$sep$, $endfor$` | author; falls back to the default author from Typecase's preferences |
-| `$date$` | the export date in the user's locale format, unless the sheet's front matter has a `date:` field. Typecase's properties pane has **no** date field — a fixed date can only be set by editing the `.md` file's front matter outside Typecase, so don't tell users to "set the date in the properties". |
+| `$date$` | the export date in the user's locale format, unless the sheet's front matter has a `date:` value. Typecase's properties pane only offers a date when the template has a field `{"key": "date", "type": "date"}`. |
+| `$key$` for each field | the value the sheet filled in. `lines`: line breaks stay `<br>`, blank lines stay; Markdown at the start of a line (`1.`, `-`, `>`) is kept as text. `date`: formatted like `$date$`. |
+| `$key-oneline$` | for `lines` fields: the lines up to the first blank line, joined with " · " (a return address line) |
 | `$lang$` | e.g. `de-DE` (use in `<html lang="$lang$">`; enables correct hyphenation) |
 | `$pagetitle$` | sheet name; only set when there is no title |
 | `$title-meta$`, `$author-meta$` | plain-text versions for `<title>` and `<meta>` |
@@ -111,7 +120,11 @@ Build it with `scripts/style_docx.py` from `assets/reference.docx` (Pandoc's def
 
 Pandoc's defaults are blue, left-aligned, non-bold headings — always set heading colour, weight and alignment explicitly so Word matches the CSS.
 
-Pandoc writes the sheet's title, subtitle and author as the first paragraphs of the Word document (styles `Title`, `Subtitle`, `Author`, `Date`), always in that order before the text; a `Date` paragraph appears only if the sheet's front matter has a `date:` field (Typecase does not add the export date to Word files); positioned layouts from the HTML (address windows, side-by-side blocks) cannot be reproduced in Word. Say so when it matters (e.g. letters).
+Pandoc writes the sheet's title, subtitle and author as the first paragraphs of the Word document (styles `Title`, `Subtitle`, `Author`, `Date`), always in that order before the text; a `Date` paragraph appears only if the sheet's front matter has a `date:` field (Typecase does not add the export date to Word files). With `"structure": false` the title, subtitle and author are left out.
+
+Template fields follow as paragraphs in the order of `fields`, after the title block and before the text, each in a paragraph style whose id is the field's key (Word creates a plain one based on Normal if the reference.docx has none). Define them with `--field-style "key:align=right,size=9,color=5E5E5E,bold,italic,font=…,before=12,after=0"` (spacing in pt), once per field. Word matches style names without regard to case, so a field with the key `date` uses Pandoc's `Date` style; `--field-style date:…` turns it into a plain paragraph style first. That field also replaces the usual date paragraph.
+
+Otherwise, positioned layouts from the HTML (address windows, side-by-side blocks) cannot be reproduced in Word. Say so when it matters (e.g. letters).
 
 Fonts in Word are referenced by name only (not embedded); the recipient's Word substitutes missing fonts. Prefer common fonts for DOCX ("Liberation Serif" maps to Times New Roman metrics; "Carlito" ↔ Calibri).
 
