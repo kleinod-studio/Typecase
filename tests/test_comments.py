@@ -82,6 +82,57 @@ class StripTest(unittest.TestCase):
         self.assertEqual(export.prepare_markdown("<u>a</u> {==b==}{>>c<<}"), "[a]{.underline} b")
 
 
+class EditTest(unittest.TestCase):
+    def test_add_on_a_selection(self):
+        text = "The storm cracked it."
+        new, a, b = comments.add(text, 10, 17)
+        self.assertEqual(new, "The storm {==cracked==}{>><<} it.")
+        self.assertEqual((a, b), (new.index("<<}"),) * 2)
+
+    def test_add_leaves_out_spaces_at_the_edges(self):
+        new, _a, _b = comments.add("One  two  three", 3, 10)
+        self.assertEqual(new, "One  {==two==}{>><<}  three")
+
+    def test_add_without_a_selection(self):
+        new, a, _b = comments.add("Hello world", 5, 5)
+        self.assertEqual(new, "Hello{>><<} world")
+        self.assertEqual(new[a - 3 : a], "{>>")
+
+    def test_add_over_paragraphs_stands_alone(self):
+        text = "First.\n\nSecond."
+        new, _a, _b = comments.add(text, 0, len(text))
+        self.assertEqual(new, "First.\n\nSecond.{>><<}")
+
+    def test_add_in_a_comment_goes_into_it(self):
+        text = "A {==b==}{>>note<<} c"
+        self.assertEqual(comments.add(text, 5, 5), (text, text.index("<<}"), text.index("<<}")))
+        new, a, _b = comments.add("A {==b==} c", 5, 5)
+        self.assertEqual(new, "A {==b==}{>><<} c")
+        self.assertEqual(a, new.index("<<}"))
+
+    def test_add_then_find(self):
+        new, _a, _b = comments.add("Some words here.", 5, 10)
+        [comment] = comments.find(new)
+        self.assertEqual(new[slice(*comment.marked)], "words")
+
+    def test_remove_keeps_the_passage(self):
+        self.assertEqual(comments.remove("A {==b==}{>>c<<} d", 10), ("A b d", 3, 3))
+
+    def test_remove_a_comment_alone(self):
+        self.assertEqual(comments.remove("One {>>x<<} two", 7)[0], "One two")
+        self.assertEqual(comments.remove("Line\n{>>x<<}\nNext", 7)[0], "Line\nNext")
+        self.assertIsNone(comments.remove("No comment here", 3))
+
+    def test_neighbour(self):
+        text = "{>>a<<} x {>>b<<}"
+        self.assertEqual(comments.neighbour(text, 0), text.index("a<<") + 1)
+        self.assertEqual(comments.neighbour(text, 4), text.index("b<<") + 1)
+        self.assertEqual(comments.neighbour(text, 15), text.index("a<<") + 1, "around the end")
+        self.assertEqual(comments.neighbour(text, 14, forward=False), text.index("a<<") + 1)
+        self.assertEqual(comments.neighbour(text, 0, forward=False), text.index("b<<") + 1, "around the start")
+        self.assertIsNone(comments.neighbour("none", 0))
+
+
 @unittest.skipIf(export.pandoc_path() is None, "Pandoc is not installed")
 class ExportTest(unittest.TestCase):
     def test_comments_never_reach_the_export(self):

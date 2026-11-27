@@ -6,7 +6,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
-from . import formatting, frontmatter, images, spelling
+from . import comments, formatting, frontmatter, images, spelling
 from .fileio import atomic_write_text, read_text
 from .image_dialog import ImageDialog
 from .image_preview import ImagePreviews
@@ -480,6 +480,17 @@ class SheetEditor(Gtk.Stack):
             lambda b, _i, mark: mark == b.get_insert() and self._edit_image.set_enabled(self._image_at_caret() is not None),
         )
         self.buffer.connect("changed", lambda _b: self._edit_image.set_enabled(self._image_at_caret() is not None))
+        comment_section = Gio.Menu()
+        comment_section.append(_("Add Comment"), "win.format::comment")
+        remove_item = Gio.MenuItem.new(_("Remove Comment"), "editor.remove-comment")
+        remove_item.set_attribute_value("hidden-when", GLib.Variant.new_string("action-disabled"))
+        comment_section.append_item(remove_item)
+        self.context_menu.append_section(None, comment_section)
+        self._remove_comment = Gio.SimpleAction(name="remove-comment", enabled=False)
+        self._remove_comment.connect("activate", lambda *_a: self.remove_comment())
+        self.view.link_actions.add_action(self._remove_comment)
+        self.buffer.connect("mark-set", lambda b, _i, mark: mark == b.get_insert() and self._update_comment_action())
+        self.buffer.connect("changed", lambda _b: self._update_comment_action())
         self.view.set_extra_menu(self.context_menu)
         self.styler.on_blocks_changed = self.view.queue_draw
         self.styler.measure = self.view.text_width
@@ -663,6 +674,8 @@ class SheetEditor(Gtk.Stack):
                 new, a, b = formatting.insert_code_block(text, a, b)
             elif kind == "footnote":
                 new, a, b = formatting.insert_footnote(text, a, b)
+            elif kind == "comment":
+                new, a, b = comments.add(text, a, b)
             else:
                 return False
             buffer.begin_user_action()
@@ -670,6 +683,42 @@ class SheetEditor(Gtk.Stack):
             buffer.end_user_action()
             buffer.select_range(buffer.get_iter_at_offset(b), buffer.get_iter_at_offset(a))
         self.view.scroll_mark_onscreen(buffer.get_insert())
+        self.focus_editor()
+        return True
+
+    # --- Comments ----------------------------------------------------------------
+
+    def _comment_at_caret(self) -> comments.Comment | None:
+        return comments.at(self._buffer_text(), self.view._caret_iter().get_offset()) if self.path else None
+
+    def _update_comment_action(self) -> None:
+        self._remove_comment.set_enabled(self._comment_at_caret() is not None)
+
+    def remove_comment(self) -> bool:
+        """Removes the comment at the caret; its marked passage stays."""
+        text = self._buffer_text()
+        result = comments.remove(text, self.view._caret_iter().get_offset())
+        if result is None:
+            return False
+        new, a, _b = result
+        buffer = self.buffer
+        buffer.begin_user_action()
+        self._replace_changed_part(text, new)
+        buffer.end_user_action()
+        buffer.place_cursor(buffer.get_iter_at_offset(a))
+        self.focus_editor()
+        return True
+
+    def jump_to_comment(self, forward: bool = True) -> bool:
+        """Puts the caret into the next (or previous) comment, around the end if need be."""
+        if self.path is None:
+            return False
+        place = comments.neighbour(self._buffer_text(), self.view._caret_iter().get_offset(), forward)
+        if place is None:
+            return False
+        buffer = self.buffer
+        buffer.place_cursor(buffer.get_iter_at_offset(place))
+        self.view.scroll_to_mark(buffer.get_insert(), 0.2, False, 0, 0)
         self.focus_editor()
         return True
 

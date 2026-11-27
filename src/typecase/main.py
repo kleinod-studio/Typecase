@@ -78,12 +78,15 @@ class TypecaseApplication(Adw.Application):
         self.set_accels_for_action("win.inspector", ["<Alt>Return"])
         self.set_accels_for_action("win.export", ["<Primary>e"])
         self.set_accels_for_action("win.spell-check", ["F7"])
+        self.set_accels_for_action("win.next-comment", ["<Primary><Alt>Page_Down"])
+        self.set_accels_for_action("win.previous-comment", ["<Primary><Alt>Page_Up"])
         for kind, keys in [
             ("bold", ["<Primary>b"]),
             ("italic", ["<Primary>i"]),
             ("underline", ["<Primary>u"]),
             ("link", ["<Primary>k"]),
             ("footnote", ["<Primary><Alt>f"]),
+            ("comment", ["<Primary><Alt>m"]),
             ("image", ["<Primary><Alt>i"]),
             ("h1", ["<Primary>1"]),
             ("h2", ["<Primary>2"]),

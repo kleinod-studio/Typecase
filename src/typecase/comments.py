@@ -86,3 +86,72 @@ def strip(text: str) -> str:
     pieces.append(text[position:])
     result = _EMPTY_LINE.sub("", "".join(pieces))
     return result.replace(_GONE, "")
+
+
+# --- Editing (text and selection in, new text and selection out, like formatting.py) ---------
+
+Result = tuple[str, int, int]
+
+
+def at(text: str, start: int, end: int | None = None) -> Comment | None:
+    """The comment that a position, or a selection, touches."""
+    end = start if end is None else end
+    return next((comment for comment in find(text) if comment.start <= end and start <= comment.end), None)
+
+
+def caret_in(comment: Comment) -> int:
+    """Where the caret goes to write the comment: at the end of its text."""
+    return comment.note[1] if comment.note else comment.end
+
+
+def add(text: str, start: int, end: int) -> Result:
+    """Comments on the selection: marks it and puts the caret into the new, empty comment. Without
+    a selection, the comment stands alone at the caret. In a comment already, the caret goes into
+    it (a marked passage without one gets its comment)."""
+    existing = at(text, start, end)
+    if existing is not None:
+        if existing.note is None:
+            text = text[: existing.end] + "{>><<}" + text[existing.end :]
+            return text, existing.end + 3, existing.end + 3
+        place = caret_in(existing)
+        return text, place, place
+    passage = text[start:end]
+    # A comment stays within one paragraph, and the marking leaves out spaces at its edges.
+    if passage.strip() and not re.search(r"\n[ \t]*\n", passage):
+        start += len(passage) - len(passage.lstrip())
+        end -= len(passage) - len(passage.rstrip())
+        new = text[:start] + "{==" + text[start:end] + "==}{>><<}" + text[end:]
+        place = end + 9
+        return new, place, place
+    new = text[:end] + "{>><<}" + text[end:]
+    return new, end + 3, end + 3
+
+
+def remove(text: str, position: int) -> Result | None:
+    """Removes the comment at the caret; its marked passage stays as plain text. None if there is none."""
+    comment = at(text, position)
+    if comment is None:
+        return None
+    kept = text[comment.marked[0] : comment.marked[1]] if comment.marked else ""
+    start, end = comment.start, comment.end
+    if not kept:  # a comment alone: a space before it goes too, or the whole line if that was all
+        line_start = text.rfind("\n", 0, start) + 1
+        line_end = text.find("\n", end)
+        line_end = len(text) if line_end == -1 else line_end
+        if not text[line_start:start].strip() and not text[end:line_end].strip():
+            start, end = line_start, min(line_end + 1, len(text))
+        elif text[start - 1 : start] == " " and text[end : end + 1] in (" ", "\n", ""):
+            start -= 1
+    return text[:start] + kept + text[end:], start + len(kept), start + len(kept)
+
+
+def neighbour(text: str, position: int, forward: bool = True) -> int | None:
+    """Where the caret goes in the next (or previous) comment, around the end if need be. None
+    without comments."""
+    found = find(text)
+    if not found:
+        return None
+    places = [caret_in(comment) for comment in found]
+    if forward:
+        return next((place for place in places if place > position), places[0])
+    return next((place for place in reversed(places) if place < position), places[-1])

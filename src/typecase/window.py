@@ -475,6 +475,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("code", _("Code"), label="</>")
         button("link", _("Link"), icon="insert-link-symbolic")
         button("footnote", _("Footnote"), label="x¹")
+        button("comment", _("Comment"), icon="typecase-comment-symbolic")
         button("image", _("Insert Image"), icon="insert-image-symbolic")
         separator()
         headings = Gio.Menu()
@@ -1286,6 +1287,10 @@ class TypecaseWindow(Adw.ApplicationWindow):
         format_action = Gio.SimpleAction.new("format", GLib.VariantType.new("s"))
         format_action.connect("activate", lambda _a, kind: self._apply_format(kind.get_string()))
         self.add_action(format_action)
+        for name, forward in (("next-comment", True), ("previous-comment", False)):
+            jump = Gio.SimpleAction.new(name, None)
+            jump.connect("activate", lambda _a, _p, forward=forward: self._jump_to_comment(forward))
+            self.add_action(jump)
 
         search = Gio.SimpleAction.new("search", None)
         search.connect("activate", lambda _a, _p: self._start_search())
@@ -1307,6 +1312,11 @@ class TypecaseWindow(Adw.ApplicationWindow):
             editor.choose_images()
         else:
             editor.apply_format(kind)
+
+    def _jump_to_comment(self, forward: bool):
+        editor = self._active_editor()
+        if editor is not None:
+            editor.jump_to_comment(forward)
 
     def _update_export_action(self):
         self.lookup_action("export").set_enabled(self._open_path() is not None)
@@ -1528,6 +1538,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Underline"), "<Primary>u"),
                     (_("Link"), "<Primary>k"),
                     (_("Footnote"), "<Primary><Alt>f"),
+                    (_("Comment"), "<Primary><Alt>m"),
+                    (_("Next / Previous Comment"), "<Primary><Alt>Page_Down <Primary><Alt>Page_Up"),
                     (_("Insert Image"), "<Primary><Alt>i"),
                     (_("Context Menu, for Example to Open a Link"), "Menu <Shift>F10"),
                     (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),

@@ -334,6 +334,24 @@ def steps(win, app):
     check(not pills.pills[0].folded and pills.pills[1].folded, "Only the comment at the caret unfolds")
     yield 0.4
     check(ed.buffer.get_iter_at_offset(comment_text.index("dramatic")).has_tag(ed.styler.no_spell_check), "Comments are not spell checked")
+    ed.buffer.set_text("Ask the harbour office.")
+    ed.buffer.select_range(ed.buffer.get_iter_at_offset(4), ed.buffer.get_iter_at_offset(15))
+    win.activate_action("win.format", GLib.Variant.new_string("comment"))
+    ed.buffer.insert_at_cursor("why them?")
+    check(text(ed) == "Ask {==the harbour==}{>>why them?<<} office.", "Ctrl+Alt+M comments on the selection, the caret goes into the comment")
+    bar_child, tooltips = win.format_bar.get_first_child(), []
+    while bar_child is not None:
+        tooltips.append(bar_child.get_tooltip_text())
+        bar_child = bar_child.get_next_sibling()
+    check("Comment" in tooltips, "The formatting bar has a button for comments")
+    yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["comment"])
+    ed.buffer.place_cursor(ed.buffer.get_start_iter())
+    win.activate_action("win.next-comment", None)
+    check(ed.buffer.get_iter_at_mark(ed.buffer.get_insert()).get_offset() == text(ed).index("<<}"), "Ctrl+Alt+Page Down jumps into the next comment")
+    check(ed.view.link_actions.lookup_action("remove-comment").get_enabled(), "In a comment, the context menu offers to remove it")
+    ed.view.link_actions.activate_action("remove-comment", None)
+    check(text(ed) == "Ask the harbour office.", "Removing a comment keeps its passage")
+    check(not ed.view.link_actions.lookup_action("remove-comment").get_enabled(), "Outside comments there is nothing to remove")
 
     # Images: inserted as attachments, shown below their line, without any change to the text
     picture_source = TMP / "My Photo.png"
