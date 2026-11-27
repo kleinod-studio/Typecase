@@ -133,8 +133,42 @@ class EditTest(unittest.TestCase):
         self.assertIsNone(comments.neighbour("none", 0))
 
 
+class WordTest(unittest.TestCase):
+    def test_comments_become_comment_spans(self):
+        self.assertEqual(
+            comments.for_word("The {==storm==}{>>too [loud]?<<} came.{>>check<<}", "Ada"),
+            'The [too \\[loud\\]?]{.comment-start id="0" author="Ada"}storm[]{.comment-end id="0"} came.'
+            '[check]{.comment-start id="1" author="Ada"}[]{.comment-end id="1"}',
+        )
+
+    def test_prepare_markdown_keeps_comments_only_when_asked(self):
+        self.assertIn(".comment-start", export.prepare_markdown("A {>>b<<}", comments_by="Ada"))
+        self.assertNotIn("comment", export.prepare_markdown("A {>>b<<}"))
+
+
 @unittest.skipIf(export.pandoc_path() is None, "Pandoc is not installed")
 class ExportTest(unittest.TestCase):
+    def test_comments_in_the_margin_of_a_word_document(self):
+        template = export_templates.read_folder(export_templates.BUILTIN_DIR / "text", builtin=True)
+        text = "The storm {==cracked the lamp==}{>>too *dramatic*?<<} last night.{>>check [this]<<}\n"
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / "out.docx"
+            subprocess.run(
+                export.pandoc_args("docx", template, output, "Probe"),
+                input=export.prepare_markdown(text, comments_by="Ada Morrow"), text=True, check=True, cwd=folder,
+            )
+            import zipfile
+
+            with zipfile.ZipFile(output) as docx:
+                notes = docx.read("word/comments.xml").decode("utf-8")
+                body = docx.read("word/document.xml").decode("utf-8")
+        self.assertIn('w:author="Ada Morrow"', notes)
+        self.assertIn("dramatic", notes)
+        self.assertIn("[this]", notes)
+        self.assertEqual(body.count("<w:commentRangeStart"), 2)
+        self.assertIn("cracked the lamp", body)
+        self.assertNotIn("{==", body)
+
     def test_comments_never_reach_the_export(self):
         template = export_templates.read_folder(export_templates.BUILTIN_DIR / "text", builtin=True)
         text = "# Chapter\n\nThe storm {==cracked the lamp==}{>>SECRET-NOTE<<} last night.\n{>>SECRET-TOO<<}\nEnd.\n"

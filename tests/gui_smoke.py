@@ -1163,6 +1163,10 @@ def steps(win, app):
     check(isinstance(dialog, ExportDialog) and dialog.template_row.get_model().get_n_items() >= 1, "Export dialog offers format and template")
     dialog.format_row.set_selected(export.FORMATS.index("pdf"))
     check(dialog.export_button.get_sensitive() == pdf_available() and bool(dialog.format_row.get_subtitle()) != pdf_available(), "Without WeasyPrint, the dialog says so before exporting a PDF")
+    check(not dialog.comments_row.get_visible(), "Keeping comments is not offered for a PDF")
+    dialog.format_row.set_selected(export.FORMATS.index("docx"))
+    check(dialog.comments_row.get_visible(), "For Word, comments can be kept in the margin")
+    dialog.format_row.set_selected(export.FORMATS.index("pdf"))
     dialog.force_close()
     if export.pandoc_path() is None:
         print("      (Pandoc is missing here; export files are only checked in the Flatpak)")

@@ -294,11 +294,11 @@ def pandoc_path() -> str | None:
     return shutil.which("pandoc")
 
 
-def prepare_markdown(text: str) -> str:
+def prepare_markdown(text: str, comments_by: str | None = None) -> str:
     """Translate Typecase specifics into Pandoc Markdown: comments are left out (see
-    comments.py), and we write underline as <u>…</u>, Pandoc uses [text]{.underline} for that
-    (raw HTML would get lost in DOCX)."""
-    text = comments.strip(text)
+    comments.py), or kept for a Word document when comments_by names their author; and we write
+    underline as <u>…</u>, Pandoc uses [text]{.underline} for that (raw HTML would get lost in DOCX)."""
+    text = comments.for_word(text, comments_by) if comments_by else comments.strip(text)
     return _UNDERLINE.sub(lambda m: "[" + m.group(1) + "]{.underline}", text)
 
 

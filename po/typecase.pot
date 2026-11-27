@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 19:18+0100\n"
+"POT-Creation-Date: 2026-11-27 19:31+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -202,7 +202,7 @@ msgstr ""
 msgid "Web Page (HTML)"
 msgstr ""
 
-#: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:126
+#: src/typecase/export_dialog.py:32 src/typecase/export_dialog.py:136
 #: src/typecase/window.py:1535 src/typecase/template_dialog.py:71
 msgid "Export"
 msgstr ""
@@ -259,31 +259,39 @@ msgstr ""
 msgid "With a Title Page"
 msgstr ""
 
-#: src/typecase/export_dialog.py:92 src/typecase/window.py:268
+#: src/typecase/export_dialog.py:93
+msgid "Keep Comments"
+msgstr ""
+
+#: src/typecase/export_dialog.py:94
+msgid "As comments in the margin, for example for an editor"
+msgstr ""
+
+#: src/typecase/export_dialog.py:101 src/typecase/window.py:268
 #: src/typecase/window.py:366
 msgid "Export…"
 msgstr ""
 
-#: src/typecase/export_dialog.py:160
+#: src/typecase/export_dialog.py:175
 msgid "Contents"
 msgstr ""
 
-#: src/typecase/export_dialog.py:173
+#: src/typecase/export_dialog.py:198
 msgid "Pandoc is not installed."
 msgstr ""
 
-#: src/typecase/export_dialog.py:218
+#: src/typecase/export_dialog.py:243
 msgid "Pandoc could not convert the text."
 msgstr ""
 
 #. Translators: shown when the system lacks the program for PDF export (only outside the Flatpak)
-#: src/typecase/export_dialog.py:256
+#: src/typecase/export_dialog.py:281
 msgid ""
 "PDF export needs WeasyPrint, which is not installed. The Flatpak version of "
 "Typecase includes it."
 msgstr ""
 
-#: src/typecase/export_dialog.py:296
+#: src/typecase/export_dialog.py:321
 msgid "The PDF could not be created."
 msgstr ""
 

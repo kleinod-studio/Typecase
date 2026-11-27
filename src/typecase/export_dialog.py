@@ -89,6 +89,15 @@ class ExportDialog(Adw.Dialog):
         structure.add(self.parts_row)
         page.add(structure)
 
+        self.comments_row = Adw.SwitchRow(
+            title=_("Keep Comments"),
+            subtitle=_("As comments in the margin, for example for an editor"),
+            active=saved.get("export_word_comments") is True,
+        )
+        word = Adw.PreferencesGroup()
+        word.add(self.comments_row)
+        page.add(word)
+
         self.export_button = Gtk.Button(label=_("Export…"), css_classes=["suggested-action", "pill"], halign=Gtk.Align.CENTER)
         self.export_button.connect("clicked", lambda _b: self._choose_file())
         button_group = Adw.PreferencesGroup()
@@ -112,6 +121,7 @@ class ExportDialog(Adw.Dialog):
 
     def _check_format(self):
         """Tells right away when a format cannot be exported here (PDF without WeasyPrint)."""
+        self.comments_row.set_visible(self.fmt == "docx")  # only Word has comments in the margin
         missing = self.fmt == "pdf" and not pdf_available()
         self.format_row.set_subtitle(pdf_missing_text() if missing else "")
         self.export_button.set_sensitive(not missing)
@@ -155,9 +165,14 @@ class ExportDialog(Adw.Dialog):
         if self._editable_title:
             title = self.title_row.get_text().strip() or None
             text = export.with_title(text, title)
+        comments_by = None
+        if self.fmt == "docx":
+            config.update(export_word_comments=self.comments_row.get_active())
+            if self.comments_row.get_active():
+                comments_by = comment_author()
         run_export(
             text, self.fmt, template, output, self._sheet_path, title, self._defaults, self._finished,
-            toc_title=_("Contents") if toc else None, cover=cover,
+            toc_title=_("Contents") if toc else None, cover=cover, comments_by=comments_by,
         )
 
     def _finished(self, output: Path | None, error: str | None, missing: list[str]):
@@ -165,10 +180,20 @@ class ExportDialog(Adw.Dialog):
         self._on_done(output, error, missing)
 
 
-def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done, toc_title=None, cover=False):
+def comment_author() -> str:
+    """Who wrote the comments, as Word shows it: the name of the computer's user."""
+    name = GLib.get_real_name()
+    return name if name and name != "Unknown" else GLib.get_user_name()
+
+
+def run_export(
+    text, fmt, template, output: Path, sheet_path: Path, title, defaults, on_done, toc_title=None, cover=False,
+    comments_by: str | None = None,
+):
     """Exports in the background. Output goes to a temporary file first; only once everything has
     worked does it replace the target. So an error never leaves a half-written file behind.
-    toc_title: a table of contents with this heading; cover: a cover page."""
+    toc_title: a table of contents with this heading; cover: a cover page; comments_by: keep the
+    comments in a Word document, by this author."""
     if export.pandoc_path() is None:
         on_done(None, _("Pandoc is not installed."), [])
         return
@@ -236,7 +261,7 @@ def run_export(text, fmt, template, output: Path, sheet_path: Path, title, defau
                     return
             _move_into_place(pandoc_output, output, done)
 
-    process.communicate_utf8_async(export.prepare_markdown(text), None, on_pandoc)
+    process.communicate_utf8_async(export.prepare_markdown(text, comments_by if fmt == "docx" else None), None, on_pandoc)
 
 
 def _move_into_place(source: Path, output: Path, done):

@@ -155,3 +155,23 @@ def neighbour(text: str, position: int, forward: bool = True) -> int | None:
     if forward:
         return next((place for place in places if place > position), places[0])
     return next((place for place in reversed(places) if place < position), places[-1])
+
+
+def for_word(text: str, author: str) -> str:
+    """The text with its comments as Pandoc's comment spans, which become comments in the margin of
+    a Word document: the marked passage is what they comment on."""
+    found = find(text)
+    if not found:
+        return text
+    pieces, position = [], 0
+    for number, comment in enumerate(found):
+        note = re.sub(r"([\[\]\\])", r"\\\1", comment.note_text(text))
+        name = author.replace("\\", "\\\\").replace('"', '\\"')
+        passage = text[comment.marked[0] : comment.marked[1]] if comment.marked else ""
+        pieces.append(text[position : comment.start])
+        pieces.append(
+            f'[{note}]{{.comment-start id="{number}" author="{name}"}}{passage}[]{{.comment-end id="{number}"}}'
+        )
+        position = comment.end
+    pieces.append(text[position:])
+    return "".join(pieces)
