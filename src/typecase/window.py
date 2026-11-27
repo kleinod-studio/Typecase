@@ -59,6 +59,8 @@ def _install_css():
             margin: 6px;
         }
         .format-bar > viewport > box { padding: 4px 6px; }
+        /* The "+" buttons beside a table in the editor (TABLE_BUTTON_SIZE). */
+        button.table-add { min-width: 24px; min-height: 24px; padding: 0; }
         .goal-badge {
             background-color: var(--popover-bg-color);
             color: var(--popover-fg-color);
@@ -490,6 +492,7 @@ class TypecaseWindow(Adw.ApplicationWindow):
         button("numbered", _("Numbered List"), icon="view-list-ordered-symbolic")
         button("quote", _("Quote"), label="“ ”")
         button("codeblock", _("Code Block"), label="{ }")
+        button("table", _("Insert Table"), icon="typecase-table-symbolic")
         if spelling.available():
             separator()
             spell_button = Gtk.ToggleButton(
@@ -1542,6 +1545,8 @@ class TypecaseWindow(Adw.ApplicationWindow):
                     (_("Comment"), "<Primary><Alt>m"),
                     (_("Next / Previous Comment"), "<Primary><Alt>Page_Down <Primary><Alt>Page_Up"),
                     (_("Insert Image"), "<Primary><Alt>i"),
+                    (_("Insert Table"), "<Primary><Shift>t"),
+                    (_("Next / Previous Table Cell"), "Tab <Shift>Tab"),
                     (_("Context Menu, for Example to Open a Link"), "Menu <Shift>F10"),
                     (_("Heading 1 / 2 / 3"), "<Primary>1 <Primary>2 <Primary>3"),
                     (_("Normal Text"), "<Primary>0"),

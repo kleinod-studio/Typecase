@@ -416,6 +416,23 @@ class ImageExportTest(unittest.TestCase):
         xml = '<w:style w:styleId="X"><w:name w:val="Typecase Image left" /><w:pPr><w:jc w:val="both"/></w:pPr></w:style>'
         self.assertEqual(export._with_image_alignment(xml), xml)
 
+    def test_pipe_tables_export(self):
+        with tempfile.TemporaryDirectory() as folder:
+            html = self._export("html", "| Item | Price |\n|:--|--:|\n| Oil | 36.00 |\n", Path(folder)).read_text(encoding="utf-8")
+            docx = self._export("docx", "| Item | Price |\n|:--|--:|\n| Oil | 36.00 |\n", Path(folder))
+            export.style_tables(docx)
+            with zipfile.ZipFile(docx) as archive:
+                document = archive.read("word/document.xml").decode("utf-8")
+                styles = archive.read("word/styles.xml").decode("utf-8")
+        self.assertIn('<td style="text-align: right;">36.00</td>', html)
+        self.assertIn("<w:tbl>", document)
+        self.assertIn('<w:tblBorders><w:top w:val="single" w:sz="12"', styles)
+        self.assertIn('<w:tblStylePr w:type="firstRow"><w:rPr><w:b/>', styles)
+
+    def test_a_template_keeps_its_own_table_borders(self):
+        xml = '<w:style w:type="table" w:styleId="Table"><w:tblPr><w:tblBorders><w:top w:val="double"/></w:tblBorders></w:tblPr></w:style>'
+        self.assertEqual(export._with_table_lines(xml), xml)
+
     def test_combined_sheets_keep_their_images(self):
         with tempfile.TemporaryDirectory() as folder:
             group = Path(folder)

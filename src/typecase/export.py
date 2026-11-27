@@ -238,6 +238,13 @@ def style_aligned_images(docx: Path) -> None:
     _change_docx_part(docx, "word/styles.xml", _with_image_alignment)
 
 
+def style_tables(docx: Path) -> None:
+    """Gives tables in a Word file the look of the built-in templates' PDF: lines across only, a
+    stronger one above and below, a bold header with a line under it. Only when the "Table" style
+    is still Pandoc's plain one; a template's own table borders stay."""
+    _change_docx_part(docx, "word/styles.xml", _with_table_lines)
+
+
 def _change_docx_part(docx: Path, part: str, change) -> None:
     temporary = docx.with_suffix(".tmp")
     with zipfile.ZipFile(docx) as source, zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as target:
@@ -263,6 +270,31 @@ def _with_image_alignment(xml: str) -> str:
         return f'{opening}{inner}<w:pPr>{keep}<w:jc w:val="{side}"/></w:pPr>{closing}'
 
     return _IMAGE_STYLE.sub(completed, xml)
+
+
+_TABLE_STYLE = re.compile(r'<w:style\b[^>]*w:styleId="Table"[^>]*>.*?</w:style>', re.DOTALL)
+_TABLE_BORDERS = (
+    "<w:tblBorders>"
+    '<w:top w:val="single" w:sz="12" w:space="0" w:color="1F1F1F"/>'
+    '<w:bottom w:val="single" w:sz="12" w:space="0" w:color="1F1F1F"/>'
+    '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="D6D6D6"/>'
+    "</w:tblBorders>"
+)
+_HEADER_ROW = (
+    '<w:tblStylePr w:type="firstRow"><w:rPr><w:b/><w:bCs/></w:rPr><w:tcPr><w:tcBorders>'
+    '<w:bottom w:val="single" w:sz="6" w:space="0" w:color="1F1F1F"/>'
+    '</w:tcBorders><w:vAlign w:val="bottom"/></w:tcPr></w:tblStylePr>'
+)
+
+
+def _with_table_lines(xml: str) -> str:
+    match = _TABLE_STYLE.search(xml)
+    if match is None or "<w:tblBorders" in match.group(0) or "<w:tblPr>" not in match.group(0):
+        return xml
+    style = match.group(0).replace("<w:tblPr>", "<w:tblPr>" + _TABLE_BORDERS, 1)
+    style = re.sub(r'<w:tblStylePr w:type="firstRow">.*?</w:tblStylePr>', "", style, flags=re.DOTALL)
+    style = style.replace("</w:style>", _HEADER_ROW + "</w:style>")
+    return xml[: match.start()] + style + xml[match.end() :]
 
 
 def _with_title_page(xml: str) -> str:

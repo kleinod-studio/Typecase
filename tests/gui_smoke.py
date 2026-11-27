@@ -623,6 +623,124 @@ def steps(win, app):
     colored = [t for t in ed.buffer.get_iter_at_offset(17).get_tags() if t.props.foreground_set and not (t.props.name or "").startswith("md-")]
     check(not colored, "Colors disappear for an unknown language")
 
+    # Tables: fixed width, dimmed pipes and separator, bold header
+    table_text = "Text\n\n| Name | Ort |\n|:--|--:|\n| **Anna** | Hamburg |\nDanach"
+    ed.buffer.set_text(table_text)
+    yield 0.2
+    at = lambda part, extra=0: table_text.index(part) + extra
+    check(ed.styler.tables == [(2, 4)], "Tables are detected")
+    check({"md-table", "md-table-header"} <= tags_at(at("Name")), "The header row is bold, in fixed width")
+    check("md-syntax" in tags_at(at("| Name")) and "md-syntax" not in tags_at(at("Name")), "Pipes are dimmed")
+    check("md-syntax" in tags_at(at(":--", 1)) and ed.buffer.get_iter_at_offset(at(":--", 1)).has_tag(ed.styler.no_spell_check),
+          "The separator row is dimmed and not spell checked")
+    check({"md-table", "md-bold"} <= tags_at(at("Anna")) and "md-table-header" not in tags_at(at("Hamburg")),
+          "Body rows keep their inline styling and are not bold")
+    check("md-table" not in tags_at(at("Danach")) and "md-table" not in tags_at(0), "Text around the table stays as it is")
+    ed.buffer.delete(ed.buffer.get_iter_at_offset(at("|:--")), ed.buffer.get_iter_at_offset(at("|:--", 1)))  # ":--|--:|"
+    yield 0.2
+    check(ed.styler.tables == [(2, 4)], "A separator without outer pipes still counts")
+    ed.buffer.insert(ed.buffer.get_iter_at_offset(at(":--") - 1), "x")  # "x:--|--:|" is no separator
+    yield 0.2
+    check(not ed.styler.tables and "md-table" not in tags_at(at("Name")) and "md-table" not in tags_at(at("Anna") + 1),
+          "Breaking the separator restyles the rows above and below it")
+    ed.buffer.set_text("```\n| a | b |\n|---|---|\n```")
+    yield 0.2
+    check(not ed.styler.tables and "md-table" not in tags_at(5), "Tables in code blocks are code")
+
+    # Tables: insert, Tab between cells, tidy
+    def selected():
+        return ed.buffer.get_text(*ed.buffer.get_selection_bounds(), True) if ed.buffer.get_has_selection() else ""
+
+    def caret_place():
+        caret = ed.buffer.get_iter_at_mark(ed.buffer.get_insert())
+        return caret.get_line(), caret.get_line_offset()
+
+    ed.buffer.set_text("Intro")
+    win.lookup_action("format").activate(GLib.Variant.new_string("table"))
+    check(text(ed).startswith("Intro\n\n| Column 1 | Column 2 | Column 3 |\n|----------|") and selected() == "Column 1",
+          "Insert Table adds a table below the line, its first title selected")
+    ed.buffer.delete_selection(True, True)
+    ed.buffer.insert_at_cursor("Name")
+    check(press(Gdk.KEY_Tab) and selected() == "Column 2", "Tab selects the next cell")
+    check(text(ed).split("\n")[2] == "| Name | Column 2 | Column 3 |", "and leaves the text as it was typed")
+    check(press(Gdk.KEY_Tab, Gdk.ModifierType.SHIFT_MASK) and selected() == "Name", "Shift+Tab goes back")
+    check(press(Gdk.KEY_Tab, Gdk.ModifierType.SHIFT_MASK) and selected() == "Name", "Shift+Tab in the first cell stays")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    lines_before = len(text(ed).split("\n"))
+    check(press(Gdk.KEY_Tab) and len(text(ed).split("\n")) == lines_before + 1 and caret_place() == (lines_before, 2),
+          "Tab in the last cell adds a row")
+    ed.buffer.insert_at_cursor("A much longer cell")
+    ed.buffer.undo()
+    check(len(text(ed).split("\n")) == lines_before + 1, "Typing in the new row is undone on its own")
+    ed.buffer.undo()
+    check(len(text(ed).split("\n")) == lines_before, "Adding the row is a single undo step")
+    ed.buffer.set_text("| a | bb |\n|--|--|\n| longer cell | x |\nDanach")
+    yield 0.4
+
+    def pipe_x(line, offset):
+        return ed.view.get_iter_location(ed.buffer.get_iter_at_line_offset(line, offset)[1]).x
+
+    check(pipe_x(0, 4) == pipe_x(1, 3) == pipe_x(2, 14) and pipe_x(0, 9) == pipe_x(1, 6) == pipe_x(2, 18),
+          "The columns line up on screen while the text is untidy")
+    ed.buffer.insert(ed.buffer.get_iter_at_line_offset(0, 2)[1], "much longer title")
+    yield 0.4
+    check(pipe_x(0, 21) == pipe_x(1, 3) == pipe_x(2, 14), "They follow at once when a cell grows")
+    check(text(ed).startswith("| much longer titlea | bb |\n|--|--|\n| longer cell | x |"), "without spaces added to the text")
+    spacing = type(ed.styler)._row_spacing
+    check(spacing("| Tool|Box |", [(5, 40.0), (10, 8.0)]) == [(1, 2, 40.0), (10, 11, 8.0)],
+          "A word touching its pipe stays whole: the space at the start of its cell takes the gap")
+    check(spacing("|ab|", [(2, 10.0)]) == [(1, 3, 5.0)], "A cell without spaces spreads it over its characters")
+    ed.buffer.set_text("| a | bb |\n|--|--|\n| longer cell | x |\nDanach")
+    yield 0.2
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(2, 16)[1])  # after "x"
+    yield 0.2
+    check(ed.view.link_actions.lookup_action("table-tidy").get_enabled(), "Tidy Table is offered inside a table")
+    ed.view.link_actions.lookup_action("table-tidy").activate(None)
+    check(text(ed) == "| a           | bb  |\n|-------------|-----|\n| longer cell | x   |\nDanach", "Tidy Table lines up the columns")
+    check(caret_place() == (2, 17), "The caret stays after its text")
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    yield 0.2
+    check(not ed.view.link_actions.lookup_action("table-tidy").get_enabled(), "Outside a table it is not offered")
+    buttons = ed._table_buttons
+    check(not any(b.get_visible() for b in buttons.values()), "The + buttons are hidden outside a table")
+
+    def table_action(kind):
+        return ed.view.link_actions.lookup_action(f"table-{kind}")
+
+    ed.buffer.set_text("| a | b |\n|---|---|\n| 1 | 2 |\nDanach")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(2, 2)[1])
+    yield 0.3
+    check(all(b.get_visible() for b in buttons.values()), "Inside a table the + buttons show")
+    check(table_action("remove-column").get_enabled() and table_action("remove-row").get_enabled(),
+          "A body row can be removed")
+    table_action("row-below").activate(None)
+    check(text(ed) == "| a | b |\n|---|---|\n| 1 | 2 |\n|  |  |\nDanach" and caret_place() == (3, 2),
+          "Add Row Below puts the caret in the new row")
+    yield 0.2
+    table_action("column-left").activate(None)
+    check(text(ed).split("\n")[0] == "|  | a | b |" and text(ed).split("\n")[1] == "|---|---|---|",
+          "Add Column Left adds a column before the caret's")
+    ed.buffer.undo()
+    check(text(ed) == "| a | b |\n|---|---|\n| 1 | 2 |\n|  |  |\nDanach", "Adding a column is a single undo step")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(3, 2)[1])
+    yield 0.2
+    table_action("remove-row").activate(None)
+    check(text(ed) == "| a | b |\n|---|---|\n| 1 | 2 |\nDanach", "Remove Row takes the caret's row")
+    ed.buffer.place_cursor(ed.buffer.get_iter_at_line_offset(0, 2)[1])
+    yield 0.2
+    check(not table_action("remove-row").get_enabled(), "The header row cannot be removed")
+    table_action("remove-column").activate(None)
+    check(text(ed) == "| b |\n|---|\n| 2 |\nDanach", "Remove Column takes the caret's column")
+    yield 0.2
+    check(not table_action("remove-column").get_enabled(), "The last column stays")
+    buttons["column-end"].emit("clicked")
+    check(text(ed).split("\n")[0] == "| b |  |", "The + beside the header adds a column")
+    yield 0.2
+    buttons["row-end"].emit("clicked")
+    check(text(ed).split("\n")[3] == "|  |  |" and caret_place() == (3, 2), "The + beside the last row adds a row")
+    yield 0.3
+    check(all(b.get_visible() for b in buttons.values()), "The buttons stay while the table grows")
+
     # Formatting: bar and keyboard shortcuts
     def fmt(kind):
         win.lookup_action("format").activate(GLib.Variant.new_string(kind))

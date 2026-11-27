@@ -119,5 +119,19 @@ hr {
 
 img { max-width: 100%; }
 
-table { border-collapse: collapse; }
-th, td { border: 1px solid var(--rule); padding: 0.3em 0.6em; }
+/* Tables: lines across only, as in books; a stronger line above and below, a thin one under
+   the header. Figures in a column line up. */
+table {
+  border-collapse: collapse;
+  margin: 1.2em 0;
+  border-top: 1.5px solid var(--text);
+  border-bottom: 1.5px solid var(--text);
+  font-variant-numeric: tabular-nums lining-nums;
+  break-inside: avoid;
+}
+th, td { padding: 0.35em 0.8em; vertical-align: top; text-align: left; }
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+thead th { border-bottom: 1px solid var(--text); font-weight: bold; }
+tbody tr + tr td { border-top: 1px solid var(--rule); }
+caption { caption-side: bottom; padding-top: 0.5em; font-size: 0.9em; color: var(--muted); text-align: left; }

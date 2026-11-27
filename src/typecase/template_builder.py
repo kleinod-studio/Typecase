@@ -212,8 +212,14 @@ def stylesheet(settings: Settings) -> str:
         "pre { background: #f4f4f4; padding: 0.8em 1em; overflow-x: auto; break-inside: avoid; }",
         "hr { border: none; border-top: 1px solid #d6d6d6; margin: 2em 0; }",
         "img { max-width: 100%; }",
-        "table { border-collapse: collapse; }",
-        "th, td { border: 1px solid #d6d6d6; padding: 0.3em 0.6em; }",
+        # Tables: lines across only, as in books; figures in a column line up.
+        "table { border-collapse: collapse; margin: 1.2em 0; border-top: 1.5px solid #1f1f1f; border-bottom: 1.5px solid #1f1f1f;"
+        " font-variant-numeric: tabular-nums lining-nums; break-inside: avoid; }",
+        "th, td { padding: 0.35em 0.8em; vertical-align: top; text-align: left; }",
+        "th:first-child, td:first-child { padding-left: 0; }",
+        "th:last-child, td:last-child { padding-right: 0; }",
+        "thead th { border-bottom: 1px solid #1f1f1f; }",
+        "tbody tr + tr td { border-top: 1px solid #d6d6d6; }",
     ]
     return "\n".join(rules) + "\n"
 

@@ -2,7 +2,7 @@ import re
 
 from gi.repository import Gdk, GLib, GtkSource, Pango
 
-from . import comments
+from . import comments, tables
 from .markdown_style import FENCE, fence_language, line_spans, list_text_start
 
 FOOTNOTE_SCALE = 0.85
@@ -50,19 +50,31 @@ class MarkdownStyler:
     everything restyled, because then the lines below it change.
 
     Code blocks with a language (```python) are highlighted with GtkSourceView's language
-    rules and colors; code_blocks gives the text view the lines for the frame."""
+    rules and colors; code_blocks gives the text view the lines for the frame.
+
+    Tables (see tables.py) are set in a font of fixed width; their pipes and separator row are
+    dimmed and the header row is bold. Their columns line up while typing, without spaces in the
+    text: the character before a pipe gets extra letter spacing (measure_table gives the widths).
+    A table is always restyled as a whole, and since whether a line belongs to a table depends on
+    the lines around it, lines whose part in a table changed are restyled as well."""
 
     def __init__(self, buffer):
         self.buffer = buffer
         self.tags = {}
         # (line of opening fence, last line, closed?); an open block extends to the end of the text
         self.code_blocks: list[tuple[int, int, bool]] = []
+        self.tables: list[tuple[int, int]] = []  # (header line, last line) of every table
+        self._table_rows: dict[int, str] = {}  # line -> "header", "separator" or "body"
         self.on_blocks_changed = None  # callback so the text view redraws the frame
         self.on_palette_changed = None  # callback with the theme's text color
         # Width in pixels of a piece of text in the editor's font (set by the text view). With it,
         # wrapped lines of a list item line up with its text instead of with the marker.
         self.measure = None
         self._indent_tags: dict[int, object] = {}  # one hanging-indent tag per width
+        # Width in pixels of a piece of a table row (text, bold?) in the table's font (set by the
+        # text view). Without it, columns line up only once the table is tidied.
+        self.measure_table = None
+        self._gap_tags: dict[int, object] = {}  # one letter-spacing tag per width (Pango units)
 
         def tag(name, **props):
             self.tags[name] = buffer.create_tag(f"md-{name}", **props)
@@ -80,6 +92,8 @@ class MarkdownStyler:
         tag("quote", style=Pango.Style.ITALIC)
         tag("code", family="monospace")
         tag("codeblock", family="monospace")
+        tag("table", family="monospace", font_features="liga 0, calt 0, dlig 0")  # "|-" stays two characters
+        tag("table-header", weight=Pango.Weight.BOLD)
         tag("link", underline=Pango.Underline.SINGLE)
         tag("footnote", scale=FOOTNOTE_SCALE)
         tag("list-marker")
@@ -126,6 +140,7 @@ class MarkdownStyler:
         self._dirty = False
         text = self._text(self.buffer.get_start_iter(), self.buffer.get_end_iter())
         self._update_blocks(text)
+        self._update_tables(text)
         self._restyle_lines(0, self.buffer.get_line_count() - 1)
 
     # --- Tracking changes --------------------------------------------------
@@ -155,14 +170,16 @@ class MarkdownStyler:
         self._dirty = False
         buffer = self.buffer
         fences_before = self._fence_count
-        self._update_blocks(self._text(buffer.get_start_iter(), buffer.get_end_iter()))
+        text = self._text(buffer.get_start_iter(), buffer.get_end_iter())
+        self._update_blocks(text)
+        changed = self._update_tables(text)
         if self._fence_count != fences_before:
             self._restyle_lines(0, buffer.get_line_count() - 1)
         else:
-            self._restyle_lines(
-                buffer.get_iter_at_mark(self._dirty_start).get_line(),
-                buffer.get_iter_at_mark(self._dirty_end).get_line(),
-            )
+            first = buffer.get_iter_at_mark(self._dirty_start).get_line()
+            last = buffer.get_iter_at_mark(self._dirty_end).get_line()
+            outside = [line for line in changed if not first <= line <= last]
+            self._restyle_lines(min([first, *outside]), max([last, *outside]))
         return GLib.SOURCE_REMOVE
 
     def _cancel_idle(self):
@@ -189,10 +206,24 @@ class MarkdownStyler:
         if self.on_blocks_changed:
             self.on_blocks_changed()  # even if the lines are the same: heights may have changed
 
+    def _update_tables(self, text: str) -> set[int]:
+        """Remembers the lines of all tables; returns the lines whose part in a table changed."""
+        self.tables = tables.find(text.split("\n"))
+        rows = {}
+        for first, last in self.tables:
+            rows[first] = "header"
+            rows[first + 1] = "separator"
+            rows.update((line, "body") for line in range(first + 2, last + 1))
+        old, self._table_rows = self._table_rows, rows
+        return {line for line in old.keys() | rows.keys() if old.get(line) != rows.get(line)}
+
     # --- Styling -------------------------------------------------------------
 
     def _restyle_lines(self, first: int, last: int):
         buffer = self.buffer
+        for table_first, table_last in self.tables:  # a table's columns depend on all of its rows
+            if table_first <= last and table_last >= first:
+                first, last = min(first, table_first), max(last, table_last)
         start = self._line_start(first)
         end = self._line_start(last)
         if not end.ends_line():
@@ -201,11 +232,19 @@ class MarkdownStyler:
         before = self._text(buffer.get_start_iter(), start)
         in_code = len(_FENCE_LINES.findall(before)) % 2 == 1
 
-        for tag in [*self.tags.values(), *self._source_tags.values(), *self._indent_tags.values(), self.no_spell_check]:
+        for tag in [
+            *self.tags.values(), *self._source_tags.values(), *self._indent_tags.values(), *self._gap_tags.values(),
+            self.no_spell_check,
+        ]:
             buffer.remove_tag(tag, start, end)
 
+        lines = self._text(start, end).split("\n")
+        gaps = self._table_gaps(lines, first)
         offset = start.get_offset()
-        for line in self._text(start, end).split("\n"):
+        for number, line in enumerate(lines, first):
+            row = self._table_rows.get(number)
+            if row is not None:
+                self._style_table_row(line, offset, row, gaps.get(number, ()))
             for a, b, name in line_spans(line, in_code):
                 if a < b:
                     first_iter, last_iter = buffer.get_iter_at_offset(offset + a), buffer.get_iter_at_offset(offset + b)
@@ -227,6 +266,82 @@ class MarkdownStyler:
         for open_line, last_line, closed in self.code_blocks:
             if open_line <= last and last_line >= first:
                 self._highlight_block(open_line, last_line, closed)
+
+    def _table_gaps(self, lines: list[str], first: int) -> dict[int, list[tuple[int, float]]]:
+        """The gaps (see tables.gaps) of the rows of the tables within these lines, by line."""
+        if self.measure_table is None:
+            return {}
+        result = {}
+        for table_first, table_last in self.tables:
+            if table_first >= first and table_last < first + len(lines):
+                rows = lines[table_first - first : table_last - first + 1]
+                for number, row_gaps in enumerate(tables.gaps(rows, lambda text, row: self.measure_table(text, row == 0))):
+                    result[table_first + number] = row_gaps
+        return result
+
+    def _gap_tag(self, pixels: float):
+        units = round(pixels * Pango.SCALE / 256) * 256  # quarter pixels, so few tags are needed
+        if units not in self._gap_tags:
+            self._gap_tags[units] = self.buffer.create_tag(None, letter_spacing=units)
+        return self._gap_tags[units]
+
+    @staticmethod
+    def _row_spacing(line: str, gaps) -> list[tuple[int, int, float]]:
+        """Where a row's gaps go, as (first, end, spacing per character). Pango draws half of a
+        character's spacing before it, so a gap goes to a space: the one before the pipe, or else
+        the one at the start of the cell (a word touching the pipe, "Tool|", then stands at its
+        right). A cell without spaces gets the gap spread over its characters."""
+        pipes = tables.pipe_positions(line)
+        result = []
+        for position, pixels in gaps:
+            start = max((pipe + 1 for pipe in pipes if pipe <= position), default=0)
+            if line[position].isspace():
+                first = end = position
+            elif line[start].isspace():
+                first = end = start
+                while end + 1 < position and line[end + 1].isspace():
+                    end += 1  # the last space of the run, right before the text
+                first = end
+            else:
+                first, end = start, position
+            result.append((first, end + 1, pixels / (end + 1 - first)))
+        return result
+
+    def _style_table_row(self, line: str, offset: int, row: str, gaps=()):
+        """A row of a table: fixed width, dimmed pipes, a bold header, a dimmed separator row
+        (which is no text to spell check), and gaps before the pipes so the columns line up."""
+        buffer = self.buffer
+        if row == "separator":  # spread over the whole piece, so it stays an even dashed line
+            pipes = tables.pipe_positions(line)
+            for position, pixels in gaps:
+                first = max((pipe + 1 for pipe in pipes if pipe <= position), default=0)
+                pixels /= position + 1 - first
+                if pixels >= 0.125:
+                    buffer.apply_tag(
+                        self._gap_tag(pixels),
+                        buffer.get_iter_at_offset(offset + first),
+                        buffer.get_iter_at_offset(offset + position + 1),
+                    )
+        else:
+            for first, end, pixels in self._row_spacing(line, gaps):
+                if pixels >= 0.125:
+                    buffer.apply_tag(self._gap_tag(pixels), buffer.get_iter_at_offset(offset + first),
+                                     buffer.get_iter_at_offset(offset + end))
+
+        def tag(name_or_tag, a: int, b: int):
+            tag = self.tags[name_or_tag] if isinstance(name_or_tag, str) else name_or_tag
+            buffer.apply_tag(tag, buffer.get_iter_at_offset(offset + a), buffer.get_iter_at_offset(offset + b))
+
+        tag("table", 0, len(line))
+        if row == "separator":
+            tag("syntax", 0, len(line))
+            tag(self.no_spell_check, 0, len(line))
+            return
+        if row == "header":
+            for a, b in tables.cell_spans(line):
+                tag("table-header", a, b)
+        for position in tables.pipe_positions(line):
+            tag("syntax", position, position + 1)
 
     def _style_comments(self, line: str, offset: int):
         """Comments (see comments.py): their markup is dimmed like other Markdown marks, and their

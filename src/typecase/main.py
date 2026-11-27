@@ -88,6 +88,7 @@ class TypecaseApplication(Adw.Application):
             ("footnote", ["<Primary><Alt>f"]),
             ("comment", ["<Primary><Alt>m"]),
             ("image", ["<Primary><Alt>i"]),
+            ("table", ["<Primary><Shift>t"]),
             ("h1", ["<Primary>1"]),
             ("h2", ["<Primary>2"]),
             ("h3", ["<Primary>3"]),

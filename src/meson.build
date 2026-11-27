@@ -37,6 +37,7 @@ install_data(
     'typecase/search.py',
     'typecase/sheet_editor.py',
     'typecase/spelling.py',
+    'typecase/tables.py',
     'typecase/template_builder.py',
     'typecase/template_dialog.py',
     'typecase/text_pills.py',

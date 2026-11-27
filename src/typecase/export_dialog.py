@@ -254,6 +254,7 @@ def run_export(
             if fmt == "docx":
                 try:
                     export.style_aligned_images(pandoc_output)
+                    export.style_tables(pandoc_output)
                     if cover:
                         export.hide_first_page_footer(pandoc_output)
                 except (OSError, zipfile.BadZipFile) as error:

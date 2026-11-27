@@ -6,7 +6,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Graphene, Gsk, Gtk, GtkSource, Pango
 
-from . import comments, formatting, frontmatter, images, spelling
+from . import comments, formatting, frontmatter, images, spelling, tables
 from .fileio import atomic_write_text, read_text
 from .image_dialog import ImageDialog
 from .image_preview import ImagePreviews
@@ -27,6 +27,7 @@ _UNREADABLE = object()  # File exists but is not (or no longer) UTF-8 text
 DEFAULT_FONT_SIZE_PT = 15
 DEFAULT_LINE_WIDTH_CHARS = 70
 LAYOUT_SETTLE_MS = 250
+TABLE_BUTTON_SIZE = 24  # the "+" buttons beside a table, in pixels (see .table-add)
 MIN_SIDE_MARGIN = 32
 LINE_SPACING_PIXELS = {"compact": 2, "normal": 5, "relaxed": 10}  # Spacing of wrapped lines and paragraphs
 
@@ -41,6 +42,7 @@ class _EditorView(GtkSource.View):
         super().__init__(**kwargs)
         self.line_width_chars = DEFAULT_LINE_WIDTH_CHARS
         self._char_width_cache = (None, 0.0)
+        self._table_layout = None  # measures pieces of table rows (see table_text_width)
         self._indent_font = None  # font the hanging indents of list items were measured with
         self.styler = None  # provides the lines of code blocks for the frame
         self.previews = None  # images below their lines
@@ -367,16 +369,34 @@ class _EditorView(GtkSource.View):
             return
         if buffer.get_has_selection():
             return  # with a selection, the selection is enough
-        where = self.char_area(buffer.get_iter_at_mark(buffer.get_insert()))
-        width = where.width if where.width > 2 else self._char_width()
+        caret = buffer.get_iter_at_mark(buffer.get_insert())
+        where = self.char_area(caret)
+        # A table's gaps are letter spacing: the caret stays one character wide, right after the text
+        spacing = max((tag.props.letter_spacing for tag in caret.get_tags() if tag.props.letter_spacing_set), default=0)
+        spacing /= Pango.SCALE
+        x, width = where.x, where.width
+        if 0 < spacing < width:
+            width -= spacing
+        width = width if width > 2 else self._char_width()
         thickness = 2
-        rect = Graphene.Rect().init(where.x, where.y + where.height - thickness, width, thickness)
+        rect = Graphene.Rect().init(x, where.y + where.height - thickness, width, thickness)
         palette = self.styler.palette if self.styler is not None else None
         snapshot.append_color(palette["caret"] if palette else self.get_color(), rect)
 
     def text_width(self, text: str) -> int:
         """Width of a piece of text in the editor's font, in pixels."""
         return self.create_pango_layout(text).get_pixel_size()[0]
+
+    def table_text_width(self, text: str, bold: bool = False) -> float:
+        """Width of a piece of a table row in the table's font (the editor's in fixed width), in pixels."""
+        if self._table_layout is None:
+            self._table_layout = self.create_pango_layout("")
+        font = self.get_pango_context().get_font_description().copy()
+        font.set_family("monospace")
+        font.set_weight(Pango.Weight.BOLD if bold else Pango.Weight.NORMAL)
+        self._table_layout.set_font_description(font)
+        self._table_layout.set_text(text, -1)
+        return self._table_layout.get_extents()[1].width / Pango.SCALE
 
     def _char_width(self) -> float:
         context = self.get_pango_context()
@@ -491,9 +511,47 @@ class SheetEditor(Gtk.Stack):
         self.view.link_actions.add_action(self._remove_comment)
         self.buffer.connect("mark-set", lambda b, _i, mark: mark == b.get_insert() and self._update_comment_action())
         self.buffer.connect("changed", lambda _b: self._update_comment_action())
+        # Inside a table: rows and columns (shown only there)
+        table_section = Gio.Menu()
+        self._table_actions = {}
+        for kind, label in (
+            ("row-above", _("Add Row Above")),
+            ("row-below", _("Add Row Below")),
+            ("column-left", _("Add Column Left")),
+            ("column-right", _("Add Column Right")),
+            ("remove-row", _("Remove Row")),
+            ("remove-column", _("Remove Column")),
+            ("tidy", _("Tidy Table")),
+        ):
+            item = Gio.MenuItem.new(label, f"editor.table-{kind}")
+            item.set_attribute_value("hidden-when", GLib.Variant.new_string("action-disabled"))
+            table_section.append_item(item)
+            action = Gio.SimpleAction(name=f"table-{kind}", enabled=False)
+            action.connect("activate", lambda _a, _p, kind=kind: self.edit_table(kind))
+            self.view.link_actions.add_action(action)
+            self._table_actions[kind] = action
+        self.context_menu.insert_section(0, None, table_section)
+        # "+" beside the table the caret is in: a column on the right, a row at the end
+        self._table_buttons = {}
+        for kind, label in (("column-end", _("Add Column")), ("row-end", _("Add Row"))):
+            button = Gtk.Button(
+                icon_name="list-add-symbolic",
+                tooltip_text=label,
+                css_classes=["circular", "table-add"],
+                focus_on_click=False,
+                visible=False,
+            )
+            button.update_property([Gtk.AccessibleProperty.LABEL], [label])
+            button.connect("clicked", lambda _b, kind=kind: self.edit_table(kind))
+            self.view.add_overlay(button, 0, 0)
+            self._table_buttons[kind] = button
+        self._table_idle = 0
+        self.buffer.connect("mark-set", lambda b, _i, mark: mark == b.get_insert() and self._update_table_action())
+        self.buffer.connect("changed", lambda _b: self._update_table_action())
         self.view.set_extra_menu(self.context_menu)
         self.styler.on_blocks_changed = self.view.queue_draw
         self.styler.measure = self.view.text_width
+        self.styler.measure_table = self.view.table_text_width
         if SheetEditor._shared_css is None:
             SheetEditor._shared_css = Gtk.CssProvider()
             Gtk.StyleContext.add_provider_for_display(
@@ -672,6 +730,10 @@ class SheetEditor(Gtk.Stack):
                 new, a, b = formatting.insert_link(text, a, b, _("Text"), "https://")
             elif kind == "codeblock":
                 new, a, b = formatting.insert_code_block(text, a, b)
+            elif kind == "table":
+                # Translators: title of a column in a newly inserted table
+                header = [_("Column %(number)d") % {"number": number} for number in (1, 2, 3)]
+                new, a, b = tables.insert(text, a, b, header)
             elif kind == "footnote":
                 new, a, b = formatting.insert_footnote(text, a, b)
             elif kind == "comment":
@@ -685,6 +747,139 @@ class SheetEditor(Gtk.Stack):
         self.view.scroll_mark_onscreen(buffer.get_insert())
         self.focus_editor()
         return True
+
+    # --- Tables ------------------------------------------------------------------
+
+    def _table_at_caret(self) -> tuple[list[str], int, int] | None:
+        """The text's lines and the first and last line of the table the caret is in."""
+        if self.path is None:
+            return None
+        lines = self._lines()
+        span = tables.table_at(lines, self._cursor_line())
+        return (lines, *span) if span else None
+
+    def _update_table_action(self) -> None:
+        # After the styler's own idle restyle, so its tables and column widths are current.
+        if not self._table_idle:
+            self._table_idle = GLib.idle_add(self._update_table_controls, priority=GLib.PRIORITY_LOW)
+
+    def _update_table_controls(self):
+        """Offers the table items of the context menu and shows the "+" buttons inside a table only."""
+        self._table_idle = 0
+        line = self._cursor_line()
+        table = next(((a, b) for a, b in self.styler.tables if a <= line <= b), None) if self.path else None
+        for kind, action in self._table_actions.items():
+            action.set_enabled(table is not None and (kind != "remove-row" or line >= table[0] + 2))
+        for button in self._table_buttons.values():
+            button.set_visible(table is not None)
+        if table is None:
+            return GLib.SOURCE_REMOVE
+        first, last = table
+        columns = len(tables.cells(self.buffer.get_text(self.buffer.get_iter_at_line(first)[1],
+                                                         self._line_end_iter(first), True)))
+        self._table_actions["remove-column"].set_enabled(columns > 1)
+        size = TABLE_BUTTON_SIZE
+        header = self.view.get_iter_location(self._line_end_iter(first))
+        self.view.move_overlay(self._table_buttons["column-end"], header.x + 8, header.y + (header.height - size) // 2)
+        row = self.view.get_iter_location(self.buffer.get_iter_at_line(last)[1])
+        if self.view.get_left_margin() >= size + 12:  # in the margin beside the last row
+            x, y = row.x - size - 8, row.y + (row.height - size) // 2
+        else:  # a narrow window: below the table
+            x, y = row.x, row.y + row.height + 2
+        self.view.move_overlay(self._table_buttons["row-end"], x, y)
+        return GLib.SOURCE_REMOVE
+
+    def _line_end_iter(self, line: int):
+        _found, end = self.buffer.get_iter_at_line(line)
+        if not end.ends_line():
+            end.forward_to_line_end()
+        return end
+
+    def move_in_table(self, forward: bool) -> bool:
+        """Tab and Shift+Tab in a table: tidies it and selects the next or previous cell; Tab in
+        the last cell adds a row. False if the caret is in no table."""
+        found = self._table_at_caret()
+        if found is None:
+            return False
+        lines, first, last = found
+        caret = self.buffer.get_iter_at_mark(self.buffer.get_insert())
+        result = tables.move(lines[first : last + 1], caret.get_line() - first, caret.get_line_offset(), forward)
+        if result is not None:
+            new, row, a, b = result
+            self._replace_table(lines, first, last, new)
+            _found, start = self.buffer.get_iter_at_line_offset(first + row, a)
+            _found, end = self.buffer.get_iter_at_line_offset(first + row, b)
+            self.buffer.select_range(end, start)
+            self.view.scroll_mark_onscreen(self.buffer.get_insert())
+        return True  # Shift+Tab in the first cell: no tab character in the table either
+
+    def edit_table(self, kind: str) -> bool:
+        """Changes the table the caret is in: "row-above", "row-below", "row-end", "column-left",
+        "column-right", "column-end", "remove-row", "remove-column" or "tidy". The caret goes into
+        the new cell, or stays near where it was. One undo step."""
+        if kind == "tidy":
+            return self.tidy_table()
+        found = self._table_at_caret()
+        if found is None:
+            return False
+        lines, first, last = found
+        old = lines[first : last + 1]
+        caret = self.buffer.get_iter_at_mark(self.buffer.get_insert())
+        row = caret.get_line() - first
+        index = tables.cell_index(old[row], caret.get_line_offset())
+        count = tables.parse(old).columns
+        if kind in ("row-above", "row-below", "row-end"):
+            new, row = tables.add_row(old, len(old) - 1 if kind == "row-end" else row, kind != "row-above")
+            index = 0 if kind == "row-end" else index
+        elif kind in ("column-left", "column-right", "column-end"):
+            index = count if kind == "column-end" else min(index, count - 1) + (kind == "column-right")
+            new = tables.add_column(old, index)
+            row = 0 if kind == "column-end" or row == 1 else row
+        elif kind == "remove-row":
+            new = tables.remove_row(old, row)
+            row = min(row, len(old) - 2) if new and len(new) > 2 else 0
+        elif kind == "remove-column":
+            new = tables.remove_column(old, min(index, count - 1))
+            index = min(index, count - 2)
+            row = 0 if row == 1 else row
+        else:
+            return False
+        if new is None:
+            return False
+        self._replace_table(lines, first, last, new)
+        offset = tables.cell_place(new[row], index)
+        _found, place = self.buffer.get_iter_at_line_offset(first + row, offset)
+        self.buffer.place_cursor(place)
+        self.view.scroll_mark_onscreen(self.buffer.get_insert())
+        self.focus_editor()
+        return True
+
+    def tidy_table(self) -> bool:
+        """Lines up the columns of the table the caret is in; the caret stays in its cell."""
+        found = self._table_at_caret()
+        if found is None:
+            return False
+        lines, first, last = found
+        caret = self.buffer.get_iter_at_mark(self.buffer.get_insert())
+        row = caret.get_line() - first
+        new, offset = tables.tidy_at(lines[first : last + 1], row, caret.get_line_offset())
+        self._replace_table(lines, first, last, new)
+        _found, place = self.buffer.get_iter_at_line_offset(first + row, offset)
+        self.buffer.place_cursor(place)
+        self.focus_editor()
+        return True
+
+    def _replace_table(self, lines: list[str], first: int, last: int, new: list[str]) -> None:
+        """Puts the table's new lines into the buffer as one undo step."""
+        old = lines[first : last + 1]
+        buffer = self.buffer
+        buffer.begin_user_action()
+        if len(new) == len(old):
+            self._apply_lines(lines[:first] + old, lines[:first] + new)
+        else:
+            buffer.delete(buffer.get_iter_at_line(first)[1], self._line_end_iter(last))
+            buffer.insert(buffer.get_iter_at_line(first)[1], "\n".join(new))
+        buffer.end_user_action()
 
     # --- Comments ----------------------------------------------------------------
 
@@ -1140,7 +1335,7 @@ class SheetEditor(Gtk.Stack):
             if state & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.ALT_MASK) or self.path is None:
                 return False
             outdent = keyval == Gdk.KEY_ISO_Left_Tab or state & Gdk.ModifierType.SHIFT_MASK
-            return self._indent_list(-1 if outdent else 1)
+            return self.move_in_table(not outdent) or self._indent_list(-1 if outdent else 1)
         if keyval not in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             return False
         if state & Gdk.ModifierType.ALT_MASK:

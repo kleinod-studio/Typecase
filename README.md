@@ -16,6 +16,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
 - **Images**: insert them with a button, by dragging or by pasting. They are shown in the editor, stored as attachments of the sheet, and have a size, an alignment, a caption and an alternative text.
 - **Links and footnotes**: links open with Ctrl+click, and footnotes are written right in the text.
+- **Tables**: Markdown tables line up their columns on screen as you type, without adding spaces to the text. Ctrl+Shift+T inserts one, Tab moves from cell to cell and adds a row at the end, and the context menu or the + buttons beside the table add and remove rows and columns. The export gives them a quiet look with lines across.
 - **Comments**: select a passage and press Ctrl+Alt+M to leave yourself a note while revising. Comments fold into a pill, a speech bubble in the margin shows where they are, and Ctrl+Alt+Page Down jumps from one to the next. They are stored in the `.md` file as [CriticMarkup](https://github.com/CriticMarkup/CriticMarkup-toolkit), left out of the export, and can be kept in the margin of a Word document.
 - **Pills**: images, links, footnotes and comments fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
 - **Outline**: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O).

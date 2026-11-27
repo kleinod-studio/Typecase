@@ -160,3 +160,15 @@ body.pdf .fold-bottom { top: 190mm; }
 body.pdf .subject {
   margin: 0 0 2em;
 }
+
+/* Tables: lines across only, a thin one under the header; figures in a column line up. */
+table {
+  border-collapse: collapse;
+  margin: 0 0 1em;
+  font-variant-numeric: tabular-nums;
+  break-inside: avoid;
+}
+th, td { padding: 0.25em 1.2em 0.25em 0; vertical-align: top; text-align: left; }
+thead th { border-bottom: 1px solid var(--text); }
+tbody td { border-bottom: 1px solid var(--rule); }
+th:last-child, td:last-child { padding-right: 0; }

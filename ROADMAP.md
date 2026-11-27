@@ -83,7 +83,7 @@ Ideas for after 1.0:
 - [ ] Group templates that set up a writing space in one step (for example a novel with groups for manuscript, characters, places and research)
 - [x] Images in the text: inserted as attachments, shown in the editor, with size, alignment, caption and alternative text that the export follows
 - [x] Pills in the editor: images, links and footnotes fold their Markdown into a small colored pill with an icon, and unfold while the caret touches them
-- [ ] Markdown tables, styled in the editor
+- [x] Markdown tables: columns line up on screen as you type, inserted with Ctrl+Shift+T, Tab moves between cells, rows and columns are added and removed from the context menu or the + buttons, and the export sets them with lines across, as in books
 - [ ] Math formulas (LaTeX notation), shown in the editor and in the export
 - [ ] Export as EPUB for e-readers, optionally straight into the library of [Endpaper](https://github.com/kleinod-studio/Endpaper)
 - [ ] Import from PDF: the text and pictures of a PDF with a text layer become a sheet with attachments, guessing paragraphs, headings and footnotes; tidy it up, then export it again, for example as EPUB for Endpaper. PDFs with copy protection stay out
