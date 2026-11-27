@@ -20,7 +20,7 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Pills**: images, links, footnotes and comments fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
 - **Outline**: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O).
 - **Organize**: give sheets and groups an icon and a color, search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
-- **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
+- **Notes and attachments**: free notes per sheet (stored in the front matter), attached files and links to web pages, which move along with the sheet. Drag a file or a link from your browser onto the properties pane to attach it.
 - **Writing goals**: set a word goal per sheet. Progress rings show how far you are, in the properties pane, in the library and as a small floating badge.
 - **Focus mode**: full screen with only your text. Typewriter scrolling keeps the current line centered and the other paragraphs are dimmed. Focus mode can have its own font settings and theme.
 - **Export**: PDF, Word (DOCX) and HTML via Pandoc, with optional table of contents and cover page, footnotes on their page and page numbers. A group can be exported as one document, with its subgroups as parts.

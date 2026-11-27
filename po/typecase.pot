@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: typecase\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 21:42+0100\n"
+"POT-Creation-Date: 2026-11-27 22:00+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -157,8 +157,8 @@ msgstr ""
 msgid "Notes on “%s”"
 msgstr ""
 
-#: src/typecase/card_view.py:76 src/typecase/inspector.py:136
-#: src/typecase/inspector.py:162 src/typecase/inspector.py:172
+#: src/typecase/card_view.py:76 src/typecase/inspector.py:163
+#: src/typecase/inspector.py:173
 msgid "Notes"
 msgstr ""
 
@@ -488,7 +488,7 @@ msgstr ""
 msgid "Apply"
 msgstr ""
 
-#: src/typecase/image_dialog.py:50 src/typecase/inspector.py:467
+#: src/typecase/image_dialog.py:50 src/typecase/inspector.py:468
 #: src/typecase/look_dialog.py:51 src/typecase/preferences.py:313
 #: src/typecase/window.py:1746 src/typecase/window.py:1844
 #: src/typecase/window.py:2074 src/typecase/template_dialog.py:81
@@ -618,143 +618,147 @@ msgstr ""
 msgid "Goal"
 msgstr ""
 
-#: src/typecase/inspector.py:150 src/typecase/window.py:373
+#: src/typecase/inspector.py:137
+msgid "Context"
+msgstr ""
+
+#: src/typecase/inspector.py:151 src/typecase/window.py:373
 #: src/typecase/window.py:439 src/typecase/window.py:1564
 msgid "Properties"
 msgstr ""
 
-#: src/typecase/inspector.py:162
+#: src/typecase/inspector.py:163
 msgid "Not part of the text or the export"
 msgstr ""
 
-#: src/typecase/inspector.py:185
+#: src/typecase/inspector.py:186
 msgid "Attachments"
 msgstr ""
 
-#: src/typecase/inspector.py:185
+#: src/typecase/inspector.py:186
 msgid "Copies of files and links to web pages; drop them here"
 msgstr ""
 
-#: src/typecase/inspector.py:194
+#: src/typecase/inspector.py:195
 msgid "Attach File…"
 msgstr ""
 
-#: src/typecase/inspector.py:195
+#: src/typecase/inspector.py:196
 msgid "Add Link…"
 msgstr ""
 
-#: src/typecase/inspector.py:197 src/typecase/inspector.py:559
+#: src/typecase/inspector.py:198 src/typecase/inspector.py:560
 msgid "Add Attachment"
 msgstr ""
 
-#: src/typecase/inspector.py:201
+#: src/typecase/inspector.py:202
 msgid "No attachments"
 msgstr ""
 
-#: src/typecase/inspector.py:230
+#: src/typecase/inspector.py:231
 #, python-format
 msgid "Default (%s)"
 msgstr ""
 
-#: src/typecase/inspector.py:231 src/typecase/template_dialog.py:41
+#: src/typecase/inspector.py:232 src/typecase/template_dialog.py:41
 msgid "None"
 msgstr ""
 
-#: src/typecase/inspector.py:287
+#: src/typecase/inspector.py:288
 #, python-format
 msgid "%s (according to the file system)"
 msgstr ""
 
-#: src/typecase/inspector.py:364
+#: src/typecase/inspector.py:365
 msgid "Choose Date"
 msgstr ""
 
-#: src/typecase/inspector.py:367
+#: src/typecase/inspector.py:368
 msgid "Use the Day of the Export"
 msgstr ""
 
-#: src/typecase/inspector.py:375
+#: src/typecase/inspector.py:376
 msgid "The day of the export"
 msgstr ""
 
-#: src/typecase/inspector.py:429 src/typecase/window.py:1671
+#: src/typecase/inspector.py:430 src/typecase/window.py:1671
 msgid "Open"
 msgstr ""
 
-#: src/typecase/inspector.py:431 src/typecase/window.py:1845
+#: src/typecase/inspector.py:432 src/typecase/window.py:1845
 msgid "Move to Trash"
 msgstr ""
 
-#: src/typecase/inspector.py:442
+#: src/typecase/inspector.py:443
 msgid "Open in Browser"
 msgstr ""
 
-#: src/typecase/inspector.py:445 src/typecase/inspector.py:466
+#: src/typecase/inspector.py:446 src/typecase/inspector.py:467
 msgid "Edit Link"
 msgstr ""
 
-#: src/typecase/inspector.py:448
+#: src/typecase/inspector.py:449
 msgid "Remove Link"
 msgstr ""
 
-#: src/typecase/inspector.py:464
+#: src/typecase/inspector.py:465
 msgid "Add Link"
 msgstr ""
 
-#: src/typecase/inspector.py:464
+#: src/typecase/inspector.py:465
 msgid "A web page to keep with this sheet, for research or sources."
 msgstr ""
 
-#: src/typecase/inspector.py:468
+#: src/typecase/inspector.py:469
 msgid "Add"
 msgstr ""
 
-#: src/typecase/inspector.py:468 src/typecase/template_dialog.py:79
+#: src/typecase/inspector.py:469 src/typecase/template_dialog.py:79
 msgid "Save"
 msgstr ""
 
-#: src/typecase/inspector.py:472
+#: src/typecase/inspector.py:473
 msgid "Address"
 msgstr ""
 
-#: src/typecase/inspector.py:473
+#: src/typecase/inspector.py:474
 msgid "Title (optional)"
 msgstr ""
 
-#: src/typecase/inspector.py:531
+#: src/typecase/inspector.py:532
 #, python-format
 msgid "“%s” was removed."
 msgstr ""
 
-#: src/typecase/inspector.py:531 src/typecase/window.py:1533
+#: src/typecase/inspector.py:532 src/typecase/window.py:1533
 msgid "Undo"
 msgstr ""
 
-#: src/typecase/inspector.py:579
+#: src/typecase/inspector.py:580
 msgid "Only files and web addresses can be attached."
 msgstr ""
 
-#: src/typecase/inspector.py:592
+#: src/typecase/inspector.py:593
 msgid "Only files can be attached."
 msgstr ""
 
-#: src/typecase/inspector.py:597 src/typecase/sheet_editor.py:757
+#: src/typecase/inspector.py:598 src/typecase/sheet_editor.py:757
 #: src/typecase/sheet_editor.py:844
 #, python-format
 msgid "Could not attach “%(name)s”: %(reason)s"
 msgstr ""
 
-#: src/typecase/inspector.py:616 src/typecase/window.py:1858
+#: src/typecase/inspector.py:617 src/typecase/window.py:1858
 #, python-format
 msgid "Could not move to the trash: %s"
 msgstr ""
 
-#: src/typecase/inspector.py:624
+#: src/typecase/inspector.py:625
 #, python-format
 msgid "“%s” was moved to the trash, but the text still shows it."
 msgstr ""
 
-#: src/typecase/inspector.py:626
+#: src/typecase/inspector.py:627
 #, python-format
 msgid "“%s” was moved to the trash."
 msgstr ""

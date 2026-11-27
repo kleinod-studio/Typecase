@@ -54,7 +54,7 @@ class Inspector(Adw.Bin):
     Empty fields are removed from the front matter. Author and language only display their default
     from the app preferences; only what you enter yourself goes into the file.
 
-    The notes tab holds free notes (field "notes") and attachments: copies of files kept in a
+    The context tab holds free notes (field "notes") and attachments: copies of files kept in a
     hidden folder next to the sheet (see library.attachments), and links to web pages (field
     "links", see weblinks)."""
 
@@ -72,7 +72,7 @@ class Inspector(Adw.Bin):
         editor.connect("counts-changed", self._on_counts_changed)
         self._words = 0
 
-        # Three tabs: the sheet's details, its writing goal, and notes with attachments.
+        # Three tabs: the sheet's details, its writing goal, and its context: notes, files and links.
         details_page = Adw.PreferencesPage()
         goal_page = Adw.PreferencesPage()
         notes_page = self._build_notes_page()
@@ -133,7 +133,8 @@ class Inspector(Adw.Bin):
         self.stack = Adw.ViewStack()
         self.stack.add_titled_with_icon(details_page, "details", _("Details"), "document-properties-symbolic")
         self.stack.add_titled_with_icon(goal_page, "goal", _("Goal"), "emoji-flags-symbolic")
-        self.stack.add_titled_with_icon(notes_page, "notes", _("Notes"), "document-edit-symbolic")
+        # Notes, files and links: everything around the text (the page keeps its old name "notes")
+        self.stack.add_titled_with_icon(notes_page, "notes", _("Context"), "mail-attachment-symbolic")
         saved_page = config.load().get("inspector_page")
         if saved_page in ("details", "goal", "notes"):
             self.stack.set_visible_child_name(saved_page)
@@ -197,6 +198,8 @@ class Inspector(Adw.Bin):
             icon_name="list-add-symbolic", menu_model=menu, tooltip_text=_("Add Attachment"),
             valign=Gtk.Align.CENTER, css_classes=["flat"],
         )
+        # The pane sits at the window's right edge: the menu opens towards the left, inside it
+        self.add_attachment_button.get_popover().set_halign(Gtk.Align.END)
         self.attachments_group.set_header_suffix(self.add_attachment_button)
         self.attachments_empty = Adw.ActionRow(title=_("No attachments"), css_classes=["dim-label"])
         self.attachments_group.add(self.attachments_empty)

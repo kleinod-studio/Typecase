@@ -1,11 +1,13 @@
-"""Explainer video: the properties of a sheet, its notes and its attachments.
+"""Explainer video: the properties of a sheet, its notes and its attachments, files and links.
 
     python3 tools/video/properties-notes-attachments.py
 
 Writes dist/videos/properties-notes-attachments/properties-notes-attachments.webm and .mp4, with
 English and German subtitles. While it records, a Typecase window floats in the middle of the
 screen for about a minute; leave it visible and don't touch it. The file chooser of the plus button
-is left out (it would show your own folders); the attachment is made from tools/video/lighthouse.svg."""
+is left out (it would show your own folders); the attachment is made from tools/video/lighthouse.svg.
+The link dialog does not look into your clipboard, no browser opens, and the link dragged in from
+a browser is handed over directly."""
 
 import random
 import subprocess
@@ -20,6 +22,8 @@ HERE = Path(__file__).resolve().parent
 SUBTITLE = ": A Name from the Sea"
 NOTE = "Check: did the lighthouse have a radio in 1871? Ask the museum."
 RENAMED = "03 The Letter from the Sea"
+LINK = ("en.wikipedia.org/wiki/Radiotelegraphy", "Radio at sea")
+DROPPED = "https://en.wikipedia.org/wiki/Lighthouse"
 
 # --- Helpers --------------------------------------------------------------------
 
@@ -97,6 +101,45 @@ def dialog_button(dialog, label):
     raise LookupError(label)
 
 
+def tab_button(win, title):
+    """The button of a tab in the properties pane."""
+    from gi.repository import Gtk
+
+    for widget in walk(win.inspector):
+        if isinstance(widget, Gtk.ToggleButton) and any(
+            isinstance(label, Gtk.Label) and label.get_label() == title for label in walk(widget)
+        ):
+            return widget
+    raise LookupError(title)
+
+
+def menu_row(popover, label):
+    """The row of a menu that shows label."""
+    from gi.repository import Gtk
+
+    for widget in walk(popover):
+        if isinstance(widget, Gtk.Label) and widget.get_label() == label:
+            row = widget
+            while row.__gtype__.name != "GtkModelButton" and row.get_parent() is not None:
+                row = row.get_parent()
+            return row
+    raise LookupError(label)
+
+
+def scroll_down(win, length=0.8):
+    """Scrolls the properties pane smoothly to its end."""
+    from gi.repository import Gtk
+
+    scrolled = win.inspector.attachments_group.get_ancestor(Gtk.ScrolledWindow)
+    adjustment = scrolled.get_vadjustment()
+    start, frames = adjustment.get_value(), int(length * 30)
+    for frame in range(1, frames + 1):
+        t = frame / frames
+        target = adjustment.get_upper() - adjustment.get_page_size()
+        adjustment.set_value(start + (target - start) * (3 * t * t - 2 * t * t * t))
+        yield 1 / 30
+
+
 def inspector_area(win):
     """The properties pane, as a rectangle in the window."""
     _found, bounds = win.inspector.compute_bounds(win)
@@ -107,6 +150,7 @@ def inspector_area(win):
 
 
 def opening(win):
+    win.inspector._paste_address = lambda _row: None  # never your own clipboard in the video
     win.inspector.stack.set_visible_child_name("details")
     for group in ("The Lighthouse Keeper", "Manuscript", "Notes"):
         node(win, group)[1].set_expanded(True)
@@ -143,6 +187,7 @@ def status(win):
 
 
 def notes(win):
+    yield from press(tab_button(win, "Context"))
     win.inspector.stack.set_visible_child_name("notes")
     yield 1.0
     view = win.inspector.notes_view
@@ -160,6 +205,54 @@ def attachments(win):
     yield 0.6
     win.inspector._add_files([Gio.File.new_for_path(str(picture))])
     yield 3.0
+
+
+def links(win):
+    from gi.repository import Gtk
+
+    inspector = win.inspector
+    yield from scroll_down(win)
+    yield 0.3
+    button = inspector.add_attachment_button
+    yield from press(button)
+    button.popup()
+    yield 0.6
+    popover = button.get_popover()
+    popover.set_can_target(False)  # the real pointer, wherever it is, must not hover a row
+    row = menu_row(popover, "Add Link…")
+    row.set_state_flags(Gtk.StateFlags.PRELIGHT, False)
+    yield 1.0
+    row.set_state_flags(Gtk.StateFlags.ACTIVE, False)
+    yield 0.15
+    button.popdown()
+    inspector.add_link()
+    yield 0.6
+    dialog = inspector.link_dialog
+    fields = dialog.get_extra_child()
+    address, title = fields.get_row_at_index(0), fields.get_row_at_index(1)
+    yield from type_into(address, LINK[0], pace=0.05)
+    yield 0.4
+    title.grab_focus()
+    yield from type_into(title, LINK[1], seed=6)
+    yield 0.6
+    yield from press(dialog_button(dialog, "Add"))
+    dialog.emit("response", "add")
+    dialog.close()
+    yield 0.8
+    yield from scroll_down(win, length=0.5)
+    yield 0.6
+    link_row = inspector._attachment_rows[-1]
+    link_row.set_state_flags(Gtk.StateFlags.PRELIGHT, False)  # pointed at: a click opens the browser
+    yield 1.6
+    link_row.unset_state_flags(Gtk.StateFlags.PRELIGHT)
+    yield 0.4
+
+
+def drop_link(win):
+    yield 0.6
+    win.inspector._on_dropped(None, DROPPED, 0, 0)  # as a link dragged in from the browser arrives
+    yield from scroll_down(win, length=0.5)
+    yield 2.2
 
 
 def rename(win):
@@ -218,8 +311,18 @@ SCENES = [
         say="Drop files onto the attachments, or use the plus button. Type case keeps a copy next to the sheet.",
     ),
     Scene(
-        "Move or rename the sheet, and its notes and attachments go along.",
-        "Verschiebst oder benennst du das Blatt um, kommen Notizen und Anhänge mit.",
+        "Links to web pages belong here too, for research and sources. A click opens them in your browser.",
+        "Auch Links auf Webseiten gehören dazu, für Recherche und Quellen. Ein Klick öffnet sie im Browser.",
+        links,
+    ),
+    Scene(
+        "Or simply drag a link over from your browser.",
+        "Aus dem Browser ziehst du einen Link einfach herüber.",
+        drop_link,
+    ),
+    Scene(
+        "Move or rename the sheet, and its notes, attachments and links go along.",
+        "Verschiebst oder benennst du das Blatt um, kommen Notizen, Anhänge und Links mit.",
         rename,
     ),
     Scene(
@@ -234,7 +337,7 @@ VIDEO = videokit.Video(
     name="properties-notes-attachments",
     title="Properties, notes and attachments",
     topic="Plot",
-    summary="Give a sheet a title, author and status, keep private notes with it and attach files that move along.",
+    summary="Give a sheet a title, author and status, keep private notes with it, and attach files and links that move along.",
     still=30,
 )
 

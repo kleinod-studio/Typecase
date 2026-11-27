@@ -67,7 +67,7 @@ Ideas for after 1.0:
 - [x] A new sheet takes its first heading as its name (once, while it is still “Untitled”)
 - [x] Card view for plotting: a group shows the notes of its sheets as cards, edited in place; dragging a card (or Alt+arrow keys) changes the order of the sheets
 - [x] Clickable links: Ctrl+click (or the context menu) opens a link in the browser, and hovering shows its address; bare web addresses are recognized too
-- [ ] Links as attachments: besides files, a sheet can keep links to web pages, opened in the browser with a click
+- [x] Links as attachments: besides files, a sheet can keep links to web pages (stored as Markdown links in its front matter), opened in the browser with a click, added by dragging them from the browser
 - [x] Outline: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O)
 - [x] Table of contents, cover page and parts in the export: a table of contents from the headings (with page numbers in the PDF), a cover page, and the subgroups of a group as parts with their own heading or title page; PDFs get page numbers
 - [ ] Bibliography: manage your sources (books, articles, web pages) in the library, or bring them in from a BibTeX or CSL JSON file, for example exported from Zotero; cite them in the text and get a list of references in the export, in a citation style of your choice

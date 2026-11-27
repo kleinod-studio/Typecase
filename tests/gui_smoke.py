@@ -1077,7 +1077,7 @@ def steps(win, app):
     ed.buffer.set_text("Es war einmal.\nEnde.")
     ed.flush()
 
-    # Notes and attachments (third tab of the properties pane)
+    # Notes and attachments (the Context tab of the properties pane)
     inspector.stack.set_visible_child_name("notes")
     notes = inspector.notes_view.get_buffer()
     notes.set_text("Drache braucht einen Namen.\n\nIdee: Fridolin")
