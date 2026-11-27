@@ -4,13 +4,16 @@ a cover page. Runs inside the installed Typecase Flatpak, which brings Pandoc an
 
     flatpak run --command=python3 studio.kleinod.Typecase flatpak_export.py SHEET TEMPLATE_FOLDER FORMAT OUTPUT [--cover]
 
-FORMAT is pdf or docx."""
+FORMAT is pdf or docx. For a feature the installed Flatpak does not have yet, it also runs with the
+development version: TYPECASE_CODE=src .venv/bin/python flatpak_export.py … (Pandoc on the PATH)."""
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, "/app/share/typecase")
+CODE = str(Path(os.environ.get("TYPECASE_CODE", "/app/share/typecase")).resolve())
+sys.path.insert(0, CODE)
 from typecase import export, export_templates  # noqa: E402
 from typecase.frontmatter import parse, split  # noqa: E402
 
@@ -18,6 +21,8 @@ sheet, folder, fmt, output = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], 
 cover = "--cover" in sys.argv[5:]
 template = export_templates.read_folder(folder, builtin=False)
 text = sheet.read_text(encoding="utf-8")
+if hasattr(export, "with_fields"):  # template fields, as the export dialog fills them in
+    text = export.with_fields(text, template)
 title = parse(split(text)[0]).get("title")
 defaults = {"author": None, "lang": None, "date": export.export_date()}
 if fmt == "docx" and not cover:
@@ -41,7 +46,7 @@ if fmt == "pdf":
         [sys.executable, "-m", "typecase.pdf_render", str(pandoc_output), str(sheet.parent), str(output),
          "--paper-mm", f"{paper.get_width(Gtk.Unit.MM):.2f},{paper.get_height(Gtk.Unit.MM):.2f}",
          "--margins-mm", ",".join(str(margins[side]) for side in ("top", "right", "bottom", "left"))],
-        env={"PYTHONPATH": "/app/share/typecase", "PATH": "/app/bin:/usr/bin"}, check=True,
+        env={"PYTHONPATH": CODE, "PATH": "/app/bin:/usr/bin"}, check=True,
     )
 else:
     export.style_aligned_images(pandoc_output)

@@ -60,7 +60,7 @@ When a kind of document needs details of its own, list them in `template.json` u
 ]
 ```
 
-- Types: `text` (one line, the default), `lines` (several lines, e.g. an address), `date` (a calendar; left empty it is the day of the export, written in the sheet's language).
+- Types: `text` (one line, the default), `lines` (several lines, e.g. an address), `date` (a calendar; left empty it is the day of the export, written the way the user's language writes dates, like `$date$`).
 - Keys: lower-case letters, digits, `-`, `_`; never one Typecase uses itself (title, author, lang, status, …; `build_template.py` warns). Keep keys in English and stable — sheets store their values under the key, so renaming a key loses them; labels can change any time.
 - **HTML and PDF**: the template places each field where it belongs, `$if(recipient)$<div class="recipient">$recipient$</div>$endif$`. Line breaks of a `lines` field stay line breaks (use a `div`, not a `p`, as the value may contain several paragraphs). `$sender-oneline$` gives a `lines` field in one line, joined with " · " and only up to its first blank line — the return line above a window address, without the phone number and email that follow a blank line.
 - **Word** places the fields itself, as paragraphs in their order before the text, each with the paragraph style named like its key. Style them with `style_docx.py --field-style` (step 3). A field with the key `date` takes the place of Word's usual date paragraph; style it with `--field-style date:align=right`.
