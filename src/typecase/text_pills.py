@@ -1,5 +1,6 @@
 from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk, Pango
 
+from . import comments
 from .markdown_style import FENCE, link_spans, note_definition, note_spans
 from .markdown_styler import FOOTNOTE_SCALE
 
@@ -7,13 +8,20 @@ UPDATE_DELAY_MS = 150
 PADDING = 6  # around the text of a pill
 ICON_SIZE = 16
 ROOM = PADDING + ICON_SIZE + PADDING // 2  # for the icon, at the start of a pill
-ICONS = {"image": "image-x-generic-symbolic", "link": "typecase-link-symbolic", "note": "typecase-footnote-symbolic"}
+ICONS = {
+    "image": "image-x-generic-symbolic",
+    "link": "typecase-link-symbolic",
+    "note": "typecase-footnote-symbolic",
+    "comment": "typecase-comment-symbolic",
+}
+BUBBLE_GAP = 14  # between a bubble in the margin and the text
 
 # Tints behind the text, which keeps the theme's color. Soft enough for light and dark themes.
 TINTS = {
     "image": (0.96, 0.78, 0.07, 0.28),
     "link": (0.21, 0.52, 0.89, 0.24),
     "note": (0.2, 0.75, 0.42, 0.24),
+    "comment": (0.57, 0.25, 0.85, 0.22),
     "calm": (0.5, 0.5, 0.5, 0.16),  # focus mode: no colors to distract
 }
 
@@ -58,8 +66,11 @@ def snapshot_icon(view, snapshot, kind: str, x: float, y: float, color: Gdk.RGBA
 
 
 class _Pill:
-    """A link or footnote: marks at its start and end, and around its text. While folded, its first
-    character stays in place, transparent and spaced out, to make room for the icon."""
+    """A link, footnote or comment: marks at its start and end, and around its text. While folded,
+    its first character stays in place, transparent and spaced out, to make room for the icon.
+
+    A comment shows the passage it is about (if any) after its icon, in the color of the text; the
+    comment's own text is folded away and shows on hover."""
 
     def __init__(self, buffer, kind: str, offset: int, span: tuple[int, int, int, int]):
         start, text_start, text_end, end = (buffer.get_iter_at_offset(offset + value) for value in span)
@@ -97,6 +108,7 @@ class TextPills:
         # In a pill, a note has the size of the text around it: rows of smaller text would be
         # lower, and the pill uneven. (Text tags multiply their scales.)
         self._note_size = buffer.create_tag(None, scale=1 / FOOTNOTE_SCALE)
+        self.comment_starts: list[tuple] = []  # (mark where it shows, text, mark of its text) per comment
         self._color = None
         self._anchors: dict[int, object] = {}  # one tag per width of the room they make
         self._measure_idle = 0
@@ -134,11 +146,15 @@ class TextPills:
         for pill in self.pills:
             for mark in pill.marks:
                 buffer.delete_mark(mark)
-        self.pills = []
+        for mark, _note, target in self.comment_starts:
+            buffer.delete_mark(mark)
+            buffer.delete_mark(target)
+        self.pills, self.comment_starts = [], []
         offset = 0
         in_code_block = False
         definitions = {}
-        for line in buffer.get_text(*buffer.get_bounds(), True).split("\n"):
+        text = buffer.get_text(*buffer.get_bounds(), True)
+        for line in text.split("\n"):
             if FENCE.match(line):
                 in_code_block = not in_code_block
             elif not in_code_block and ("[" in line or "<" in line or "http" in line or "www." in line):
@@ -150,8 +166,26 @@ class TextPills:
             offset += len(line) + 1
         for pill in self.pills:
             pill.note = definitions.get(pill.label, "")
+        self.pills += self._comment_pills(text)
+        self.pills.sort(key=lambda pill: pill.offsets(buffer)[0])
         self._apply_folding()
         self.view.queue_draw()
+
+    def _comment_pills(self, text: str) -> list[_Pill]:
+        """The comments in the text, and where each begins (for the bubbles in the margin)."""
+        buffer, pills = self.buffer, []
+        for comment in comments.find(text):
+            note = comment.note_text(text)
+            # The passage it is about is the pill's text; a comment alone has none.
+            first, last = comment.marked or (comment.end, comment.end)
+            pill = _Pill(buffer, "comment", 0, (comment.start, first, last, comment.end))
+            pill.note = note
+            pills.append(pill)
+            where = buffer.get_iter_at_offset(comment.start)  # stays visible: it holds the icon
+            # a click on its bubble puts the caret at the start of the comment's text
+            target = buffer.get_iter_at_offset(comment.note[0] if comment.note else comment.marked[0])
+            self.comment_starts.append((buffer.create_mark(None, where, True), note, buffer.create_mark(None, target, True)))
+        return pills
 
     def _room(self, pill: _Pill, first_character: str) -> int:
         """Letter spacing that gives the first character the width of the icon."""
@@ -200,6 +234,9 @@ class TextPills:
                 continue  # the caret touches it, or the selection covers it
             character = buffer.get_iter_at_offset(start).get_char()
             anchors.setdefault(self._room(pill, character), set()).add((start, start + 1))
+            if pill.kind == "comment":  # the passage keeps the color of the text
+                hidden.update(run for run in ((start + 1, text_start), (text_end, end)) if run[0] < run[1])
+                continue
             if text_start < text_end:
                 muted.add((max(text_start, start + 1), text_end))
                 if pill.kind == "note":
@@ -244,10 +281,12 @@ class TextPills:
         start, text_start, text_end, end = pill.offsets(buffer)
         if not pill.folded and text_start >= text_end:
             return []
-        first = buffer.get_iter_at_offset(start if pill.folded else text_start)
-        rows = list(self._rows(first, buffer.get_iter_at_offset(text_end)))
+        folded = pill.folded
+        first = buffer.get_iter_at_offset(start if folded else text_start)
+        last = start + 1 if folded and text_start >= text_end else text_end  # a comment alone: just its icon
+        rows = list(self._rows(first, buffer.get_iter_at_offset(last)))
         pills = [(x - PADDING, y, width + 2 * PADDING, height) for x, y, width, height in rows]
-        if pill.folded:  # the first row starts with the room for the icon
+        if folded:  # the first row starts with the room for the icon
             x, y, width, height = rows[0]
             pills[0] = (x, y, width + PADDING, height)
         return pills
@@ -274,9 +313,55 @@ class TextPills:
             if pill.folded and rectangles:
                 x, y, _width, height = rectangles[0]
                 snapshot_icon(self.view, snapshot, pill.kind, x + PADDING, y + (height - ICON_SIZE) / 2, color)
+        self._snapshot_bubbles(snapshot, visible, color)
+
+    def bubbles(self) -> list[tuple[Graphene.Rect, int, list[str]]]:
+        """The speech bubbles in the left margin, one per row where comments begin: where it is
+        (buffer coordinates), where the text of the first of them starts, and their texts. None if
+        the margin is too narrow."""
+        x = self.view.get_left_margin() - BUBBLE_GAP - ICON_SIZE
+        if x < 4 or not self.comment_starts:
+            return []
+        rows: dict[int, tuple[Graphene.Rect, int, list[str]]] = {}
+        for mark, note, target in self.comment_starts:
+            area = self.view.char_area(self.buffer.get_iter_at_mark(mark))
+            if area.y not in rows:
+                rect = Graphene.Rect().init(x, area.y + (area.height - ICON_SIZE) / 2, ICON_SIZE, ICON_SIZE)
+                rows[area.y] = (rect, self.buffer.get_iter_at_mark(target).get_offset(), [])
+            rows[area.y][2].append(note)
+        return list(rows.values())
+
+    def _snapshot_bubbles(self, snapshot, visible, color: Gdk.RGBA) -> None:
+        faint = color.copy()
+        faint.alpha *= 0.35 if self.calm else 0.6
+        for rect, _offset, notes in self.bubbles():
+            y = rect.get_y()
+            if y > visible.y + visible.height or y + ICON_SIZE < visible.y:
+                continue
+            snapshot_icon(self.view, snapshot, "comment", rect.get_x(), y, faint)
+            if len(notes) > 1:  # several comments begin on this row
+                layout = self.view.create_pango_layout(str(len(notes)))
+                layout.set_font_description(Pango.FontDescription.from_string("Sans 8"))
+                width, height = layout.get_pixel_size()
+                snapshot.save()
+                snapshot.translate(Graphene.Point().init(rect.get_x() - width - 3, y + (ICON_SIZE - height) / 2))
+                snapshot.append_layout(layout, faint)
+                snapshot.restore()
+
+    def bubble_at(self, x: float, y: float) -> tuple[int, list[str]] | None:
+        """The bubble at a place in the view: the offset of its first comment and their texts."""
+        bx, by = self.view.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, int(x), int(y))
+        for rect, offset, notes in self.bubbles():
+            if rect.inset_r(-4, -4).contains_point(Graphene.Point().init(bx, by)):
+                return offset, notes
+        return None
 
     def note_at(self, x: float, y: float) -> str | None:
-        """What a folded reference to a footnote at a place in the view stands for, or None."""
+        """What a folded reference to a footnote or a comment at a place in the view stands for
+        (also a bubble in the margin), or None."""
+        bubble = self.bubble_at(x, y)
+        if bubble is not None:
+            return "\n\n".join(note for note in bubble[1] if note) or None
         bx, by = self.view.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, int(x), int(y))
         point = Graphene.Point().init(bx, by)
         for pill in self.pills:

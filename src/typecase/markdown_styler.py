@@ -2,6 +2,7 @@ import re
 
 from gi.repository import Gdk, GLib, GtkSource, Pango
 
+from . import comments
 from .markdown_style import FENCE, fence_language, line_spans, list_text_start
 
 FOOTNOTE_SCALE = 0.85
@@ -211,6 +212,8 @@ class MarkdownStyler:
                     buffer.apply_tag(self.tags[name], first_iter, last_iter)
                     if name in _NO_SPELL_CHECK:
                         buffer.apply_tag(self.no_spell_check, first_iter, last_iter)
+            if not in_code:
+                self._style_comments(line, offset)
             for match in _BARE_ADDRESS.finditer(line):  # web and mail addresses are no words
                 buffer.apply_tag(self.no_spell_check, buffer.get_iter_at_offset(offset + match.start()), buffer.get_iter_at_offset(offset + match.end()))
             text_start = None if in_code or self.measure is None else list_text_start(line)
@@ -224,6 +227,26 @@ class MarkdownStyler:
         for open_line, last_line, closed in self.code_blocks:
             if open_line <= last and last_line >= first:
                 self._highlight_block(open_line, last_line, closed)
+
+    def _style_comments(self, line: str, offset: int):
+        """Comments (see comments.py): their markup is dimmed like other Markdown marks, and their
+        text is not spell checked. A comment over several lines is found by the pills alone."""
+        buffer = self.buffer
+
+        def tag(name_or_tag, a: int, b: int):
+            tag = self.tags[name_or_tag] if isinstance(name_or_tag, str) else name_or_tag
+            buffer.apply_tag(tag, buffer.get_iter_at_offset(offset + a), buffer.get_iter_at_offset(offset + b))
+
+        for comment in comments.find(line):
+            marks = []
+            if comment.marked:
+                marks += [(comment.marked[0] - 3, comment.marked[0]), (comment.marked[1], comment.marked[1] + 3)]
+            if comment.note:
+                marks += [(comment.note[0] - 3, comment.note[0]), (comment.note[1], comment.note[1] + 3)]
+                tag(self.no_spell_check, *comment.note)
+            for a, b in marks:
+                tag("syntax", a, b)
+                tag(self.no_spell_check, a, b)
 
     def _highlight_block(self, open_line: int, last_line: int, closed: bool):
         """Highlights the content of a code block via an invisible GtkSourceView buffer."""

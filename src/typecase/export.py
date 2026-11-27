@@ -14,7 +14,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from . import frontmatter, images
+from . import comments, frontmatter, images
 from .export_templates import Template
 from .fileio import read_text
 
@@ -295,8 +295,10 @@ def pandoc_path() -> str | None:
 
 
 def prepare_markdown(text: str) -> str:
-    """Translate Typecase specifics into Pandoc Markdown: we write underline as <u>…</u>,
-    Pandoc uses [text]{.underline} for that (raw HTML would get lost in DOCX)."""
+    """Translate Typecase specifics into Pandoc Markdown: comments are left out (see
+    comments.py), and we write underline as <u>…</u>, Pandoc uses [text]{.underline} for that
+    (raw HTML would get lost in DOCX)."""
+    text = comments.strip(text)
     return _UNDERLINE.sub(lambda m: "[" + m.group(1) + "]{.underline}", text)
 
 

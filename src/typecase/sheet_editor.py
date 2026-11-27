@@ -169,6 +169,14 @@ class _EditorView(GtkSource.View):
             if n_press == 2 and self.on_edit_image is not None:
                 self.on_edit_image(*found)
             return
+        bubble = self.pills.bubble_at(x, y) if self.pills is not None and n_press == 1 else None
+        if bubble is not None:  # a comment's bubble in the margin: into the comment
+            gesture.set_state(Gtk.EventSequenceState.CLAIMED)
+            buffer = self.get_buffer()
+            buffer.place_cursor(buffer.get_iter_at_offset(bubble[0]))
+            self.grab_focus()
+            self.scroll_mark_onscreen(buffer.get_insert())
+            return
         if n_press != 1 or not gesture.get_current_event_state() & Gdk.ModifierType.CONTROL_MASK:
             return
         address = self.link_at_point(x, y)
@@ -198,7 +206,8 @@ class _EditorView(GtkSource.View):
     def _set_link_cursor(self, ctrl: bool):
         over_link = self._pointer is not None and self.link_at_point(*self._pointer) is not None
         over_image = self._pointer is not None and self.previews is not None and self.previews.over_image(*self._pointer)
-        self.set_cursor_from_name("pointer" if (ctrl and over_link) or over_image else "text")
+        over_bubble = self._pointer is not None and self.pills is not None and self.pills.bubble_at(*self._pointer) is not None
+        self.set_cursor_from_name("pointer" if (ctrl and over_link) or over_image or over_bubble else "text")
 
     def _on_query_tooltip(self, _view, x, y, keyboard_mode, tooltip):
         address = self.link_at_iter(self._caret_iter()) if keyboard_mode else self.link_at_point(x, y)

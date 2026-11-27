@@ -309,6 +309,32 @@ def steps(win, app):
     yield from wait_until(lambda: not pills.pills)
     check(not pills.pills, "Links in code blocks stay as they are")
 
+    # Comments: one pill with the icon in front of the marked passage, a bubble in the margin
+    comment_text = "The storm {==cracked the lamp==}{>>too dramatic?<<} last night.{>>check<<}\nNext line."
+    ed.buffer.set_text(comment_text)
+    ed.buffer.place_cursor(ed.buffer.get_end_iter())
+    yield from wait_until(lambda: [pill.kind for pill in pills.pills] == ["comment", "comment"])
+    yield 0.1
+    check(all(pill.folded for pill in pills.pills), "Comments fold away")
+    check(text(ed) == comment_text, "Folding comments does not change the text")
+    hidden_at = lambda part: ed.buffer.get_iter_at_offset(comment_text.index(part)).has_tag(pills._hidden)
+    check(not hidden_at("cracked") and hidden_at("=}") and hidden_at("too dramatic"), "The passage stays, the markup and the comment's text are hidden")
+    check(pills.pills[0].note == "too dramatic?", "The marked passage knows its comment")
+    check(hidden_at("==cracked") and not hidden_at("{==cracked"), "The comment's icon sits in front of the passage")
+    check(not ed.buffer.get_iter_at_offset(comment_text.index("cracked")).has_tag(pills._muted), "The passage keeps the color of the text")
+    bubbles = pills.bubbles()
+    check(len(bubbles) == 1 and bubbles[0][2] == ["too dramatic?", "check"], "One bubble in the margin for the row where both comments begin")
+    rect = bubbles[0][0]
+    wx, wy = ed.view.buffer_to_window_coords(Gtk.TextWindowType.WIDGET, int(rect.get_x() + 8), int(rect.get_y() + 8))
+    check(pills.note_at(wx, wy) == "too dramatic?\n\ncheck", "Hovering over the bubble shows the comments")
+    check(wx < ed.view.char_area(ed.buffer.get_start_iter()).x, "The bubble sits left of the text")
+    ed.view._on_click(Gtk.GestureClick(), 1, wx, wy)
+    caret = ed.buffer.get_iter_at_mark(ed.buffer.get_insert()).get_offset()
+    check(caret == comment_text.index("too dramatic"), "Clicking the bubble puts the caret into the comment")
+    check(not pills.pills[0].folded and pills.pills[1].folded, "Only the comment at the caret unfolds")
+    yield 0.4
+    check(ed.buffer.get_iter_at_offset(comment_text.index("dramatic")).has_tag(ed.styler.no_spell_check), "Comments are not spell checked")
+
     # Images: inserted as attachments, shown below their line, without any change to the text
     picture_source = TMP / "My Photo.png"
     pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, False, 8, 400, 200)
