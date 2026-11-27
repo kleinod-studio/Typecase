@@ -16,7 +16,8 @@ Your texts stay plain `.md` files in a folder of your choice: no database, no pr
 - **Formatting without syntax**: a floating formatting bar and keyboard shortcuts for bold, italic, headings, lists, links and more.
 - **Images**: insert them with a button, by dragging or by pasting. They are shown in the editor, stored as attachments of the sheet, and have a size, an alignment, a caption and an alternative text.
 - **Links and footnotes**: links open with Ctrl+click, and footnotes are written right in the text.
-- **Pills**: images, links and footnotes fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
+- **Comments**: select a passage and press Ctrl+Alt+M to leave yourself a note while revising. Comments fold into a pill, a speech bubble in the margin shows where they are, and Ctrl+Alt+Page Down jumps from one to the next. They are stored in the `.md` file as [CriticMarkup](https://github.com/CriticMarkup/CriticMarkup-toolkit), left out of the export, and can be kept in the margin of a Word document.
+- **Pills**: images, links, footnotes and comments fold their Markdown into a small colored pill and unfold while the caret touches them, so the text stays easy to read.
 - **Outline**: the headings of a sheet, or of a whole group with its subgroups, in a list to jump to (Ctrl+Shift+O).
 - **Organize**: give sheets and groups an icon and a color, search the whole library, add keywords and filter by them, and edit sheet properties (title, author, status, language). Properties are stored as YAML front matter, which stays hidden in the editor.
 - **Notes and attachments**: free notes per sheet (stored in the front matter) and attached files, which move along with the sheet.
